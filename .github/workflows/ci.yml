@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
@@ -48,7 +48,6 @@ jobs:
         with:
           repository: getbud-co/bud2-design-system
           path: bud2-design-system
-          token: ${{ secrets.DS_GITHUB_TOKEN }}
 
       - name: Move Design System to sibling path
         run: mv ${{ github.workspace }}/bud2-design-system ${{ github.workspace }}/../bud2-design-system
