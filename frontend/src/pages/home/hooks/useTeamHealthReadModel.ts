@@ -31,7 +31,7 @@ export interface TeamHealthReadModel {
 }
 
 export function useTeamHealthReadModel(): TeamHealthReadModel {
-  const { users, teams, teamOptions } = usePeopleData();
+  const { users, teamOptions } = usePeopleData();
   const { missions, checkInHistory } = useMissionsData();
 
   return useMemo(() => {
