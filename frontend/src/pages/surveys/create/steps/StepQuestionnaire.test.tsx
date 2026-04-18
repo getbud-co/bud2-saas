@@ -6,7 +6,6 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { screen } from "@testing-library/react";
 import { renderWithProviders } from "../../../../../tests/setup/test-utils";
 import { SurveyWizardProvider } from "../SurveyWizardContext";
 import { StepQuestionnaire } from "./StepQuestionnaire";

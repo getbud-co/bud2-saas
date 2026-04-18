@@ -221,20 +221,18 @@ describe("ConversationsContext", () => {
     it("pinned conversations appear first in the list", () => {
       const { result } = renderHook(() => useConversations(), { wrapper });
 
-      let conv1Id: string;
-      let conv2Id: string;
+      let conv1Id = "";
       act(() => {
         const c1 = result.current.createConversation("First");
         conv1Id = c1.id;
       });
       act(() => {
-        const c2 = result.current.createConversation("Second");
-        conv2Id = c2.id;
+        result.current.createConversation("Second");
       });
 
       // Pin the first (older) conversation
       act(() => {
-        result.current.togglePin(conv1Id!);
+        result.current.togglePin(conv1Id);
       });
 
       // Pinned should be first even if older
@@ -361,7 +359,7 @@ describe("ConversationsContext", () => {
     it("can set active conversation by id", () => {
       const { result } = renderHook(() => useConversations(), { wrapper });
 
-      let convId: string;
+      let convId = "";
       act(() => {
         const conv = result.current.createConversation("Set Active");
         convId = conv.id;
@@ -373,7 +371,7 @@ describe("ConversationsContext", () => {
       });
 
       act(() => {
-        result.current.setActiveConversationId(convId!);
+        result.current.setActiveConversationId(convId);
       });
 
       expect(result.current.activeConversation?.id).toBe(convId);

@@ -8,7 +8,6 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "../../../../../tests/setup/test-utils";
 import { SurveyWizardProvider } from "../SurveyWizardContext";
 import { StepPeerAssignment } from "./StepPeerAssignment";

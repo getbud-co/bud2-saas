@@ -15,7 +15,7 @@ function buildMinimalData(overrides?: Partial<SurveyResultData>): SurveyResultDa
   return {
     surveyId: "s1",
     surveyName: "Ciclo Q1 2026",
-    surveyType: "360",
+    surveyType: "360_feedback",
     surveyCategory: "ciclo",
     status: "active",
     period: "01/01/2026 – 31/03/2026",

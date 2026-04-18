@@ -67,7 +67,7 @@ describe("OrgChartModule", () => {
     renderWithProviders(<OrgChartModule />);
 
     // Encontrar os botoes de zoom (- e +)
-    const zoomButtons = screen.getAllByRole("button").filter(
+    screen.getAllByRole("button").filter(
       (btn) => btn.textContent === "" && !btn.textContent?.includes("%"),
     );
 
@@ -128,8 +128,6 @@ describe("OrgChartModule", () => {
     // Deve exibir resultados no dropdown (pelo menos algum resultado)
     await waitFor(() => {
       // Os resultados aparecem como botoes com avatar e nome
-      const searchResults = document.querySelectorAll("[class*='searchResult']");
-      // Pode ou nao ter resultados dependendo dos dados seed
       expect(searchInput).toHaveValue("a");
     });
   });

@@ -8,7 +8,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import type { ReactNode } from "react";
 import { ConfigDataProvider } from "@/contexts/ConfigDataContext";
 import { SavedViewsProvider } from "@/contexts/SavedViewsContext";
 import { AppSidebar } from "./AppSidebar";

@@ -7,7 +7,6 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { renderMinimal } from "../../../../tests/setup/test-utils";
 import { QuestionField } from "./QuestionField";
 import type { QuestionFieldProps } from "./QuestionField";

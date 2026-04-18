@@ -6,8 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { screen } from "@testing-library/react";
 import { renderMinimal } from "../../../../tests/setup/test-utils";
 import { SurveyRenderer } from "./SurveyRenderer";
 import type { SurveyRendererData, SurveyRendererProps } from "./SurveyRenderer";

@@ -137,32 +137,32 @@ describe("SettingsDataContext", () => {
       const { result } = renderHook(() => useSettingsData(), { wrapper });
 
       act(() => {
-        result.current.setProactivityLevel("high");
+        result.current.setProactivityLevel("maximum");
       });
 
-      expect(result.current.aiSettings.proactivityLevel).toBe("high");
+      expect(result.current.aiSettings.proactivityLevel).toBe("maximum");
     });
 
     it("toggles suggestion type", () => {
       const { result } = renderHook(() => useSettingsData(), { wrapper });
 
-      const original = result.current.aiSettings.suggestionTypes.checkinReminders;
+      const original = result.current.aiSettings.suggestionTypes.coachingTips;
 
       act(() => {
-        result.current.setSuggestionType("checkinReminders", !original);
+        result.current.setSuggestionType("coachingTips", !original);
       });
 
-      expect(result.current.aiSettings.suggestionTypes.checkinReminders).toBe(!original);
+      expect(result.current.aiSettings.suggestionTypes.coachingTips).toBe(!original);
     });
 
     it("sets transparency mode", () => {
       const { result } = renderHook(() => useSettingsData(), { wrapper });
 
       act(() => {
-        result.current.setTransparencyMode("verbose");
+        result.current.setTransparencyMode("always");
       });
 
-      expect(result.current.aiSettings.transparencyMode).toBe("verbose");
+      expect(result.current.aiSettings.transparencyMode).toBe("always");
     });
   });
 
@@ -467,14 +467,14 @@ describe("SettingsDataContext", () => {
       act(() => {
         doc = result.current.addKnowledgeDoc({
           name: "Company Guide.pdf",
-          type: "pdf",
+          type: "file",
           size: "2.4 MB",
         });
       });
 
       expect(result.current.knowledgeDocs.length).toBe(initialCount + 1);
       expect(doc!.name).toBe("Company Guide.pdf");
-      expect(doc!.type).toBe("pdf");
+      expect(doc!.type).toBe("file");
     });
 
     it("removes a knowledge doc", () => {
@@ -484,7 +484,7 @@ describe("SettingsDataContext", () => {
       act(() => {
         const doc = result.current.addKnowledgeDoc({
           name: "To Remove.pdf",
-          type: "pdf",
+          type: "file",
         });
         docId = doc.id;
       });

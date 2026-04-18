@@ -24,12 +24,6 @@ function createMockPanel(): HTMLDivElement {
 
 function createTouchEvent(type: string, clientY: number): TouchEvent {
   const touch = { clientY, clientX: 100, identifier: 0 } as Touch;
-  const touchList = {
-    length: 1,
-    item: () => touch,
-    [0]: touch,
-    [Symbol.iterator]: function* () { yield touch; },
-  } as unknown as TouchList;
 
   return new TouchEvent(type, {
     touches: type === "touchend" ? [] as unknown as Touch[] : [touch],
