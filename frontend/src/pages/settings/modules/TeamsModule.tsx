@@ -109,7 +109,7 @@ export function TeamsModule() {
     ignoreChipRefs,
   } = useFilterChips({
     chipRefs,
-    onResetFilter: (id) => {
+    onResetFilter: (id: string) => {
       if (id === "status") setFilterStatus("all");
     },
   });
@@ -325,7 +325,7 @@ export function TeamsModule() {
             onAddFilter={addFilterAndOpen}
             onClearAll={activeFilters.length > 0 ? clearAllFilters : undefined}
           >
-            {activeFilters.map((filterId) => (
+            {activeFilters.map((filterId: string) => (
               <div key={filterId} ref={filterId === "status" ? statusChipRef : undefined} style={{ display: "inline-flex" }}>
                 <FilterChip
                   label={getFilterLabel(filterId)}

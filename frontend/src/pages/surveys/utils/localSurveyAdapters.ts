@@ -246,15 +246,6 @@ export function wizardStateToRendererData(state: SurveyWizardState): SurveyRende
   };
 }
 
-function distribute(total: number, buckets: number): number[] {
-  if (buckets <= 0) return [];
-  if (total <= 0) return Array.from({ length: buckets }, () => 0);
-
-  const base = Math.floor(total / buckets);
-  const remainder = total % buckets;
-  return Array.from({ length: buckets }, (_, index) => base + (index < remainder ? 1 : 0));
-}
-
 function buildIndividualResponses(question: WizardQuestion, totalResponses: number): IndividualResponse[] {
   const total = Math.min(totalResponses, SAMPLE_NAMES.length);
   if (total === 0) return [];
@@ -331,7 +322,8 @@ function distributeWithVariation(total: number, buckets: number, seed: string): 
   let remainder = total - counts.reduce((a, b) => a + b, 0);
   let idx = h % buckets;
   while (remainder > 0) {
-    counts[idx % buckets] += 1;
+    const bucketIndex = idx % buckets;
+    counts[bucketIndex] = (counts[bucketIndex] ?? 0) + 1;
     remainder--;
     idx++;
   }

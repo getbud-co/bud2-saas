@@ -97,7 +97,7 @@ export function SettingsTab({ data }: SettingsTabProps) {
 
   const surveyLink = `https://app.bud.com.br/s/${data.surveyId}`;
   const statusActions = STATUS_ACTIONS[data.status] ?? [];
-  const statusConfig = STATUS_MAP[data.status] ?? STATUS_MAP.archived;
+  const statusConfig = STATUS_MAP[data.status] ?? STATUS_MAP.archived!;
 
   function handleSave() {
     toast.success("Configurações salvas com sucesso");

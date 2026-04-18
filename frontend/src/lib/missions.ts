@@ -226,10 +226,6 @@ function mkSupporter(
   };
 }
 
-function mkSubtask(id: string, title: string, isDone: boolean, sortOrder = 0): SubTask {
-  return { id, taskId: "", title, isDone, sortOrder };
-}
-
 function mkTask(
   id: string,
   title: string,

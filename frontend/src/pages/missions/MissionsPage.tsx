@@ -354,7 +354,6 @@ const EXAMPLE_LIBRARY: Record<string, ExampleCategory[]> = {
  */
 function parseKeyResultGoal(kr: string): { manualType: string; goalValue: string; goalUnit: string } {
   const defaults = { manualType: "reach", goalValue: "", goalUnit: "" };
-  const lower = kr.toLowerCase();
 
   // Detect manualType from keywords
   let manualType = "reach";
@@ -371,11 +370,11 @@ function parseKeyResultGoal(kr: string): { manualType: string; goalValue: string
   const plainNumMatch = kr.match(/\b([\d.,]+)\b/);
 
   let rawValue = "";
-  if (paraMatch) rawValue = paraMatch[1];
-  else if (gteMatch) { rawValue = gteMatch[1]; manualType = "above"; }
-  else if (lteMatch) { rawValue = lteMatch[1]; manualType = "below"; }
-  else if (percentMatch) rawValue = percentMatch[1];
-  else if (plainNumMatch) rawValue = plainNumMatch[1];
+  if (paraMatch?.[1]) rawValue = paraMatch[1];
+  else if (gteMatch?.[1]) { rawValue = gteMatch[1]; manualType = "above"; }
+  else if (lteMatch?.[1]) { rawValue = lteMatch[1]; manualType = "below"; }
+  else if (percentMatch?.[1]) rawValue = percentMatch[1];
+  else if (plainNumMatch?.[1]) rawValue = plainNumMatch[1];
 
   if (/^zero\b/i.test(kr)) rawValue = "0";
 
@@ -1449,7 +1448,15 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
 
   const setExpandedMission = (m: Mission | null) => {
     if (m) {
+      setExpandedMissionId(m.id);
+      setExpandedMissionOverlayKey(claimNextOverlayKey());
       navigate(`/missions/${m.id}`);
+      return;
+    }
+
+    setExpandedMissionId(null);
+    if (focusMissionId) {
+      navigate(mine ? "/missions/mine" : "/missions");
     }
   };
 
@@ -1780,7 +1787,7 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
       }
     }
     collect(missions);
-    return focusMission.path.map((id, i) => {
+    return focusMission.path.map((id) => {
       const m = allFlat.find((x) => x.id === id);
       return {
         label: m?.title ?? id,

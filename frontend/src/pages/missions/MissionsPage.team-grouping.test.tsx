@@ -3,7 +3,7 @@
 // e agrupa missões por seção (multi-team).
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { screen, within } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "../../../tests/setup/test-utils";
 import { MissionsPage } from "@/pages/missions/MissionsPage";

@@ -139,7 +139,6 @@ function PeerManagementContent({ session }: { session: NonNullable<SurveyResultD
 
   const overloadedCount = peopleLoadView.filter((p) => p.isOverloaded).length;
   const noPeersCount = peopleLoadView.filter((p) => p.hasNoPeers).length;
-  const noWritingCount = peopleLoadView.filter((p) => p.willWriteNothing).length;
 
   /* Overload detection (for alerts — kept for backward compat) */
   const overloadedPeers = peopleLoadView.filter((p) => p.isOverloaded);

@@ -206,7 +206,6 @@ export function MissionDetailsDrawer({
   setDrawerTasks,
   newTaskLabel,
   setNewTaskLabel,
-  setDrawerTask,
 }: MissionDetailsDrawerProps) {
   const newlyCreatedCheckInRef = useRef<HTMLDivElement | null>(null);
   const [highlightedCheckInId, setHighlightedCheckInId] = useState<string | null>(null);

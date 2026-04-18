@@ -298,7 +298,7 @@ export function SurveysPage() {
     ignoreChipRefs,
   } = useFilterChips({
     chipRefs,
-    onResetFilter: (id) => {
+    onResetFilter: (id: string) => {
       if (id === "status") setSelectedStatus("all");
       if (id === "type") setSelectedType("all");
       if (id === "category") setSelectedCategory("all");
@@ -724,7 +724,7 @@ export function SurveysPage() {
               </div>
             )}
 
-            {activeFilters.map((filterId) => (
+            {activeFilters.map((filterId: string) => (
               <div key={filterId} ref={chipRefs[filterId]} style={{ display: "inline-flex" }}>
                 <FilterChip
                   label={getFilterLabel(filterId)}

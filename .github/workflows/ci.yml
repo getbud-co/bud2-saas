@@ -54,9 +54,17 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: "25.9.0"
+          node-version: "24.15.0"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Design System dependencies
+        working-directory: ../bud2-design-system
+        run: npm ci
+
+      - name: Build Design System package
+        working-directory: ../bud2-design-system
+        run: npm run build:lib
 
       - name: Install
         run: npm ci
