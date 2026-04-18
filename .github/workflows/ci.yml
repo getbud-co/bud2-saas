@@ -43,31 +43,17 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Checkout Design System
-        uses: actions/checkout@v6
-        with:
-          repository: getbud-co/bud2-design-system
-          path: bud2-design-system
-
-      - name: Move Design System to sibling path
-        run: mv ${{ github.workspace }}/bud2-design-system ${{ github.workspace }}/../bud2-design-system
-
       - uses: actions/setup-node@v6
         with:
           node-version: "24.15.0"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-
-      - name: Install Design System dependencies
-        working-directory: ../bud2-design-system
-        run: npm ci
-
-      - name: Build Design System package
-        working-directory: ../bud2-design-system
-        run: npm run build:lib
+          registry-url: https://npm.pkg.github.com
 
       - name: Install
-        run: npm ci
+        run: rm -f package-lock.json && npm install
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Type check
         run: npm run type-check
