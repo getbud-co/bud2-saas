@@ -1,0 +1,289 @@
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-sm);
+  padding: var(--sp-sm) var(--sp-lg);
+}
+
+.searchWrapper {
+  max-width: 400px;
+  flex: 1;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+}
+
+.formStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-md);
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-md);
+}
+
+.dateField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+}
+
+.confirmText {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-700);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.filterDropdownBody {
+  display: flex;
+  flex-direction: column;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.filterActionItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  padding: var(--sp-2xs) var(--sp-sm);
+  border: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-700);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background 0.1s;
+}
+
+.filterActionItem:hover {
+  background: var(--color-caramel-50);
+}
+
+.filterActionItemActive {
+  background: var(--color-orange-50);
+  color: var(--color-orange-700);
+}
+
+.teamBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3xs);
+}
+
+/* ——— Import modal ——— */
+
+.importDesc {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-600);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.templateLink {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+  padding: var(--sp-sm);
+  border: 1px solid var(--color-caramel-300);
+  border-radius: var(--radius-sm);
+  background: var(--color-neutral-0);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background-color 120ms ease;
+  color: var(--color-green-600);
+}
+
+.templateLink:hover {
+  background: var(--color-caramel-50);
+}
+
+.templateLinkText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.templateLinkTitle {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-900);
+}
+
+.templateLinkDesc {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+}
+
+.uploadArea {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2xs);
+  padding: var(--sp-xl);
+  border: 2px dashed var(--color-caramel-300);
+  border-radius: var(--radius-sm);
+  background: var(--color-caramel-50);
+  cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease;
+  color: var(--color-neutral-400);
+}
+
+.uploadArea:hover {
+  border-color: var(--color-orange-300);
+  background: var(--color-orange-50);
+}
+
+.fileInput {
+  display: none;
+}
+
+.uploadText {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-700);
+}
+
+.uploadHint {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+}
+
+.uploadFileName {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-sm);
+  color: var(--color-orange-600);
+}
+
+.actionsField {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ——— Role popover ——— */
+
+.roleField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+  position: relative;
+}
+
+.roleLabel {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-700);
+  line-height: 1.15;
+}
+
+.roleTrigger {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  padding: var(--sp-2xs) var(--sp-sm);
+  border: 1px solid var(--color-caramel-300);
+  border-radius: var(--radius-sm);
+  background: var(--color-neutral-0);
+  cursor: pointer;
+  min-height: 36px;
+  text-align: left;
+}
+
+.roleTrigger:hover {
+  border-color: var(--color-caramel-500);
+}
+
+.roleTrigger:focus-visible {
+  outline: 2px solid var(--color-orange-500);
+  outline-offset: 2px;
+}
+
+.roleTriggerText {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-900);
+  line-height: 1.15;
+}
+
+.roleChevron {
+  flex-shrink: 0;
+  color: var(--color-neutral-400);
+  transition: transform 150ms ease;
+}
+
+.roleDropdown {
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-3xs);
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.roleOption {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2xs);
+  padding: var(--sp-2xs) var(--sp-sm);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  border-radius: var(--radius-xs);
+  transition: background-color 120ms ease;
+}
+
+.roleOption:hover {
+  background-color: var(--color-caramel-100);
+}
+
+.roleOptionActive {
+  background-color: var(--color-caramel-50);
+}
+
+.roleOptionText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.roleOptionLabel {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-900);
+  line-height: 1.15;
+}
+
+.roleOptionDesc {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  line-height: 1.35;
+}

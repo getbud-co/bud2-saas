@@ -1,0 +1,158 @@
+/* ——— Page layout ——— */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+  width: 100%;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+  padding: var(--sp-sm) var(--sp-sm) 0;
+}
+
+.homeGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: var(--sp-2xs);
+  align-items: start;
+}
+
+.homeCol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+}
+
+/* ——— Card shared ——— */
+
+.cardActions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+}
+
+/* ——— BriefingCard ——— */
+
+.briefing {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+}
+
+.briefingText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+}
+
+/* ——— MissionsCard ——— */
+
+.missions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-sm);
+}
+
+.missionsFooter {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-xs);
+}
+
+/* ——— EngagementCard ——— */
+
+.engagement {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-sm);
+  padding: var(--sp-sm) 0;
+}
+
+.engagementTrend {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+}
+
+/* ——— ActivitiesCard ——— */
+
+.activities {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-sm);
+}
+
+.activityItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+}
+
+.activityText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+}
+
+/* ——— TeamHealthCard ——— */
+
+.teamHealth {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-sm);
+}
+
+.healthSummary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-2xs);
+}
+
+.healthBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3xs);
+}
+
+.healthMembers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-xs);
+}
+
+.healthMember {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+}
+
+.healthMemberInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+}
+
+/* ——— Responsive ——— */
+
+@media (max-width: 768px) {
+  .homeGrid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .homeGrid {
+    grid-template-columns: 1fr;
+  }
+}

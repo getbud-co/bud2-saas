@@ -1,0 +1,78 @@
+.layout {
+  display: flex;
+  height: 100dvh;
+  background-color: var(--color-caramel-50);
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  padding: var(--sp-2xs);
+  overflow-y: auto;
+  background-color: var(--color-caramel-50);
+  transition: flex 300ms ease;
+}
+
+.assistant {
+  flex-shrink: 0;
+  width: 0;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: width 300ms ease, padding 300ms ease, opacity 300ms ease;
+  opacity: 0;
+  padding: var(--sp-2xs) 0 var(--sp-2xs) 0;
+}
+
+.assistantOpen {
+  width: 420px;
+  opacity: 1;
+  overflow: visible;
+  padding: var(--sp-2xs) var(--sp-2xs) var(--sp-2xs) 0;
+}
+
+.assistant > * {
+  flex: 1;
+  min-height: 0;
+  min-width: 420px;
+}
+
+/* ——— Desktop: assistant flutua quando layout fica apertado ——— */
+
+@media (max-width: 1400px) {
+  .assistant {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 100;
+    padding: var(--sp-2xs) 0;
+    transform: translateX(100%);
+    transition: transform 300ms ease, opacity 300ms ease, width 300ms ease;
+    width: 420px;
+    overflow: visible;
+  }
+
+  .assistantOpen {
+    transform: translateX(0);
+    padding: var(--sp-2xs);
+  }
+
+  .assistant > * {
+    box-shadow: var(--shadow-lg);
+    min-width: 0;
+  }
+}
+
+/* ——— Mobile: assistant full-width ——— */
+
+@media (max-width: 480px) {
+  .assistant {
+    width: 100vw;
+  }
+
+  .assistantOpen {
+    width: 100vw;
+    padding: var(--sp-2xs);
+  }
+}

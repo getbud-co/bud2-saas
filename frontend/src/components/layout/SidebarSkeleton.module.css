@@ -1,0 +1,71 @@
+.sidebar {
+  flex-shrink: 0;
+  width: 280px;
+  height: 100dvh;
+  background-color: var(--color-neutral-0);
+  border-right: 1px solid var(--color-caramel-200);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: var(--sp-md) var(--sp-sm);
+}
+
+.logo {
+  padding: var(--sp-2xs) var(--sp-xs);
+  margin-bottom: var(--sp-sm);
+}
+
+.orgSwitcher {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+  padding: var(--sp-2xs) var(--sp-xs);
+}
+
+.divider {
+  height: 1px;
+  background-color: var(--color-caramel-200);
+  margin: var(--sp-sm) 0;
+}
+
+.navGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-xs);
+  padding: 0 var(--sp-xs);
+}
+
+.navItems {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+  padding: var(--sp-2xs) var(--sp-xs);
+  border-radius: var(--radius-xs);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.userFooter {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+  padding: var(--sp-xs);
+  border-top: 1px solid var(--color-caramel-200);
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+}

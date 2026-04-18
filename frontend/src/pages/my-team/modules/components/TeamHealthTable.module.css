@@ -1,0 +1,40 @@
+/* ── Table wrapper ── */
+
+.tableWrapper {
+  padding: var(--sp-sm) var(--sp-sm) var(--sp-sm);
+}
+
+/* ── Progress cell ── */
+
+.progressCell {
+  min-width: 120px;
+  max-width: 180px;
+}
+
+/* ── Overall score ── */
+
+.overallValue {
+  font-family: var(--font-label);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.overallGood { color: var(--color-green-600); }
+.overallWarn { color: var(--color-yellow-600); }
+.overallBad  { color: var(--color-red-600); }
+
+/* ── Header actions: busca ── */
+
+.searchWrapper {
+  width: 220px;
+}
+
+/* ── Empty state ── */
+
+.empty {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-500);
+  padding: var(--sp-md) 0;
+  margin: 0;
+}

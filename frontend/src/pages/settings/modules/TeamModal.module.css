@@ -1,0 +1,406 @@
+/* ——— Tab bar (always visible, between header and body) ——— */
+
+.tabBarWrapper {
+  padding: 0 var(--sp-lg);
+  border-bottom: 1px solid var(--color-caramel-200);
+  flex-shrink: 0;
+}
+
+/* ——— Mobile sub-tabs (within members tab, hidden on desktop) ——— */
+
+.mobileMembersTabs {
+  display: none;
+  padding: 0 var(--sp-lg);
+  border-bottom: 1px solid var(--color-caramel-200);
+  flex-shrink: 0;
+}
+
+/* ——— Desktop / mobile panel toggle ——— */
+
+.desktopPanel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.mobilePanel {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* ——————————————————————————————————————————————
+   Tab: Detalhes — Form
+   —————————————————————————————————————————————— */
+
+.formStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-md);
+}
+
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+}
+
+.formLabel {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-700);
+}
+
+.colorGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2xs);
+}
+
+.colorOption {
+  display: flex;
+  padding: var(--sp-3xs);
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.colorOption:hover {
+  background: var(--color-caramel-50);
+  border-color: var(--color-caramel-200);
+}
+
+.colorOptionActive {
+  border-color: var(--color-orange-400);
+  background: var(--color-orange-50);
+}
+
+/* ——————————————————————————————————————————————
+   Tab: Membros — Search panel (main body)
+   —————————————————————————————————————————————— */
+
+.searchPanel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: var(--sp-xs);
+}
+
+.filterBarWrapper {
+  flex-shrink: 0;
+}
+
+.personList {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid var(--color-caramel-200);
+  border-radius: var(--radius-sm);
+  min-height: 0;
+}
+
+/* ——— Person row ——— */
+
+.personRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+  padding: var(--sp-2xs) var(--sp-sm);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background-color 100ms ease;
+  border-bottom: 1px solid var(--color-caramel-100);
+  outline: none;
+}
+
+.personRow:last-child {
+  border-bottom: none;
+}
+
+.personRow:hover {
+  background: var(--color-caramel-50);
+}
+
+.personRow:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--color-orange-300);
+}
+
+.personRowSelected {
+  background: var(--color-orange-50);
+  border-left: 2px solid var(--color-orange-400);
+  padding-left: calc(var(--sp-sm) - 2px);
+}
+
+.personRowSelected:hover {
+  background: var(--color-orange-100);
+}
+
+/* ——— List count ——— */
+
+.listCount {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+  flex-shrink: 0;
+}
+
+/* ——— Empty search ——— */
+
+.emptySearch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2xs);
+  padding: var(--sp-2xl) var(--sp-lg);
+  color: var(--color-neutral-400);
+  text-align: center;
+}
+
+.emptySearch span {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+}
+
+/* ——————————————————————————————————————————————
+   Tab: Membros — Members panel (sidePanel)
+   —————————————————————————————————————————————— */
+
+.membersPanel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-neutral-0);
+  border: 1px solid var(--color-caramel-200);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.membersPanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-sm) var(--sp-md);
+  border-bottom: 1px solid var(--color-caramel-200);
+  background: var(--color-neutral-50);
+  flex-shrink: 0;
+}
+
+.membersPanelTitle {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-700);
+}
+
+.membersPanelFilter {
+  padding: var(--sp-2xs) var(--sp-sm);
+  border-bottom: 1px solid var(--color-caramel-100);
+  flex-shrink: 0;
+}
+
+.membersList {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* ——— Member row (painel direito) ——— */
+
+.memberRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-2xs) var(--sp-sm);
+  border-bottom: 1px solid var(--color-caramel-100);
+  gap: var(--sp-2xs);
+  transition: background-color 100ms ease;
+}
+
+.memberRow:last-child {
+  border-bottom: none;
+}
+
+.memberRow:hover {
+  background: var(--color-caramel-50);
+}
+
+.memberRowRight {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  flex-shrink: 0;
+}
+
+/* ——— Role badge button ——— */
+
+.roleBadgeBtn {
+  display: inline-flex;
+  align-items: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  border-radius: var(--radius-xs);
+  outline: none;
+  transition: opacity 100ms ease;
+}
+
+.roleBadgeBtn:hover {
+  opacity: 0.8;
+}
+
+.roleBadgeBtn:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-orange-400);
+}
+
+.roleBadgeBtnOpen {
+  opacity: 0.7;
+}
+
+/* ——— Remove button — sempre visível ——— */
+
+.removeBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--color-neutral-400);
+  cursor: pointer;
+  border-radius: var(--radius-xs);
+  flex-shrink: 0;
+  transition: background-color 100ms ease, color 100ms ease;
+  outline: none;
+}
+
+.removeBtn:hover {
+  background: var(--color-red-50);
+  color: var(--color-red-600);
+}
+
+.removeBtn:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-red-400);
+}
+
+/* ——— Empty members ——— */
+
+.emptyMembers {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2xs);
+  padding: var(--sp-2xl) var(--sp-lg);
+  text-align: center;
+  color: var(--color-neutral-400);
+}
+
+.emptyMembers > span:first-of-type {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-600);
+}
+
+.emptyHint {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+}
+
+/* ——————————————————————————————————————————————
+   Filter dropdown (shared)
+   —————————————————————————————————————————————— */
+
+.filterDropdownBody {
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  padding: var(--sp-3xs) 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.filterDropdownEmpty {
+  padding: var(--sp-2xs) var(--sp-sm);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-400);
+}
+
+.filterActionItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  padding: var(--sp-2xs) var(--sp-sm);
+  border: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-700);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background-color 100ms ease;
+}
+
+.filterActionItem:hover {
+  background: var(--color-caramel-50);
+}
+
+.filterActionItemActive {
+  background: var(--color-orange-50);
+  color: var(--color-orange-700);
+}
+
+/* ——————————————————————————————————————————————
+   Footer
+   —————————————————————————————————————————————— */
+
+.footerInfo {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-500);
+}
+
+.footerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+}
+
+/* ——————————————————————————————————————————————
+   Mobile (≤768px)
+   —————————————————————————————————————————————— */
+
+@media (max-width: 768px) {
+  .tabBarWrapper {
+    padding: 0 var(--sp-sm);
+  }
+
+  .mobileMembersTabs {
+    display: block;
+    padding: 0 var(--sp-sm);
+  }
+
+  .desktopPanel {
+    display: none;
+  }
+
+  .mobilePanel {
+    display: flex;
+  }
+
+  /* No mobile o sidePanel é renderizado dentro da aba "Membros",
+     então não precisa de borda/radius próprios */
+  .membersPanel {
+    border: none;
+    border-radius: 0;
+  }
+}

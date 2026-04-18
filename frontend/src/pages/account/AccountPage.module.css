@@ -1,0 +1,237 @@
+/* ——— Page layout ——— */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+  width: 100%;
+}
+
+/* ——— Section inside Card ——— */
+
+.sectionContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-md);
+  padding: var(--sp-md) var(--sp-lg);
+}
+
+.sectionHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sectionTitle {
+  font-family: var(--font-heading);
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--color-neutral-900);
+}
+
+.sectionDesc {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+}
+
+/* ——— Profile header ——— */
+
+.profileRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-sm);
+}
+
+.profileLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+}
+
+.profileInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.profileName {
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-neutral-950);
+}
+
+.profileMeta {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+}
+
+/* ——— Avatar upload ——— */
+
+.avatarWrapper {
+  position: relative;
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-full);
+}
+
+/* Single overlay (no photo) */
+.avatarOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background: rgba(0, 0, 0, 0);
+  color: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 200ms ease, color 200ms ease;
+}
+
+.avatarOverlay:hover {
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--color-neutral-0);
+}
+
+/* Split overlay (has photo) */
+.avatarOverlaySplit {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.avatarWrapper:hover .avatarOverlaySplit {
+  opacity: 1;
+}
+
+.avatarOverlayHalf {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  color: var(--color-neutral-0);
+  background: rgba(0, 0, 0, 0.4);
+  transition: background 150ms ease;
+}
+
+.avatarOverlayHalf:hover {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.avatarOverlayRemove:hover {
+  background: rgba(180, 40, 40, 0.7);
+}
+
+.fileInput {
+  display: none;
+}
+
+/* ——— Form ——— */
+
+.formStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-sm);
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-sm);
+}
+
+.saveRow {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-2xs);
+}
+
+/* ——— Security section ——— */
+
+.securityItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-sm);
+  padding: var(--sp-xs) 0;
+  border-bottom: 1px solid var(--color-caramel-100);
+}
+
+.securityItem:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.securityItem:first-child {
+  padding-top: 0;
+}
+
+.securityText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.securityLabel {
+  font-family: var(--font-label);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-neutral-900);
+}
+
+.securityDesc {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+}
+
+.securityValue {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-500);
+}
+
+/* ——— Confirm text (modal) ——— */
+
+.confirmText {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-700);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ——— Responsive ——— */
+
+@media (max-width: 768px) {
+  .sectionContent {
+    padding: var(--sp-sm) var(--sp-md);
+  }
+
+  .formRow {
+    grid-template-columns: 1fr;
+  }
+
+  .profileRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .securityItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-2xs);
+  }
+}

@@ -1,0 +1,37 @@
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+}
+
+.searchWrapper {
+  max-width: 400px;
+  flex: 1;
+}
+
+.formStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-md);
+}
+
+.fieldLabel {
+  display: block;
+  font-family: var(--font-label);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-700);
+  margin-bottom: var(--sp-2xs);
+}
+
+.confirmText {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-700);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.actionsField {
+  display: flex;
+  justify-content: flex-end;
+}

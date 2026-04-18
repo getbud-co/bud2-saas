@@ -1,0 +1,225 @@
+.tab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xl);
+  padding: var(--sp-lg);
+}
+
+/* ——— Sections ——— */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-lg);
+}
+
+.sectionTitle {
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-neutral-950);
+  margin: 0;
+  padding-bottom: var(--sp-2xs);
+  border-bottom: 1px solid var(--color-caramel-200);
+}
+
+.sectionTitleDanger {
+  color: var(--color-error-600);
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+/* ——— Field groups ——— */
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-sm);
+}
+
+.fieldLabel {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.divider {
+  height: 1px;
+  background: var(--color-caramel-100);
+}
+
+/* ——— Forms ——— */
+
+.formRow {
+  display: flex;
+  gap: var(--sp-md);
+}
+
+.formRow > * {
+  flex: 1;
+}
+
+.radioGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-sm);
+}
+
+/* ——— Status ——— */
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+  flex-wrap: wrap;
+}
+
+/* ——— Channels ——— */
+
+.channelsRow {
+  display: flex;
+  gap: var(--sp-lg);
+}
+
+/* ——— Publish ——— */
+
+.publishActions {
+  display: flex;
+  gap: var(--sp-2xs);
+}
+
+/* ——— Link ——— */
+
+.linkRow {
+  display: flex;
+  gap: var(--sp-2xs);
+  align-items: flex-end;
+}
+
+.linkRow > :first-child {
+  flex: 1;
+}
+
+/* ——— Danger zone ——— */
+
+.dangerSection {
+  margin-top: var(--sp-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-sm);
+}
+
+.dangerItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-md);
+  padding: var(--sp-sm);
+  border: 1px solid var(--color-caramel-200);
+  border-radius: var(--radius-sm);
+}
+
+.dangerText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dangerTitle {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-neutral-950);
+}
+
+.dangerDesc {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+}
+
+/* ——— Confirm text ——— */
+
+.confirmText {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-700);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ——— Save bar ——— */
+
+.saveBar {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--sp-sm);
+  border-top: 1px solid var(--color-caramel-200);
+}
+
+/* ——— Peer assignment info ——— */
+
+.peerAssignmentInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+}
+
+.peerAssignmentDesc {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-500);
+}
+
+.peerSettingsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--sp-sm);
+}
+
+.peerSettingItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-xs) var(--sp-sm);
+  background: var(--color-caramel-50);
+  border-radius: var(--radius-xs);
+}
+
+.peerSettingLabel {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-700);
+}
+
+.peerSettingValue {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-950);
+}
+
+/* ——— Responsive ——— */
+
+@media (max-width: 768px) {
+  .tab {
+    padding: var(--sp-sm);
+  }
+
+  .formRow {
+    flex-direction: column;
+  }
+
+  .channelsRow {
+    flex-direction: column;
+    gap: var(--sp-sm);
+  }
+
+  .dangerItem {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

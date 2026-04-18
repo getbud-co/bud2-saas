@@ -1,0 +1,284 @@
+package user
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
+	appuser "github.com/getbud-co/bud2/backend/internal/app/user"
+	"github.com/getbud-co/bud2/backend/internal/domain"
+	"github.com/getbud-co/bud2/backend/internal/domain/membership"
+	usr "github.com/getbud-co/bud2/backend/internal/domain/user"
+	"github.com/getbud-co/bud2/backend/internal/test/fixtures"
+)
+
+type mockCreateUseCase struct{ mock.Mock }
+
+func (m *mockCreateUseCase) Execute(ctx context.Context, cmd appuser.CreateCommand) (*usr.User, error) {
+	args := m.Called(ctx, cmd)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*usr.User), args.Error(1)
+}
+
+type mockGetUseCase struct{ mock.Mock }
+
+func (m *mockGetUseCase) Execute(ctx context.Context, organizationID domain.TenantID, id uuid.UUID) (*usr.User, error) {
+	args := m.Called(ctx, organizationID, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*usr.User), args.Error(1)
+}
+
+type mockListUseCase struct{ mock.Mock }
+
+func (m *mockListUseCase) Execute(ctx context.Context, cmd appuser.ListCommand) (usr.ListResult, error) {
+	args := m.Called(ctx, cmd)
+	return args.Get(0).(usr.ListResult), args.Error(1)
+}
+
+type mockUpdateUseCase struct{ mock.Mock }
+
+func (m *mockUpdateUseCase) Execute(ctx context.Context, cmd appuser.UpdateCommand) (*usr.User, error) {
+	args := m.Called(ctx, cmd)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*usr.User), args.Error(1)
+}
+
+type mockGetMembershipUseCase struct{ mock.Mock }
+
+func (m *mockGetMembershipUseCase) Execute(ctx context.Context, organizationID domain.TenantID, id uuid.UUID) (*membership.Membership, error) {
+	args := m.Called(ctx, organizationID, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*membership.Membership), args.Error(1)
+}
+
+type mockUpdateMembershipUseCase struct{ mock.Mock }
+
+func (m *mockUpdateMembershipUseCase) Execute(ctx context.Context, cmd appuser.UpdateMembershipCommand) (*membership.Membership, error) {
+	args := m.Called(ctx, cmd)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*membership.Membership), args.Error(1)
+}
+
+func routeRequest(req *http.Request, tenantID domain.TenantID, id string) *http.Request {
+	rctx := chi.NewRouteContext()
+	if id != "" {
+		rctx.URLParams.Add("id", id)
+	}
+	return req.WithContext(context.WithValue(fixtures.NewContextWithTenant(tenantID), chi.RouteCtxKey, rctx))
+}
+
+func TestHandler_Create_Success(t *testing.T) {
+	createUC := new(mockCreateUseCase)
+	handler := NewHandler(createUC, nil, nil, nil, nil, nil)
+
+	tenantID := fixtures.NewTestTenantID()
+	u := fixtures.NewUser()
+	createUC.On("Execute", mock.Anything, appuser.CreateCommand{
+		OrganizationID: tenantID,
+		Name:           "Test User",
+		Email:          "test@example.com",
+		Password:       "password123",
+		Role:           "admin",
+	}).Return(u, nil)
+
+	body, _ := json.Marshal(createRequest{Name: "Test User", Email: "test@example.com", Password: "password123", Role: "admin"})
+	req := httptest.NewRequest(http.MethodPost, "/users", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req = req.WithContext(fixtures.NewContextWithTenant(tenantID))
+	rr := httptest.NewRecorder()
+
+	handler.Create(rr, req)
+
+	assert.Equal(t, http.StatusCreated, rr.Code)
+	var resp Response
+	assert.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	assert.Equal(t, u.ID.String(), resp.ID)
+	assert.Equal(t, u.Email, resp.Email)
+}
+
+func TestHandler_Get_Success(t *testing.T) {
+	getUC := new(mockGetUseCase)
+	handler := NewHandler(nil, getUC, nil, nil, nil, nil)
+
+	tenantID := fixtures.NewTestTenantID()
+	u := fixtures.NewUser()
+	getUC.On("Execute", mock.Anything, tenantID, u.ID).Return(u, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/users/"+u.ID.String(), nil)
+	req = routeRequest(req, tenantID, u.ID.String())
+	rr := httptest.NewRecorder()
+
+	handler.Get(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var resp Response
+	assert.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	assert.Equal(t, u.ID.String(), resp.ID)
+	assert.Equal(t, u.Email, resp.Email)
+}
+
+func TestHandler_List_Success(t *testing.T) {
+	listUC := new(mockListUseCase)
+	handler := NewHandler(nil, nil, listUC, nil, nil, nil)
+
+	tenantID := fixtures.NewTestTenantID()
+	u := fixtures.NewUser()
+	listUC.On("Execute", mock.Anything, appuser.ListCommand{
+		OrganizationID: tenantID,
+		Page:           1,
+		Size:           20,
+	}).Return(usr.ListResult{Users: []usr.User{*u}, Total: 1}, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/users", nil)
+	req = req.WithContext(fixtures.NewContextWithTenant(tenantID))
+	rr := httptest.NewRecorder()
+
+	handler.List(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var resp ListResponse
+	assert.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	assert.Len(t, resp.Data, 1)
+	assert.Equal(t, u.ID.String(), resp.Data[0].ID)
+}
+
+func TestHandler_Update_Success(t *testing.T) {
+	updateUC := new(mockUpdateUseCase)
+	handler := NewHandler(nil, nil, nil, updateUC, nil, nil)
+
+	tenantID := fixtures.NewTestTenantID()
+	u := fixtures.NewUser()
+	updateUC.On("Execute", mock.Anything, appuser.UpdateCommand{
+		OrganizationID: tenantID,
+		ID:             u.ID,
+		Name:           "Updated",
+		Email:          "test@example.com",
+		Status:         "active",
+	}).Return(u, nil)
+
+	body, _ := json.Marshal(updateRequest{Name: "Updated", Email: "test@example.com", Status: "active"})
+	req := httptest.NewRequest(http.MethodPut, "/users/"+u.ID.String(), bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req = routeRequest(req, tenantID, u.ID.String())
+	rr := httptest.NewRecorder()
+
+	handler.Update(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+}
+
+func TestHandler_GetMembership_Success(t *testing.T) {
+	getMembershipUC := new(mockGetMembershipUseCase)
+	handler := NewHandler(nil, nil, nil, nil, getMembershipUC, nil)
+
+	tenantID := fixtures.NewTestTenantID()
+	m := fixtures.NewMembership()
+	getMembershipUC.On("Execute", mock.Anything, tenantID, m.UserID).Return(m, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/users/"+m.UserID.String()+"/membership", nil)
+	req = routeRequest(req, tenantID, m.UserID.String())
+	rr := httptest.NewRecorder()
+
+	handler.GetMembership(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var resp MembershipResponse
+	assert.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	assert.Equal(t, m.ID.String(), resp.ID)
+}
+
+func TestHandler_UpdateMembership_Success(t *testing.T) {
+	updateMembershipUC := new(mockUpdateMembershipUseCase)
+	handler := NewHandler(nil, nil, nil, nil, nil, updateMembershipUC)
+
+	tenantID := fixtures.NewTestTenantID()
+	m := fixtures.NewMembership()
+	updateMembershipUC.On("Execute", mock.Anything, appuser.UpdateMembershipCommand{
+		OrganizationID: tenantID,
+		ID:             m.UserID,
+		Role:           "manager",
+		Status:         "active",
+	}).Return(m, nil)
+
+	body, _ := json.Marshal(updateMembershipRequest{Role: "manager", Status: "active"})
+	req := httptest.NewRequest(http.MethodPut, "/users/"+m.UserID.String()+"/membership", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req = routeRequest(req, tenantID, m.UserID.String())
+	rr := httptest.NewRecorder()
+
+	handler.UpdateMembership(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+}
+
+func TestHandler_Get_NotFound(t *testing.T) {
+	getUC := new(mockGetUseCase)
+	handler := NewHandler(nil, getUC, nil, nil, nil, nil)
+
+	tenantID := fixtures.NewTestTenantID()
+	id := uuid.New()
+	getUC.On("Execute", mock.Anything, tenantID, id).Return(nil, usr.ErrNotFound)
+
+	req := httptest.NewRequest(http.MethodGet, "/users/"+id.String(), nil)
+	req = routeRequest(req, tenantID, id.String())
+	rr := httptest.NewRecorder()
+
+	handler.Get(rr, req)
+
+	assert.Equal(t, http.StatusNotFound, rr.Code)
+}
+
+func TestHandler_Create_MembershipConflict(t *testing.T) {
+	createUC := new(mockCreateUseCase)
+	handler := NewHandler(createUC, nil, nil, nil, nil, nil)
+
+	tenantID := fixtures.NewTestTenantID()
+	createUC.On("Execute", mock.Anything, mock.Anything).Return(nil, membership.ErrAlreadyExists)
+
+	body, _ := json.Marshal(createRequest{Name: "Test User", Email: "test@example.com", Password: "password123", Role: "admin"})
+	req := httptest.NewRequest(http.MethodPost, "/users", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req = req.WithContext(fixtures.NewContextWithTenant(tenantID))
+	rr := httptest.NewRecorder()
+
+	handler.Create(rr, req)
+
+	assert.Equal(t, http.StatusConflict, rr.Code)
+}
+
+func TestHandler_Create_InternalError(t *testing.T) {
+	createUC := new(mockCreateUseCase)
+	handler := NewHandler(createUC, nil, nil, nil, nil, nil)
+
+	tenantID := fixtures.NewTestTenantID()
+	createUC.On("Execute", mock.Anything, mock.Anything).Return(nil, errors.New("internal error"))
+
+	body, _ := json.Marshal(createRequest{Name: "Test User", Email: "test@example.com", Password: "password123", Role: "admin"})
+	req := httptest.NewRequest(http.MethodPost, "/users", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req = req.WithContext(fixtures.NewContextWithTenant(tenantID))
+	rr := httptest.NewRecorder()
+
+	handler.Create(rr, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+}

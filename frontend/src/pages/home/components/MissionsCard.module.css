@@ -1,0 +1,70 @@
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+}
+
+.expected {
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  margin-top: var(--sp-2xs);
+}
+
+/* Modal expanded view */
+.modalSummary {
+  padding-bottom: var(--sp-sm);
+  border-bottom: 1px solid var(--color-caramel-200);
+  margin-bottom: var(--sp-sm);
+}
+
+.krList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-sm);
+}
+
+.krTitle {
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-neutral-900);
+}
+
+.krItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+  padding: var(--sp-xs);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-caramel-200);
+}
+
+.krHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-xs);
+}
+
+.krLabel {
+  font-family: var(--font-label);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-900);
+  flex: 1;
+  min-width: 0;
+}
+
+.krOwner {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+}
+
+.emptyState {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-500);
+  text-align: center;
+  padding: var(--sp-lg) var(--sp-md);
+}

@@ -1,0 +1,3050 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+  width: 100%;
+}
+
+/* ——— Filter dropdown content ——— */
+
+.filterDropdownBody {
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-3xs);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.periodDropdownFooter {
+  border-top: 1px solid var(--color-caramel-300);
+  padding: var(--sp-3xs);
+}
+
+.periodCustomPopover {
+  padding: var(--sp-xs);
+}
+
+.filterDropdownItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  width: 100%;
+  padding: var(--sp-2xs);
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-2xs);
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-950);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 120ms ease;
+  text-align: left;
+}
+
+.filterDropdownItem:hover {
+  background-color: var(--color-caramel-100);
+}
+
+.filterDropdownItemActive {
+  background-color: var(--color-caramel-50);
+}
+
+.filterDropdownSeparator {
+  height: 1px;
+  background-color: var(--color-caramel-200);
+  margin: var(--sp-3xs) 0;
+}
+
+.filterDropdownItemDanger {
+  color: var(--color-red-600);
+}
+
+.filterDropdownItemDanger:hover {
+  background-color: var(--color-red-50);
+}
+
+/* ——— Period DatePicker (trigger oculto, posicionamento real) ——— */
+
+.periodChipWrapper {
+  position: relative;
+}
+
+.periodDatePicker {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  opacity: 0;
+}
+
+
+/* ——— Period preset dropdown ——— */
+
+
+/* ——— Save view modal ——— */
+
+.saveModalContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-lg);
+}
+
+.saveFiltersSummary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+}
+
+.saveFiltersTitle {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-950);
+  line-height: 1.05;
+}
+
+.saveFiltersList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-caramel-200);
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+}
+
+.saveFilterItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  padding: var(--sp-xs);
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  border-bottom: 1px solid var(--color-caramel-200);
+}
+
+.saveFilterItem:last-child {
+  border-bottom: none;
+}
+
+.saveFilterIcon {
+  flex-shrink: 0;
+  color: var(--color-neutral-400);
+}
+
+.saveFilterName {
+  color: var(--color-neutral-600);
+  white-space: nowrap;
+}
+
+.saveFilterValue {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  color: var(--color-neutral-950);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ——— Delete confirmation modal ——— */
+
+.dangerTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+}
+
+.dangerIcon {
+  color: var(--color-red-600);
+  flex-shrink: 0;
+}
+
+.deleteText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-sm);
+  margin: 0;
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--color-neutral-700);
+}
+
+/* ——— Delete view button (inside FilterBar primaryAction) ——— */
+
+.deleteViewBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3xs);
+  min-height: 28px;
+  padding: var(--sp-3xs) var(--sp-2xs);
+  padding-left: var(--sp-3xs);
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xs);
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  line-height: 1.05;
+  color: var(--color-red-600);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.deleteViewBtn:hover {
+  background-color: var(--color-red-50, rgba(239, 68, 68, 0.05));
+  color: var(--color-red-700);
+}
+
+.deleteViewBtn:focus-visible {
+  outline: 2px solid var(--color-red-600);
+  outline-offset: 2px;
+}
+
+/* ——— Action bar ——— */
+
+.actionBar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-2xs);
+  margin-top: var(--sp-xs);
+}
+
+/* ——— Summary cards ——— */
+
+.summaryRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-sm);
+}
+
+.summaryCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+}
+
+.summaryCard:has(.summaryMetric) {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.summaryMetric {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2xs);
+}
+
+.summaryLabel {
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+}
+
+.summaryExpected {
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+}
+
+.summaryValue {
+  font-family: var(--font-heading);
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  color: var(--color-neutral-900);
+  line-height: 1;
+}
+
+.summaryValueWarning {
+  font-family: var(--font-heading);
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  color: var(--color-red-600);
+  line-height: 1;
+}
+
+.infoIcon {
+  color: var(--color-neutral-400);
+  flex-shrink: 0;
+  cursor: help;
+}
+
+/* ——— Mission list ——— */
+
+.missionList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-xs);
+}
+
+/* ——— Mission header row ——— */
+
+.missionRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-lg);
+}
+
+.missionTitleText {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-neutral-950);
+  line-height: 1.15;
+}
+
+.missionCard {
+  cursor: pointer;
+  transition: border-color 120ms ease;
+}
+
+.missionCard:hover {
+  border-color: var(--color-caramel-300);
+}
+
+.missionCardDraft {
+  border-style: dashed;
+  border-color: var(--color-caramel-300);
+  opacity: 0.85;
+}
+
+.missionCardDraft:hover {
+  border-color: var(--color-caramel-500);
+}
+
+.missionActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.missionEditBtn {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.missionCard:hover .missionEditBtn {
+  opacity: 1;
+}
+
+.missionToggleIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-neutral-500);
+}
+
+/* ——— Indicator collapse ——— */
+
+.indicatorCollapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 200ms ease;
+}
+
+.indicatorCollapseOpen {
+  grid-template-rows: 1fr;
+  margin-top: var(--sp-sm);
+}
+
+/* ——— Indicator tree ——— */
+
+.indicatorTree {
+  overflow: hidden;
+  padding-left: 40px;
+}
+
+/* ——— Indicator list ——— */
+
+.indicatorList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+}
+
+/* ——— Indicator row with tree connector ——— */
+
+.indicatorRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: var(--sp-xs) var(--sp-sm);
+  background-color: var(--color-caramel-50);
+  border-radius: var(--radius-2xs);
+  min-height: 48px;
+}
+
+.indicatorRowWithBadge {
+  flex-wrap: wrap;
+}
+
+.indicatorBadgeRow {
+  width: 100%;
+  margin-bottom: var(--sp-3xs);
+}
+
+.taskNameDone {
+  text-decoration: line-through;
+  color: var(--color-neutral-400);
+}
+
+.indicatorRowClickable {
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.indicatorRowClickable:hover {
+  background-color: var(--color-caramel-100);
+}
+
+/* Tree connectors: apply to direct children of indicatorList.
+   Both .indicatorRow (simple items) and .indicatorWrapper (items with children)
+   can be direct children. We use .indicatorList > * to target them all. */
+
+/* ::before = vertical trunk line */
+.indicatorList > .indicatorRow::before,
+.indicatorList > .indicatorWrapper > .indicatorRow::before {
+  content: "";
+  position: absolute;
+  left: -28px;
+  top: -8px;
+  bottom: 0;
+  width: 0;
+  border-left: 1.5px solid var(--color-caramel-300);
+}
+
+/* First item: no gap above */
+.indicatorList > .indicatorRow:first-child::before,
+.indicatorList > .indicatorWrapper:first-child > .indicatorRow::before {
+  top: 0;
+}
+
+/* Last item: trunk stops at the curve */
+.indicatorList > .indicatorRow.indicatorRowLast::before,
+.indicatorList > .indicatorWrapper > .indicatorRow.indicatorRowLast::before {
+  bottom: calc(50% + 10px);
+}
+
+/* ::after = curved branch from trunk to row */
+.indicatorList > .indicatorRow::after,
+.indicatorList > .indicatorWrapper > .indicatorRow::after {
+  content: "";
+  position: absolute;
+  left: -28px;
+  top: calc(50% - 10px);
+  width: 28px;
+  height: 10px;
+  border-left: 1.5px solid var(--color-caramel-300);
+  border-bottom: 1.5px solid var(--color-caramel-300);
+  border-bottom-left-radius: 10px;
+}
+
+/* When wrapper has expanded children, extend the trunk through them */
+.indicatorList > .indicatorWrapper {
+  position: relative;
+}
+
+/* Continue trunk line through expanded children (dashed in the opened space) */
+.indicatorList > .indicatorWrapper:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: -28px;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--color-caramel-300) 0,
+    var(--color-caramel-300) 6px,
+    transparent 6px,
+    transparent 14px
+  );
+}
+
+/* ——— Restricted items banner ——— */
+
+.restrictedBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+  padding: var(--sp-xs) var(--sp-sm);
+  background-color: var(--color-caramel-50);
+  border: 1.5px dashed var(--color-caramel-300);
+  border-radius: var(--radius-2xs);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-500);
+}
+
+.restrictedBanner > svg {
+  flex-shrink: 0;
+  color: var(--color-neutral-400);
+}
+
+/* ——— External contributions (mission card) ——— */
+
+.externalSectionHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  padding: var(--sp-3xs) var(--sp-sm);
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.externalSectionHeader > svg {
+  flex-shrink: 0;
+  color: var(--color-neutral-400);
+}
+
+.externalRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--sp-xs);
+  padding: var(--sp-xs) var(--sp-xs) var(--sp-xs) var(--sp-sm);
+  background-color: var(--color-neutral-0);
+  border: 1.5px dashed var(--color-caramel-200);
+  border-radius: var(--radius-2xs);
+}
+
+.externalRowContent {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+}
+
+.externalRowMain {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+}
+
+.externalRowMain > svg {
+  flex-shrink: 0;
+  color: var(--color-neutral-400);
+}
+
+.externalRowTitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-900);
+}
+
+.externalRowProgress {
+  font-family: var(--font-label);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-500);
+  flex-shrink: 0;
+}
+
+.externalRowSource {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3xs);
+  padding-left: calc(16px + var(--sp-xs));
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+}
+
+.externalRowSource > svg {
+  flex-shrink: 0;
+}
+
+.externalSourceLink {
+  color: var(--color-orange-600);
+  cursor: pointer;
+  transition: color 120ms ease;
+}
+
+.externalSourceLink:hover {
+  color: var(--color-orange-700);
+  text-decoration: underline;
+}
+
+.indicatorTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+  flex: 1 1 33.33%;
+  min-width: 0;
+}
+
+.indicatorIcon {
+  flex-shrink: 0;
+  color: var(--color-neutral-500);
+}
+
+.indicatorExpandBtn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--sp-md);
+  height: var(--sp-md);
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-neutral-500);
+  border-radius: var(--radius-2xs);
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.indicatorExpandBtn:hover {
+  background-color: var(--color-caramel-200);
+  color: var(--color-neutral-700);
+}
+
+.indicatorWrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ——— Nested indicator/task children inside an indicator ——— */
+
+.indicatorChildren {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+  padding: var(--sp-2xs) 0 0 var(--sp-xl);
+  margin-left: var(--sp-sm);
+  overflow: hidden;
+}
+
+.indicatorRowNested {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: var(--sp-2xs) var(--sp-sm);
+  background-color: var(--color-caramel-50);
+  border-radius: var(--radius-2xs);
+  transition: background-color 120ms ease;
+}
+
+/* Vertical trunk */
+.indicatorRowNested::before {
+  content: "";
+  position: absolute;
+  left: -20px;
+  top: calc(-1 * var(--sp-2xs));
+  bottom: 0;
+  width: 0;
+  border-left: 1.5px solid var(--color-caramel-300);
+}
+
+.indicatorRowNested:first-child::before {
+  top: 0;
+}
+
+.indicatorChildren > .indicatorRowNested:last-child::before {
+  bottom: calc(50% + 8px);
+}
+
+/* Curved branch */
+.indicatorRowNested::after {
+  content: "";
+  position: absolute;
+  left: -20px;
+  top: calc(50% - 8px);
+  width: 20px;
+  height: 8px;
+  border-left: 1.5px solid var(--color-caramel-300);
+  border-bottom: 1.5px solid var(--color-caramel-300);
+  border-bottom-left-radius: 8px;
+}
+
+.indicatorRowNested.indicatorRowClickable:hover {
+  background-color: var(--color-caramel-100);
+}
+
+.indicatorName {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-neutral-950);
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.indicatorDetails {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xl);
+  flex: 2 1 66.66%;
+  justify-content: space-between;
+}
+
+.indicatorRowActions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.indicatorRowMenu {
+  display: flex;
+  align-items: center;
+}
+
+.taskRowActions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.taskRowMenu {
+  display: flex;
+  align-items: center;
+}
+
+.indicatorPeriod {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.periodBold {
+  font-family: var(--font-heading);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--color-neutral-950);
+  line-height: 1.15;
+}
+
+.periodRange {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-950);
+  line-height: 1.15;
+}
+
+.indicatorProgress {
+  flex: 1 1 200px;
+  min-width: 160px;
+}
+
+/* ——— Child mission wrapper (tree connector) ——— */
+
+.childMissionWrapper {
+  position: relative;
+}
+
+/* Vertical trunk for child mission */
+.childMissionWrapper::before {
+  content: "";
+  position: absolute;
+  left: -28px;
+  top: -8px;
+  bottom: 0;
+  width: 0;
+  border-left: 1.5px solid var(--color-caramel-300);
+}
+
+/* Last child: trunk stops where curve starts */
+/* 1px border + 16px padding + 20px half-chart = 37px center, minus 10px curve = 27px from top */
+.childMissionWrapperLast::before {
+  bottom: calc(100% - 27px);
+}
+
+/* Curved branch — endpoint aligns to vertical center of mission Chart */
+/* 1px border + 16px CardBody padding + 20px half-chart - 10px curve height = 27px */
+.childMissionWrapper::after {
+  content: "";
+  position: absolute;
+  left: -28px;
+  top: 27px;
+  width: 28px;
+  height: 10px;
+  border-left: 1.5px solid var(--color-caramel-300);
+  border-bottom: 1.5px solid var(--color-caramel-300);
+  border-bottom-left-radius: 10px;
+}
+
+/* Track branco sobre fundo caramel-50 */
+.indicatorProgress :global([class*="track"]:not([class*="trackContainer"])) {
+  background-color: var(--color-white);
+}
+
+/* ——— Responsive: tablet ——— */
+
+@media (max-width: 768px) {
+  .summaryRow {
+    grid-template-columns: 1fr;
+  }
+
+  .indicatorRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-xs);
+  }
+
+  .indicatorTitle {
+    flex: none;
+    width: 100%;
+  }
+
+  .indicatorDetails {
+    flex: none;
+    width: 100%;
+    flex-wrap: wrap;
+    gap: var(--sp-sm);
+  }
+
+  .indicatorProgress {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .indicatorTree {
+    padding-left: var(--sp-lg);
+  }
+
+  /* Ajustar tree connectors para padding reduzido */
+  .indicatorRow::before {
+    left: -16px;
+  }
+
+  .indicatorRow::after {
+    left: -16px;
+    width: 16px;
+  }
+
+  .childMissionWrapper::before {
+    left: -16px;
+  }
+
+  .childMissionWrapper::after {
+    left: -16px;
+    width: 16px;
+  }
+}
+
+/* ——— Create mission modal ——— */
+
+.createBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-sm);
+}
+
+.createTitle {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-950);
+  line-height: 1.25;
+}
+
+.createStepTitle {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-950);
+  line-height: 1.25;
+}
+
+.missionFields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-xs);
+}
+
+.missionNameInput {
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: var(--font-heading);
+  font-weight: 500;
+  font-size: var(--text-2xl);
+  color: var(--color-neutral-950);
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+}
+
+.missionNameInput::placeholder {
+  color: var(--color-neutral-500);
+}
+
+.missionDescInput {
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: var(--font-heading);
+  font-weight: 500;
+  font-size: var(--text-md);
+  color: var(--color-neutral-950);
+  line-height: 1.1;
+}
+
+.missionDescInput::placeholder {
+  color: var(--color-neutral-500);
+}
+
+.missionActions {
+  display: flex;
+  gap: var(--sp-2xs);
+  align-items: center;
+}
+
+.addItemList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-xs);
+}
+
+.addedItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  padding: var(--sp-xs) var(--sp-sm);
+  background-color: var(--color-caramel-100);
+  border: 1px solid var(--color-caramel-300);
+  border-radius: var(--radius-xs);
+  transition: border-color 120ms ease;
+}
+
+.addedItem:hover {
+  border-color: var(--color-caramel-500);
+}
+
+.addedItemClickable {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.addedItemInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  min-width: 0;
+}
+
+.addedItemName {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-950);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.addedItemBadge {
+  flex-shrink: 0;
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: 10px;
+  color: var(--color-neutral-500);
+  background-color: var(--color-caramel-200);
+  padding: 2px var(--sp-3xs);
+  border-radius: var(--radius-2xs);
+  white-space: nowrap;
+}
+
+.addedItemMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  flex-wrap: wrap;
+}
+
+/* ——— Visibility panel ——— */
+
+.visibilityPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+  padding: var(--sp-3xs);
+}
+
+.visibilityOption {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  width: 100%;
+  padding: var(--sp-2xs) var(--sp-xs);
+  background: none;
+  border: none;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 120ms ease;
+}
+
+.visibilityOption:hover {
+  background: var(--color-caramel-50);
+}
+
+.visibilityOptionActive {
+  background: var(--color-orange-50);
+}
+
+.visibilityIcon {
+  flex-shrink: 0;
+  color: var(--color-neutral-400);
+}
+
+.visibilityOptionActive .visibilityIcon {
+  color: var(--color-orange-600);
+}
+
+.visibilityText {
+  display: flex;
+  flex-direction: column;
+}
+
+.visibilityLabel {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-950);
+}
+
+.visibilityDesc {
+  font-family: var(--font-body);
+  font-size: 10px;
+  color: var(--color-neutral-400);
+}
+
+.addedItemGoal {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 10px;
+  color: var(--color-neutral-500);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.addedItemActions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+}
+
+.addedItemWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+}
+
+.addedItemCount {
+  flex-shrink: 0;
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 10px;
+  color: var(--color-neutral-500);
+  white-space: nowrap;
+}
+
+.subMissionToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-2xs);
+  color: var(--color-neutral-500);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.subMissionToggle:hover {
+  background-color: var(--color-caramel-200);
+}
+
+/* Wrapper for nested items — owns the trunk line */
+.subMissionItemWrapper {
+  position: relative;
+}
+
+/* Vertical trunk line on wrapper (covers gap between siblings) */
+.subMissionItemWrapper::before {
+  content: "";
+  position: absolute;
+  left: -28px;
+  top: calc(-1 * var(--sp-2xs));
+  bottom: 0;
+  width: 0;
+  border-left: 1.5px solid var(--color-caramel-300);
+}
+
+.subMissionItemWrapper:first-child::before {
+  top: 0;
+}
+
+/* Non-last wrapper: trunk extends through the gap to the next sibling */
+.subMissionChildren > .subMissionItemWrapper:not(:last-child)::before {
+  bottom: calc(-1 * var(--sp-2xs));
+}
+
+/* ——— Sub-mission nested children ——— */
+
+.subMissionChildren {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+  padding: var(--sp-2xs) 0 0 40px;
+  overflow: hidden;
+}
+
+.subMissionChildRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  padding: var(--sp-xs) var(--sp-sm);
+  background-color: var(--color-caramel-50);
+  border-radius: var(--radius-2xs);
+  min-height: 48px;
+}
+
+/* Curved branch from trunk to row */
+.subMissionChildRow::after {
+  content: "";
+  position: absolute;
+  left: -28px;
+  top: calc(50% - 10px);
+  width: 28px;
+  height: 10px;
+  border-left: 1.5px solid var(--color-caramel-300);
+  border-bottom: 1.5px solid var(--color-caramel-300);
+  border-bottom-left-radius: 10px;
+}
+
+.subMissionChildRow:hover {
+  background-color: var(--color-caramel-100);
+}
+
+/* Form/button inside sub-mission — no row background, keep connectors */
+.subMissionFormRow {
+  position: relative;
+  padding-left: 0;
+}
+
+.subMissionFormRow::before {
+  content: "";
+  position: absolute;
+  left: -28px;
+  top: -8px;
+  bottom: calc(50% + 10px);
+  width: 0;
+  border-left: 1.5px solid var(--color-caramel-300);
+}
+
+.subMissionFormRow:first-child::before {
+  top: 0;
+}
+
+.subMissionFormRow::after {
+  content: "";
+  position: absolute;
+  left: -28px;
+  top: calc(50% - 10px);
+  width: 28px;
+  height: 10px;
+  border-left: 1.5px solid var(--color-caramel-300);
+  border-bottom: 1.5px solid var(--color-caramel-300);
+  border-bottom-left-radius: 10px;
+}
+
+.subMissionEmpty {
+  position: relative;
+  padding: var(--sp-xs) var(--sp-sm);
+  padding-left: calc(28px + var(--sp-sm));
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+  font-style: italic;
+}
+
+.subMissionEmpty::before {
+  content: "";
+  position: absolute;
+  left: -28px;
+  top: -8px;
+  bottom: calc(50% + 10px);
+  width: 0;
+  border-left: 1.5px solid var(--color-caramel-300);
+}
+
+.subMissionEmpty::after {
+  content: "";
+  position: absolute;
+  left: -28px;
+  top: calc(50% - 10px);
+  width: 28px;
+  height: 10px;
+  border-left: 1.5px solid var(--color-caramel-300);
+  border-bottom: 1.5px solid var(--color-caramel-300);
+  border-bottom-left-radius: 10px;
+}
+
+.addItemBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--sp-xs) var(--sp-sm);
+  background-color: var(--color-caramel-100);
+  border: 1px solid var(--color-caramel-300);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-950);
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.addItemBtn:hover {
+  background-color: var(--color-caramel-50);
+  border-color: var(--color-caramel-500);
+}
+
+.addItemBtn svg {
+  color: var(--color-neutral-500);
+}
+
+/* ——— Add item expanded card ——— */
+
+.addItemCard {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background-color: var(--color-caramel-100);
+  border: 1px solid var(--color-caramel-300);
+  border-radius: var(--radius-xs);
+}
+
+.addItemCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-xs) var(--sp-sm);
+  border-bottom: 1px solid var(--color-caramel-300);
+}
+
+.addItemCardTitle {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-950);
+  line-height: 1.15;
+}
+
+.addItemCardIcon {
+  color: var(--color-neutral-500);
+  flex-shrink: 0;
+}
+
+.addItemCardContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-xs);
+  padding: var(--sp-xs) var(--sp-sm);
+}
+
+.addItemCardFields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+}
+
+.addItemTitleInput {
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: var(--font-heading);
+  font-weight: 500;
+  font-size: var(--text-md);
+  color: var(--color-neutral-950);
+  line-height: 1.1;
+}
+
+.addItemTitleInput::placeholder {
+  color: var(--color-neutral-500);
+}
+
+.addItemDescInput {
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: var(--font-heading);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-950);
+  line-height: 1.15;
+}
+
+.addItemDescInput::placeholder {
+  color: var(--color-neutral-500);
+}
+
+.addItemCardActions {
+  display: flex;
+  gap: var(--sp-2xs);
+  align-items: center;
+}
+
+/* ——— Goal inputs section ——— */
+
+.goalSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+  padding-top: var(--sp-xs);
+  border-top: 1px solid var(--color-caramel-200);
+}
+
+.goalSectionLabel {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  line-height: 1.15;
+}
+
+.goalRow {
+  display: flex;
+  gap: var(--sp-2xs);
+  align-items: flex-end;
+}
+
+.goalRow > * {
+  flex: 1;
+  min-width: 0;
+}
+
+.goalSurveyTag {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3xs);
+  padding: var(--sp-2xs) var(--sp-xs);
+  background-color: var(--color-caramel-200);
+  border-radius: var(--radius-2xs);
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-700);
+  white-space: nowrap;
+  align-self: flex-end;
+  height: 36px;
+}
+
+.goalSurveyTag svg {
+  flex-shrink: 0;
+  color: var(--color-neutral-500);
+}
+
+.addItemCardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-xs) var(--sp-sm);
+  border-top: 1px solid var(--color-caramel-300);
+}
+
+/* ——— Measurement mode menu items ——— */
+
+.measureMenuItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2xs);
+  width: 100%;
+  padding: var(--sp-2xs);
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-2xs);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+  text-align: left;
+}
+
+.measureMenuItem:hover {
+  background-color: var(--color-caramel-100);
+}
+
+.measureMenuItemActive {
+  background-color: var(--color-caramel-50);
+}
+
+.measureMenuIcon {
+  flex-shrink: 0;
+  color: var(--color-neutral-500);
+  margin-top: 2px;
+}
+
+.measureMenuText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.measureMenuLabel {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-950);
+  line-height: 1.15;
+}
+
+.measureMenuDesc {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 10px;
+  color: var(--color-neutral-500);
+  line-height: 1.3;
+}
+
+/* ——— More menu items ——— */
+
+.moreMenuItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  width: 100%;
+  padding: var(--sp-2xs);
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-2xs);
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-950);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 120ms ease;
+  text-align: left;
+}
+
+.moreMenuItem:hover {
+  background-color: var(--color-caramel-100);
+}
+
+.moreMenuItemActive {
+  background-color: var(--color-caramel-50);
+}
+
+.moreMenuArrow {
+  margin-left: auto;
+  color: var(--color-neutral-400);
+  flex-shrink: 0;
+}
+
+/* ——— New tag row ——— */
+
+.newTagRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3xs);
+  padding: var(--sp-3xs) var(--sp-2xs);
+  border-top: 1px solid var(--color-caramel-200);
+  margin-top: var(--sp-3xs);
+}
+
+.newTagInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-950);
+}
+
+.newTagInput::placeholder {
+  color: var(--color-neutral-400);
+}
+
+/* ——— Search row (connect mission) ——— */
+
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  padding: var(--sp-2xs);
+  border-bottom: 1px solid var(--color-caramel-200);
+  margin-bottom: var(--sp-3xs);
+}
+
+.searchIcon {
+  flex-shrink: 0;
+  color: var(--color-neutral-400);
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-950);
+}
+
+.searchInput::placeholder {
+  color: var(--color-neutral-400);
+}
+
+.createFooterActions {
+  display: flex;
+  gap: var(--sp-2xs);
+  align-items: center;
+}
+
+/* ——— Review step (Step 2) ——— */
+
+.reviewFields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-xs);
+}
+
+.reviewSectionTitle {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-950);
+  line-height: 1.15;
+}
+
+.reviewRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-sm);
+}
+
+.reviewLabel {
+  flex-shrink: 0;
+  width: 120px;
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  line-height: 1.4;
+}
+
+.reviewValue {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-950);
+  line-height: 1.4;
+}
+
+.reviewTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3xs);
+}
+
+/* ——— Review item tree ——— */
+
+.reviewItemTree {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+}
+
+.reviewItemGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+}
+
+.reviewItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+  padding: var(--sp-xs) var(--sp-sm);
+  background-color: var(--color-caramel-50);
+  border-radius: var(--radius-xs);
+}
+
+.reviewItemHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+}
+
+.reviewItemName {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-950);
+  line-height: 1.15;
+}
+
+.reviewItemDesc {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  line-height: 1.3;
+}
+
+.reviewItemFooter {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  flex-wrap: wrap;
+}
+
+.reviewItemMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3xs);
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  line-height: 1.3;
+}
+
+.reviewItemMeta svg {
+  flex-shrink: 0;
+}
+
+/* ——— Cards grid view ——— */
+
+.cardsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--sp-sm);
+}
+
+.missionCardGrid {
+  display: flex;
+  flex-direction: column;
+  transition: border-color 120ms ease;
+}
+
+.missionCardGrid:hover {
+  border-color: var(--color-caramel-300);
+}
+
+.cardGridHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-sm);
+}
+
+.cardGridMeta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cardGridTitle {
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-neutral-950);
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cardGridSub {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  line-height: 1.3;
+}
+
+.cardGridProgress {
+  margin-top: var(--sp-xs);
+}
+
+.cardGridFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--sp-xs);
+}
+
+.cardGridAvatars {
+  display: flex;
+  align-items: center;
+  gap: -4px;
+}
+
+.cardGridAvatars > * + * {
+  margin-left: -4px;
+}
+
+.cardGridActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* ——— Kanban view ——— */
+
+.kanbanBoard {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-sm);
+  min-height: 300px;
+}
+
+.kanbanColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-xs);
+  min-width: 0;
+}
+
+.kanbanColumnHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  padding-bottom: var(--sp-xs);
+  border-bottom: 1.5px solid var(--color-caramel-200);
+}
+
+.kanbanColumnDot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.kanbanColumnTitle {
+  font-family: var(--font-heading);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-neutral-950);
+  line-height: 1.15;
+}
+
+.kanbanColumnCount {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+  margin-left: auto;
+}
+
+.kanbanColumnBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+  min-height: 60px;
+  padding: var(--sp-3xs);
+  border-radius: var(--radius-xs);
+  transition: background-color 200ms ease, box-shadow 200ms ease;
+}
+
+.kanbanColumnDropTarget .kanbanColumnBody {
+  background-color: var(--color-caramel-50);
+  box-shadow:
+    inset 0 0 0 1.5px var(--color-caramel-300),
+    inset 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* Ghost placeholder — shows where the card will land */
+.kanbanColumnDropTarget .kanbanColumnBody::after {
+  content: "";
+  display: block;
+  min-height: 56px;
+  border: 1.5px dashed var(--color-caramel-400);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-caramel-100);
+  opacity: 0.6;
+  transition: opacity 150ms ease;
+}
+
+.kanbanCardWrapper {
+  transition: transform 200ms ease, opacity 200ms ease, box-shadow 200ms ease;
+}
+
+.kanbanCardWrapper[draggable="true"] {
+  cursor: grab;
+}
+
+.kanbanCardWrapper[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.kanbanCardDragging {
+  opacity: 0.25;
+  transform: scale(0.97);
+  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.12));
+}
+
+.kanbanCard {
+  transition: border-color 120ms ease, box-shadow 200ms ease;
+}
+
+.kanbanCard:hover {
+  border-color: var(--color-caramel-300);
+}
+
+.kanbanCardRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2xs);
+}
+
+.kanbanCardIcon {
+  flex-shrink: 0;
+  color: var(--color-neutral-500);
+  margin-top: 1px;
+}
+
+.kanbanCardInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.kanbanCardTitle {
+  font-family: var(--font-heading);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-neutral-950);
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.kanbanCardMission {
+  font-family: var(--font-body);
+  font-size: 10px;
+  color: var(--color-neutral-400);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kanbanCardProgress {
+  margin-top: var(--sp-2xs);
+}
+
+.kanbanTaskCheck {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.kanbanTaskStatus {
+  margin-top: var(--sp-2xs);
+}
+
+.kanbanCardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--sp-2xs);
+}
+
+.kanbanCardMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3xs);
+}
+
+.kanbanCardPeriod {
+  font-family: var(--font-body);
+  font-size: 10px;
+  color: var(--color-neutral-400);
+  white-space: nowrap;
+}
+
+.kanbanMoveLabel {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: 10px;
+  color: var(--color-neutral-400);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: var(--sp-3xs) var(--sp-2xs);
+}
+
+.kanbanDragHandle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--color-neutral-300);
+  cursor: grab;
+  margin-left: -4px;
+  margin-right: -2px;
+  transition: color 120ms ease;
+}
+
+.kanbanCardWrapper:hover .kanbanDragHandle {
+  color: var(--color-neutral-500);
+}
+
+.kanbanCardDragging .kanbanDragHandle {
+  cursor: grabbing;
+}
+
+.kanbanExpandBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-2xs);
+  color: var(--color-neutral-500);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.kanbanExpandBtn:hover {
+  background-color: var(--color-caramel-200);
+}
+
+/* ——— Kanban expanded children ——— */
+
+.kanbanChildren {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+  margin-top: var(--sp-2xs);
+  padding-top: var(--sp-2xs);
+  border-top: 1px solid var(--color-caramel-200);
+}
+
+.kanbanChildItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2xs);
+  padding: var(--sp-3xs) var(--sp-2xs);
+  background-color: var(--color-caramel-50);
+  border-radius: var(--radius-2xs);
+}
+
+.kanbanChildIcon {
+  flex-shrink: 0;
+  color: var(--color-neutral-400);
+  margin-top: 2px;
+}
+
+.kanbanChildInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.kanbanChildLabel {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: 10px;
+  color: var(--color-neutral-700);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kanbanChildProgress {
+  margin-top: 2px;
+}
+
+.kanbanEmpty {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+  font-style: italic;
+  padding: var(--sp-sm) var(--sp-xs);
+  text-align: center;
+}
+
+/* ——— Responsive: kanban tablet ——— */
+
+@media (max-width: 960px) {
+  .kanbanBoard {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ——— Check-in modal ——— */
+
+.checkinBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-sm);
+}
+
+.checkinMeta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+  padding: var(--sp-xs) var(--sp-sm);
+  background-color: var(--color-caramel-50);
+  border-radius: var(--radius-xs);
+}
+
+.checkinMetaRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+}
+
+.checkinMetaLabel {
+  flex-shrink: 0;
+  width: 90px;
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  line-height: 1.4;
+}
+
+.checkinMetaValue {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3xs);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-950);
+  line-height: 1.4;
+}
+
+.checkinProgress {
+  padding: var(--sp-3xs) 0;
+}
+
+.checkinFields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-xs);
+}
+
+.checkinValueRow {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sp-sm);
+}
+
+.checkinValueRow > * {
+  flex: 1;
+  min-width: 0;
+}
+
+.checkinValueRow > .checkinArrow {
+  flex: 0 0 auto;
+}
+
+.checkinCurrentValue {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.checkinFieldLabel {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  line-height: 1.15;
+}
+
+.checkinFieldValue {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-lg);
+  color: var(--color-neutral-950);
+  line-height: 36px;
+}
+
+.checkinArrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-neutral-400);
+  height: 36px;
+  flex-shrink: 0;
+}
+
+/* ——— Indicator detail drawer ——— */
+
+.drawerMissionLink {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3xs);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  line-height: 1.3;
+}
+
+.drawerMissionLink svg {
+  flex-shrink: 0;
+  color: var(--color-neutral-400);
+}
+
+
+
+.drawerSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-xs);
+  padding: var(--sp-sm) var(--sp-lg);
+  border-bottom: 1px solid var(--color-caramel-100);
+}
+
+.drawerSection:last-child {
+  border-bottom: none;
+}
+
+.drawerSectionLabel {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1.15;
+}
+
+/* ——— "Contribui para" annotation (drawer header) ——— */
+
+.drawerContributesTo {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3xs);
+  margin-top: var(--sp-3xs);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+  line-height: 1.4;
+}
+
+.drawerContributesTo > svg {
+  flex-shrink: 0;
+  position: relative;
+  top: 3px;
+}
+
+.drawerContributesToList {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3xs);
+}
+
+.drawerContributesToAdd {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px var(--sp-2xs) 1px var(--sp-3xs);
+  border: 1px dashed var(--color-caramel-300);
+  border-radius: var(--radius-full);
+  background: transparent;
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease, background-color 120ms ease;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.drawerContributesToAdd:hover {
+  color: var(--color-orange-600);
+  border-color: var(--color-orange-300);
+  background-color: var(--color-orange-50);
+}
+
+.drawerContributesToChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background-color: var(--color-caramel-50);
+  border: 1px solid var(--color-caramel-200);
+  border-radius: var(--radius-full);
+  padding: 1px var(--sp-3xs) 1px var(--sp-2xs);
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-600);
+  white-space: nowrap;
+}
+
+.drawerContributesToRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-neutral-400);
+  cursor: pointer;
+  border-radius: var(--radius-full);
+  transition: color 120ms ease, background-color 120ms ease;
+  line-height: 1;
+}
+
+.drawerContributesToRemove:hover {
+  color: var(--color-red-600);
+  background-color: var(--color-red-50);
+}
+
+.drawerDescription {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-700);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.drawerEditActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-2xs);
+  padding-top: var(--sp-sm);
+}
+
+.drawerProgress {
+  padding: var(--sp-3xs) 0;
+}
+
+
+/* ——— Chart ——— */
+
+.drawerChart {
+  background-color: var(--color-caramel-50);
+  border-radius: var(--radius-xs);
+  padding: var(--sp-xs) var(--sp-2xs);
+}
+
+/* ——— Check-in form ——— */
+
+.drawerCheckinForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-xs);
+}
+
+
+/* ——— Confidence select ——— */
+
+.confidenceField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+  position: relative;
+}
+
+.confidenceLabel {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  line-height: 1.15;
+}
+
+.confidenceTrigger {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  width: 100%;
+  min-height: 36px;
+  padding: var(--sp-2xs) var(--sp-xs);
+  background-color: var(--color-white);
+  border: 1px solid var(--color-caramel-300);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: border-color 120ms ease;
+  text-align: left;
+}
+
+.confidenceTrigger:hover {
+  border-color: var(--color-caramel-500);
+}
+
+.confidenceTrigger:focus-visible {
+  outline: 2px solid var(--color-orange-500);
+  outline-offset: 2px;
+}
+
+.confidenceDot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.confidenceTriggerText {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-950);
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.confidencePlaceholder {
+  flex: 1;
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+  line-height: 1.15;
+}
+
+.confidenceChevron {
+  flex-shrink: 0;
+  color: var(--color-neutral-400);
+  transition: transform 150ms ease;
+}
+
+.confidenceDropdown {
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-3xs);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.confidenceOption {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2xs);
+  width: 100%;
+  padding: var(--sp-2xs) var(--sp-xs);
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-2xs);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 120ms ease;
+}
+
+.confidenceOption:hover {
+  background-color: var(--color-caramel-100);
+}
+
+.confidenceOptionActive {
+  background-color: var(--color-caramel-50);
+}
+
+.confidenceOption .confidenceDot {
+  margin-top: 3px;
+}
+
+.confidenceOptionText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.confidenceOptionLabel {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-950);
+  line-height: 1.15;
+}
+
+.confidenceOptionDesc {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 10px;
+  color: var(--color-neutral-500);
+  line-height: 1.4;
+}
+
+/* ——— Inline @mention autocomplete ——— */
+
+.drawerMentionWrapper {
+  position: relative;
+}
+
+.mentionDropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: var(--sp-3xs);
+  list-style: none;
+  background-color: var(--color-white);
+  border: 1px solid var(--color-caramel-200);
+  border-radius: var(--radius-xs);
+  box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.08));
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 10;
+}
+
+.mentionDropdownItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  width: 100%;
+  padding: var(--sp-2xs);
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-2xs);
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-950);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 120ms ease;
+}
+
+.mentionDropdownItem:hover {
+  background-color: var(--color-caramel-100);
+}
+
+.mentionDropdownItemActive {
+  background-color: var(--color-caramel-100);
+}
+
+
+/* ——— Participants ——— */
+
+.drawerParticipantsCols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-sm);
+}
+
+.drawerParticipantCol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+}
+
+.drawerParticipantColLabel {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: 10px;
+  color: var(--color-neutral-400);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  line-height: 1.15;
+}
+
+.drawerParticipantRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+}
+
+.drawerParticipantName {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-950);
+  line-height: 1.15;
+}
+
+
+/* ——— Tasks ——— */
+
+.drawerSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.drawerTaskCount {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+}
+
+.drawerTaskProgress {
+  height: 4px;
+  background-color: var(--color-caramel-200);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.drawerTaskProgressFill {
+  height: 100%;
+  background-color: var(--color-green-500);
+  border-radius: var(--radius-full);
+  transition: width 300ms ease;
+}
+
+.drawerTaskList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.drawerTaskItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2xs);
+  padding: var(--sp-2xs) 0;
+  border-bottom: 1px solid var(--color-caramel-100);
+}
+
+.drawerTaskItem:last-child {
+  border-bottom: none;
+}
+
+.drawerTaskLabel {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-950);
+  line-height: 1.5;
+  padding-top: 2px;
+}
+
+.drawerTaskLabelDone {
+  text-decoration: line-through;
+  color: var(--color-neutral-400);
+}
+
+.drawerTaskForm {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  padding-top: var(--sp-3xs);
+}
+
+.drawerTaskAddIcon {
+  flex-shrink: 0;
+  color: var(--color-neutral-400);
+}
+
+.drawerTaskInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-950);
+  line-height: 1.5;
+}
+
+.drawerTaskInput::placeholder {
+  color: var(--color-neutral-400);
+}
+
+/* ——— Timeline ——— */
+
+.drawerTimeline {
+  display: flex;
+  flex-direction: column;
+}
+
+.drawerTimelineItem {
+  display: flex;
+  gap: var(--sp-xs);
+  min-height: 0;
+}
+
+.drawerTimelineItemNew {
+  scroll-margin-top: var(--sp-lg);
+}
+
+.drawerTimelineItemNew .drawerTimelineContent {
+  border-radius: var(--radius-2xs);
+  animation: drawerTimelineItemReveal 960ms ease-out;
+}
+
+.drawerTimelineDot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 16px;
+  padding-top: 4px;
+}
+
+.drawerTimelineDotInner {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-caramel-300);
+  flex-shrink: 0;
+}
+
+.drawerTimelineDotLatest {
+  background-color: var(--color-orange-500);
+}
+
+.drawerTimelineDotPulse {
+  animation: drawerTimelineDotPulse 680ms ease-out;
+}
+
+.drawerTimelineLine {
+  width: 1.5px;
+  flex: 1;
+  background-color: var(--color-caramel-200);
+  min-height: 16px;
+}
+
+.drawerTimelineContent {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+  padding-bottom: var(--sp-sm);
+}
+
+.drawerTimelineHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3xs);
+}
+
+.drawerTimelineMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3xs);
+  margin-left: auto;
+}
+
+.drawerTimelineActions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3xs);
+}
+
+.drawerTimelineActionBtn {
+  border: 1px solid var(--color-caramel-300);
+  background-color: var(--color-white);
+  color: var(--color-neutral-500);
+  width: var(--sp-md);
+  height: var(--sp-md);
+  border-radius: var(--radius-2xs);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.drawerTimelineActionBtn:hover {
+  border-color: var(--color-caramel-500);
+  color: var(--color-neutral-700);
+  background-color: var(--color-caramel-50);
+}
+
+.drawerTimelineActionDanger:hover {
+  border-color: var(--color-red-300);
+  color: var(--color-red-700);
+  background-color: var(--color-red-50);
+}
+
+.drawerTimelineAuthor {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-950);
+  line-height: 1.15;
+}
+
+.drawerTimelineDate {
+  font-family: var(--font-body);
+  font-size: 10px;
+  color: var(--color-neutral-400);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.drawerTimelineValueChange {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3xs);
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-700);
+}
+
+.drawerTimelineValueChange svg {
+  color: var(--color-neutral-400);
+  flex-shrink: 0;
+}
+
+.drawerTimelinePrev {
+  color: var(--color-neutral-400);
+}
+
+.drawerTimelineNew {
+  color: var(--color-neutral-950);
+  font-weight: 600;
+}
+
+.drawerTimelineConfidence {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: var(--sp-2xs);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.drawerTimelineSyncMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3xs);
+  flex-wrap: wrap;
+}
+
+.drawerTimelineRetryBtn {
+  border: none;
+  background-color: transparent;
+  padding: 0;
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  line-height: 1.05;
+  color: var(--color-orange-500);
+  cursor: pointer;
+}
+
+.drawerTimelineRetryBtn:hover {
+  color: var(--color-orange-600);
+}
+
+.drawerTimelineSyncError {
+  margin: 0;
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--color-red-600);
+}
+
+.drawerTimelineSyncHint {
+  margin: 0;
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--color-neutral-500);
+}
+
+.drawerTimelineEditBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+}
+
+.drawerTimelineEditMetaRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+}
+
+.drawerTimelineEditLabel {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-700);
+  line-height: 1.05;
+}
+
+.drawerTimelineEditSelect {
+  border: 1px solid var(--color-caramel-300);
+  border-radius: var(--radius-2xs);
+  background-color: var(--color-white);
+  color: var(--color-neutral-950);
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  line-height: 1.05;
+  height: var(--sp-md);
+  padding: 0 var(--sp-2xs);
+}
+
+.drawerTimelineEditSelect:focus {
+  outline: none;
+  border-color: var(--color-caramel-700);
+  box-shadow: 0 0 0 2px var(--color-caramel-200);
+}
+
+.drawerTimelineEditInput {
+  width: 100%;
+  border: 1px solid var(--color-caramel-300);
+  border-radius: var(--radius-2xs);
+  background-color: var(--color-white);
+  color: var(--color-neutral-950);
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: var(--text-xs);
+  line-height: normal;
+  resize: vertical;
+  padding: var(--sp-2xs);
+}
+
+.drawerTimelineEditInput:focus {
+  outline: none;
+  border-color: var(--color-caramel-700);
+  box-shadow: 0 0 0 2px var(--color-caramel-200);
+}
+
+.drawerTimelineEditActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-3xs);
+}
+
+.drawerTimelineNote {
+  margin: 0;
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-700);
+  line-height: 1.5;
+}
+
+.drawerTimelineMentions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3xs);
+}
+
+.drawerTimelineMention {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: 10px;
+  color: var(--color-orange-600);
+  background-color: var(--color-orange-50, rgba(255, 107, 0, 0.06));
+  padding: 1px var(--sp-3xs);
+  border-radius: var(--radius-2xs);
+}
+
+@keyframes drawerTimelineItemReveal {
+  0% {
+    background-color: var(--color-orange-100);
+  }
+
+  65% {
+    background-color: var(--color-orange-50);
+  }
+
+  100% {
+    background-color: var(--color-white);
+  }
+}
+
+@keyframes drawerTimelineDotPulse {
+  0% {
+    transform: scale(1.12);
+    background-color: var(--color-orange-600);
+  }
+
+  100% {
+    transform: scale(1);
+    background-color: var(--color-orange-500);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawerTimelineItemNew .drawerTimelineContent,
+  .drawerTimelineDotPulse {
+    animation: none;
+  }
+}
+
+
+
+/* ——— Responsive: mobile ——— */
+
+@media (max-width: 480px) {
+  .missionRow {
+    gap: var(--sp-sm);
+  }
+
+  .indicatorDetails {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-2xs);
+  }
+
+  .indicatorPeriod {
+    flex-direction: row;
+    gap: var(--sp-2xs);
+  }
+
+  .indicatorTree {
+    padding-left: var(--sp-sm);
+  }
+
+  .indicatorRow::before {
+    left: -10px;
+  }
+
+  .indicatorRow::after {
+    left: -10px;
+    width: 10px;
+    height: 8px;
+    border-bottom-left-radius: 8px;
+  }
+
+  .childMissionWrapper::before {
+    left: -10px;
+  }
+
+  .childMissionWrapper::after {
+    left: -10px;
+    width: 10px;
+    height: 8px;
+    border-bottom-left-radius: 8px;
+  }
+
+  .cardsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .kanbanBoard {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ——— Team section headers (multi-team grouping) ——— */
+
+.teamSectionHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+  padding: var(--sp-sm) 0 var(--sp-2xs);
+}
+
+.teamDot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.teamSectionName {
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-neutral-900);
+  white-space: nowrap;
+}
+
+.teamSectionMeta {
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  white-space: nowrap;
+}
+
+.teamSectionLine {
+  flex: 1;
+  height: 1px;
+  background: var(--color-caramel-200);
+}
+
+.teamSectionHeaderCards {
+  grid-column: 1 / -1;
+}
+
+.kanbanTeamTag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3xs);
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  margin-top: var(--sp-3xs);
+}
+
+.kanbanTeamTag .teamDot {
+  width: 6px;
+  height: 6px;
+}
+
+/* ——— Contribute picker truncation ——— */
+
+.contributeMissionLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+

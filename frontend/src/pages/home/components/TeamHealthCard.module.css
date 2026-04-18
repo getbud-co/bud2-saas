@@ -1,0 +1,135 @@
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+}
+
+/* Summary row — DS Card KPIs */
+.summaryRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-sm);
+  margin-bottom: var(--sp-sm);
+}
+
+.counterBody {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2xs);
+}
+
+.counterValue {
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.counterLabel {
+  font-family: var(--font-label);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-neutral-700);
+  line-height: 1.2;
+}
+
+.good { color: var(--color-green-600); }
+.warn { color: var(--color-yellow-600); }
+.bad  { color: var(--color-red-600); }
+
+/* Member list */
+.memberList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.memberItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+  padding: var(--sp-xs) 0;
+  border-bottom: 1px solid var(--color-caramel-200);
+  cursor: pointer;
+  transition: background-color 120ms;
+}
+
+.memberItem:last-child {
+  border-bottom: none;
+}
+
+.memberItem:hover {
+  background-color: var(--color-caramel-50);
+}
+
+.memberText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.memberName {
+  font-family: var(--font-label);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-neutral-900);
+}
+
+.memberDetail {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+}
+
+.caretRight {
+  flex-shrink: 0;
+  color: var(--color-neutral-400);
+}
+
+/* Modal expanded view */
+.modalSection {
+  margin-top: var(--sp-sm);
+}
+
+.modalSectionTitle {
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-neutral-900);
+  margin-bottom: var(--sp-2xs);
+}
+
+.memberDetail2 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+  padding: var(--sp-xs);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-caramel-200);
+  margin-bottom: var(--sp-2xs);
+}
+
+.memberItemClickable {
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.memberItemClickable:hover {
+  background-color: var(--color-caramel-50);
+}
+
+.memberDetail2Header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+}
+
+/* ——— Responsive ——— */
+
+@media (max-width: 480px) {
+  .summaryRow {
+    grid-template-columns: 1fr;
+  }
+}

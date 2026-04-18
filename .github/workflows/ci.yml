@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          working-directory: backend
+          install-mode: goinstall
+          version: latest
+
+      - name: Test
+        run: go test ./... -v -race -coverprofile=coverage.out
+
+      - name: Build
+        run: go build -o bin/api ./cmd/api
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Checkout Design System
+        uses: actions/checkout@v6
+        with:
+          repository: getbud-co/bud2-design-system
+          path: bud2-design-system
+          token: ${{ secrets.DS_GITHUB_TOKEN }}
+
+      - name: Move Design System to sibling path
+        run: mv ${{ github.workspace }}/bud2-design-system ${{ github.workspace }}/../bud2-design-system
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "25.9.0"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm run test:run
+
+      - name: Build
+        run: npm run build

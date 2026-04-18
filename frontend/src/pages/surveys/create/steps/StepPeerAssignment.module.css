@@ -1,0 +1,352 @@
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-lg);
+}
+
+/* ——— KPI grid ——— */
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-sm);
+}
+
+.kpi {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+}
+
+.kpiIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.kpiContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+}
+
+.kpiValue {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: var(--text-lg);
+  color: var(--color-neutral-950);
+}
+
+.kpiLabel {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+}
+
+/* ——— Evaluatee list ——— */
+
+.evaluateeList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.evaluateeItem {
+  border-bottom: 1px solid var(--color-caramel-100);
+}
+
+.evaluateeItem:last-child {
+  border-bottom: none;
+}
+
+.evaluateeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--sp-sm) var(--sp-xs);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+  text-align: left;
+}
+
+.evaluateeRow:hover {
+  background: var(--color-caramel-50);
+}
+
+.evaluateeRowExpanded {
+  background: var(--color-caramel-50);
+}
+
+.evaluateeRight {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+}
+
+/* ——— Peer panel (expanded) ——— */
+
+.peerPanel {
+  padding: var(--sp-sm) var(--sp-md) var(--sp-md);
+  background: var(--color-neutral-0);
+  border-top: 1px solid var(--color-caramel-100);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-md);
+}
+
+.peerSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-xs);
+}
+
+.peerSectionTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-700);
+}
+
+/* ——— Peer suggestion cards ——— */
+
+.peerGrid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+}
+
+.peerCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+  padding: var(--sp-sm);
+  border: 1px solid var(--color-caramel-200);
+  border-radius: var(--radius-sm);
+  background: var(--color-neutral-0);
+  transition: border-color 150ms ease;
+}
+
+.peerCardSelected {
+  border-color: var(--color-green-300);
+  background: var(--color-green-50);
+}
+
+.peerCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-sm);
+}
+
+.peerReasons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2xs);
+}
+
+.confidenceDot {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3xs);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+}
+
+/* ——— Flow timeline ——— */
+
+.flowTimeline {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.flowArrow {
+  display: flex;
+  align-items: center;
+  padding: var(--sp-sm) var(--sp-2xs) 0;
+  flex-shrink: 0;
+}
+
+/* ——— Nomination flow steps ——— */
+
+.flowSteps {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.flowStep {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-sm);
+  padding: var(--sp-sm) 0;
+}
+
+.flowStepIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.flowStepContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+  flex: 1;
+  min-width: 0;
+}
+
+.flowStepTitle {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-950);
+}
+
+.flowStepDesc {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+}
+
+.flowStepConfig {
+  display: flex;
+  gap: var(--sp-sm);
+  flex-shrink: 0;
+}
+
+.flowStepConfig > * {
+  width: 140px;
+}
+
+.flowStepArrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-3xs) 0 var(--sp-3xs) 52px;
+  color: var(--color-neutral-400);
+}
+
+/* ——— Settings grid ——— */
+
+.settingsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-md);
+}
+
+/* ——— Limits row ——— */
+
+.limitsRow {
+  display: flex;
+  gap: var(--sp-lg);
+}
+
+.limitField {
+  flex: 1;
+  max-width: 260px;
+}
+
+/* ——— Peer card actions ——— */
+
+.peerCardActions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+}
+
+/* ——— Summary bar ——— */
+
+.summaryBar {
+  display: flex;
+  gap: var(--sp-xl);
+  flex-wrap: wrap;
+}
+
+.summaryItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+}
+
+.summaryLabel {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-500);
+}
+
+/* ——— Manual add ——— */
+
+.manualAddRow {
+  max-width: 320px;
+}
+
+/* ——— Responsive ——— */
+
+@media (max-width: 768px) {
+  .kpiGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .flowTimeline {
+    flex-direction: column;
+  }
+
+  .flowArrow {
+    padding: 0 0 0 var(--sp-xl);
+    transform: rotate(90deg);
+  }
+
+  .flowStep {
+    flex-wrap: wrap;
+  }
+
+  .flowStepConfig {
+    width: 100%;
+    padding-left: 52px;
+  }
+
+  .flowStepConfig > * {
+    width: 100%;
+  }
+
+  .limitsRow {
+    flex-direction: column;
+  }
+
+  .limitField {
+    max-width: 100%;
+  }
+
+  .peerCardHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .summaryBar {
+    flex-direction: column;
+    gap: var(--sp-sm);
+  }
+}
+
+@media (max-width: 480px) {
+  .kpiGrid {
+    grid-template-columns: 1fr;
+  }
+}

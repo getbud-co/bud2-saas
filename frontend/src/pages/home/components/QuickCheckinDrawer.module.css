@@ -1,0 +1,300 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-lg);
+}
+
+.missionLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3xs);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  line-height: 1.3;
+}
+
+.missionLabel svg {
+  flex-shrink: 0;
+  color: var(--color-neutral-400);
+}
+
+/* ─── Sections ─── */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-xs);
+}
+
+.sectionLabel {
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-neutral-500);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ─── Owner ─── */
+
+.ownerRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+}
+
+.ownerName {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-800);
+}
+
+/* ─── Check-in form ─── */
+
+.checkinForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-sm);
+}
+
+.valueRow {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sp-sm);
+}
+
+.valueRow > * {
+  flex: 1;
+  min-width: 0;
+}
+
+.valueRow > .arrow {
+  flex: 0 0 auto;
+}
+
+.arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-neutral-400);
+  height: 40px;
+  flex-shrink: 0;
+}
+
+/* ─── Confidence ─── */
+
+.confidenceField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+}
+
+.confidenceLabel {
+  font-family: var(--font-label);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-700);
+}
+
+.confidenceTrigger {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  padding: var(--sp-2xs) var(--sp-sm);
+  border: 1px solid var(--color-caramel-300);
+  border-radius: var(--radius-sm);
+  background: var(--color-neutral-0);
+  cursor: pointer;
+  transition: border-color 150ms ease;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+}
+
+.confidenceTrigger:hover {
+  border-color: var(--color-caramel-500);
+}
+
+.confidenceDot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.confidenceTriggerText {
+  flex: 1;
+  text-align: left;
+  color: var(--color-neutral-800);
+}
+
+.confidencePlaceholder {
+  flex: 1;
+  text-align: left;
+  color: var(--color-neutral-400);
+}
+
+.confidenceChevron {
+  color: var(--color-neutral-400);
+  flex-shrink: 0;
+}
+
+.confidenceDropdown {
+  display: flex;
+  flex-direction: column;
+}
+
+.confidenceOption {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+  padding: var(--sp-xs) var(--sp-sm);
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+  text-align: left;
+  width: 100%;
+}
+
+.confidenceOption:hover {
+  background-color: var(--color-caramel-50);
+}
+
+.confidenceOptionActive {
+  background-color: var(--color-caramel-100);
+}
+
+.confidenceOptionText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+}
+
+.confidenceOptionLabel {
+  font-family: var(--font-label);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-800);
+}
+
+.confidenceOptionDesc {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+}
+
+/* ─── Timeline ─── */
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+}
+
+.timelineItem {
+  display: flex;
+  gap: var(--sp-xs);
+  position: relative;
+}
+
+.timelineDot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  padding-top: var(--sp-3xs);
+}
+
+.timelineDotInner {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-caramel-300);
+  flex-shrink: 0;
+}
+
+.timelineDotLatest {
+  background-color: var(--color-orange-500);
+}
+
+.timelineLine {
+  width: 2px;
+  flex: 1;
+  background-color: var(--color-caramel-200);
+  margin: var(--sp-3xs) 0;
+}
+
+.timelineContent {
+  flex: 1;
+  min-width: 0;
+  padding-bottom: var(--sp-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+}
+
+.timelineHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+}
+
+.timelineAuthor {
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-700);
+  flex: 1;
+}
+
+.timelineDate {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+  white-space: nowrap;
+}
+
+.timelineValue {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  font-family: var(--font-label);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-800);
+}
+
+.timelinePrevious {
+  color: var(--color-neutral-400);
+}
+
+.timelineCurrent {
+  font-weight: 600;
+  color: var(--color-neutral-950);
+}
+
+.timelineNote {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-600);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ─── Streak ─── */
+
+.streakRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  padding: var(--sp-xs) var(--sp-sm);
+  background-color: var(--color-caramel-50);
+  border-radius: var(--radius-sm);
+}
+
+.streakIcon {
+  color: var(--color-orange-500);
+  flex-shrink: 0;
+}
+
+.streakText {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-600);
+}

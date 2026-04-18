@@ -1,0 +1,76 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--sp-sm);
+}
+
+@media (max-width: 1200px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Counter card ── */
+
+.counterBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.counterValue {
+  font-family: var(--font-heading);
+  font-size: var(--text-3xl);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.counterLabel {
+  font-family: var(--font-label);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-neutral-700);
+  line-height: 1.2;
+}
+
+.counterSub {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+}
+
+.good { color: var(--color-green-600); }
+.warn { color: var(--color-yellow-600); }
+.bad  { color: var(--color-red-600); }
+
+/* ── Gauge header actions ── */
+
+.gaugeActions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+}
+
+.infoIcon {
+  color: var(--color-neutral-400);
+  cursor: help;
+  flex-shrink: 0;
+}
+
+/* ── Trend icons ── */
+
+.trendUp     { color: var(--color-green-500); }
+.trendDown   { color: var(--color-red-500); }
+.trendStable { color: var(--color-neutral-400); }

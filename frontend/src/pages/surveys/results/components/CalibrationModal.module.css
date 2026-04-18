@@ -1,0 +1,339 @@
+.modalContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-lg);
+}
+
+/* ——— 9-Box card ——— */
+
+.nineBoxCard {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-lg);
+  padding: var(--sp-sm) var(--sp-md);
+  border: 1px solid var(--color-caramel-200);
+  border-radius: var(--radius-sm);
+  background: var(--color-caramel-50);
+}
+
+.nineBoxCardCenter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3xs);
+  flex-shrink: 0;
+}
+
+.nineBoxCardSubtitle {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+}
+
+.nineBoxCardDivider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--color-caramel-300);
+}
+
+.nineBoxCardMetrics {
+  display: flex;
+  gap: var(--sp-xl);
+  flex: 1;
+}
+
+.nineBoxMetric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+}
+
+.nineBoxMetricLabel {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.nineBoxMetricRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+}
+
+.nineBoxMetricScore {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: var(--text-lg);
+}
+
+/* ——— Section title ——— */
+
+.sectionTitle {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-900);
+  display: block;
+  margin-bottom: var(--sp-2xs);
+}
+
+/* ——— Score comparison table ——— */
+
+.questionsSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-lg);
+}
+
+.dimensionSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+}
+
+.dimensionTitle {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-800);
+}
+
+
+.scoreTable {
+  --score-cols: 1fr 56px 56px 56px 72px;
+  border: 1px solid var(--color-caramel-200);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.scoreTableNo360 {
+  --score-cols: 1fr 56px 56px 72px;
+}
+
+.scoreTableHeader {
+  display: grid;
+  grid-template-columns: var(--score-cols);
+  gap: 0;
+  padding: var(--sp-2xs) var(--sp-sm);
+  background: var(--color-caramel-50);
+  border-bottom: 1px solid var(--color-caramel-200);
+}
+
+.scoreTableHeader > span {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  text-align: center;
+}
+
+.scoreTableColQuestion {
+  text-align: left !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scoreTableColScore {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scoreTableColCalibrated {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scoreTableRow {
+  display: grid;
+  grid-template-columns: var(--score-cols);
+  gap: 0;
+  padding: var(--sp-xs) var(--sp-sm);
+  border-bottom: 1px solid var(--color-caramel-100);
+  align-items: center;
+  transition: background-color 150ms ease;
+}
+
+.scoreTableRow:last-child {
+  border-bottom: none;
+}
+
+.scoreTableRow:hover {
+  background: var(--color-caramel-50);
+}
+
+.scoreTableRow .scoreTableColQuestion {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-900);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ——— Score chip ——— */
+
+.scoreChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  padding: var(--sp-3xs) var(--sp-2xs);
+  border-radius: var(--radius-xs);
+  font-family: var(--font-label);
+  font-weight: 600;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-900);
+}
+
+/* ——— Calibrated score input ——— */
+
+.calibratedInput {
+  width: 56px;
+  padding: var(--sp-3xs) var(--sp-2xs);
+  border: 1px solid var(--color-caramel-300);
+  border-radius: var(--radius-xs);
+  font-family: var(--font-label);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-950);
+  text-align: center;
+  background: var(--color-neutral-0);
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+  -moz-appearance: textfield;
+}
+
+.calibratedInput::-webkit-outer-spin-button,
+.calibratedInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.calibratedInput:focus {
+  border-color: var(--color-orange-400);
+  box-shadow: 0 0 0 2px var(--color-orange-100);
+}
+
+.calibratedInput::placeholder {
+  color: var(--color-neutral-400);
+  font-weight: 400;
+}
+
+.calibratedInputDeviated {
+  border-color: var(--color-warning-400);
+  background: var(--color-warning-50);
+}
+
+/* ——— Table footer (final score) ——— */
+
+.scoreTableFooter {
+  display: grid;
+  grid-template-columns: var(--score-cols);
+  gap: 0;
+  padding: var(--sp-xs) var(--sp-sm);
+  background: var(--color-caramel-50);
+  border-top: 2px solid var(--color-caramel-300);
+  align-items: center;
+}
+
+.scoreTableFooter .scoreTableColQuestion {
+  font-family: var(--font-label);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-900);
+}
+
+.finalScoreValue {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: var(--text-md);
+  color: var(--color-neutral-400);
+}
+
+.finalScoreActive {
+  color: var(--color-orange-600);
+}
+
+/* ——— Support data ——— */
+
+.supportGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--sp-sm);
+  margin-top: var(--sp-2xs);
+}
+
+.supportItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+}
+
+.supportLabel {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+}
+
+.supportValue {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-md);
+  color: var(--color-neutral-950);
+}
+
+/* ——— Responsive ——— */
+
+@media (max-width: 768px) {
+  .nineBoxCard {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .nineBoxCardDivider {
+    width: auto;
+    height: 1px;
+    align-self: auto;
+  }
+
+  .nineBoxCardMetrics {
+    flex-direction: column;
+    gap: var(--sp-sm);
+  }
+
+  .scoreTableHeader,
+  .scoreTableRow,
+  .scoreTableFooter {
+    grid-template-columns: 1fr 48px 48px 48px 60px;
+    padding: var(--sp-2xs) var(--sp-xs);
+  }
+
+  .scoreTableRow .scoreTableColQuestion {
+    font-size: var(--text-xs);
+  }
+
+  .calibratedInput {
+    width: 48px;
+    font-size: var(--text-xs);
+  }
+
+  .supportGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .scoreTableHeader,
+  .scoreTableRow,
+  .scoreTableFooter {
+    grid-template-columns: 1fr 40px 40px 56px;
+  }
+}

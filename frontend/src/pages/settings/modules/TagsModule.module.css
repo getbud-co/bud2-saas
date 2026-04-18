@@ -1,0 +1,60 @@
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+}
+
+.searchWrapper {
+  max-width: 400px;
+  flex: 1;
+}
+
+.formStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-md);
+}
+
+.fieldLabel {
+  display: block;
+  font-family: var(--font-label);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-700);
+  margin-bottom: var(--sp-2xs);
+}
+
+.colorGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2xs);
+}
+
+.colorSwatch {
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  padding: var(--sp-3xs);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.colorSwatch:hover {
+  border-color: var(--color-caramel-300);
+}
+
+.colorSwatchActive {
+  border-color: var(--color-orange-500);
+}
+
+.confirmText {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-700);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.actionsField {
+  display: flex;
+  justify-content: flex-end;
+}

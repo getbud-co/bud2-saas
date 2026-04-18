@@ -1,0 +1,221 @@
+/* ——— Page ——— */
+
+.page {
+  background: var(--color-caramel-50);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-lg);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-xl);
+  width: 100%;
+  max-width: 560px;
+}
+
+/* ——— Card ——— */
+
+.card {
+  background: white;
+  border-radius: var(--radius-sm);
+  padding: var(--sp-2xl) var(--sp-4xl);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-xl);
+}
+
+/* ——— Title ——— */
+
+.title {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-xl);
+  color: var(--color-neutral-950);
+  text-align: center;
+  line-height: 1.1;
+  letter-spacing: -0.12px;
+  margin: 0;
+}
+
+/* ——— Social buttons ——— */
+
+.socialButtons {
+  display: flex;
+  gap: var(--sp-xs);
+}
+
+.socialButtons > button {
+  flex: 1;
+}
+
+/* ——— Divider ——— */
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+}
+
+.dividerLine {
+  flex: 1;
+  height: 1px;
+  background: var(--color-caramel-200);
+}
+
+.dividerText {
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-600);
+}
+
+/* ——— Form ——— */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-md);
+  align-items: center;
+}
+
+/* ——— Password field with toggle ——— */
+
+.passwordField {
+  position: relative;
+  width: 100%;
+}
+
+.passwordToggle {
+  position: absolute;
+  right: var(--sp-xs);
+  bottom: var(--sp-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--color-neutral-500);
+  transition: color 150ms ease;
+}
+
+.passwordToggle:hover {
+  color: var(--color-neutral-700);
+}
+
+.passwordToggle:focus-visible {
+  outline: 2px solid var(--color-orange-400);
+  outline-offset: 2px;
+  border-radius: var(--radius-2xs);
+}
+
+/* ——— Forgot password ——— */
+
+.forgotLink {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-md);
+  color: var(--color-orange-600);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.forgotLink:hover {
+  text-decoration: underline;
+}
+
+.forgotLink:focus-visible {
+  outline: 2px solid var(--color-orange-400);
+  outline-offset: 2px;
+  border-radius: var(--radius-2xs);
+}
+
+/* ——— HR ——— */
+
+.hr {
+  border: none;
+  height: 1px;
+  background: var(--color-caramel-200);
+  margin: 0;
+}
+
+/* ——— Sign up ——— */
+
+.signupRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3xs);
+  font-size: var(--text-md);
+  margin: 0;
+}
+
+.signupRow span {
+  font-family: var(--font-label);
+  font-weight: 500;
+  color: var(--color-neutral-950);
+}
+
+.signupLink {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-md);
+  color: var(--color-orange-600);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.signupLink:hover {
+  text-decoration: underline;
+}
+
+.signupLink:focus-visible {
+  outline: 2px solid var(--color-orange-400);
+  outline-offset: 2px;
+  border-radius: var(--radius-2xs);
+}
+
+/* ——— Responsive ——— */
+
+@media (max-width: 768px) {
+  .card {
+    padding: var(--sp-xl) var(--sp-lg);
+  }
+}
+
+@media (max-width: 480px) {
+  .page {
+    padding: var(--sp-sm);
+    align-items: flex-start;
+    padding-top: var(--sp-4xl);
+  }
+
+  .card {
+    padding: var(--sp-lg) var(--sp-md);
+    gap: var(--sp-lg);
+  }
+
+  .socialButtons {
+    flex-direction: column;
+  }
+
+  .socialButtons > button {
+    width: 100%;
+    flex: none;
+  }
+
+  .title {
+    font-size: var(--text-xl);
+  }
+}

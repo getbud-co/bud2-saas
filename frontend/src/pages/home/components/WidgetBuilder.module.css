@@ -1,0 +1,310 @@
+/* ——— Stepper (DS Breadcrumb) ——— */
+
+.stepper {
+  width: 100%;
+}
+
+/* ——— Body ——— */
+
+.bodyWrapper {
+  min-height: 320px;
+}
+
+.stepContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-md);
+  animation: fadeSlideIn 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.stepDescription {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-500);
+  margin: 0;
+}
+
+/* ——— Step 1: People section ——— */
+
+.peopleSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-xs);
+  animation: fadeSlideIn 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.peopleSectionHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+}
+
+.peopleList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* People list uses DS ChoiceBoxGroup multiple */
+
+/* ——— Step 2: Metric filters (DS FilterChip) ——— */
+
+.metricFilters {
+  display: flex;
+  gap: var(--sp-2xs);
+  flex-wrap: wrap;
+}
+
+/* ——— Step 2: Metric list ——— */
+
+.metricList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+/* Metric list uses DS ChoiceBoxGroup */
+
+.emptyState {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-400);
+  text-align: center;
+  padding: var(--sp-lg);
+  margin: 0;
+}
+
+/* ——— Step 3: Viz grid ——— */
+
+.suggestedBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  padding: var(--sp-2xs) var(--sp-xs);
+  border-radius: var(--radius-sm);
+  background: var(--color-orange-50);
+  color: var(--color-orange-700);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+}
+
+/* Step 3 uses DS ChoiceBoxGroup */
+
+/* ——— Step 4: Settings ——— */
+
+.settingsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-sm);
+}
+
+.toggleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-xs);
+  padding: var(--sp-sm) 0;
+  border-top: 1px solid var(--color-caramel-100);
+  border-bottom: 1px solid var(--color-caramel-100);
+}
+
+/* ——— Side Panel: Preview ——— */
+
+.previewPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-md);
+  padding: var(--sp-lg);
+  height: 100%;
+  background-color: var(--color-white);
+  border: 1px solid var(--color-caramel-200);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+}
+
+.previewTitle {
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-neutral-700);
+  margin: 0;
+}
+
+.previewEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-xs);
+  padding: var(--sp-3xl) var(--sp-md);
+  color: var(--color-neutral-400);
+  text-align: center;
+}
+
+.previewEmpty p {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  margin: 0;
+  max-width: 200px;
+}
+
+/* ——— Preview card body ——— */
+
+.previewCardBody {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2xs);
+}
+
+.previewValue {
+  font-family: var(--font-heading);
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  color: var(--color-neutral-900);
+  line-height: 1;
+}
+
+.previewDelta {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  border-radius: var(--radius-2xs);
+  padding: 2px var(--sp-3xs);
+}
+
+.previewDeltaPositive {
+  color: var(--color-green-700);
+  background: var(--color-green-50);
+}
+
+.previewDeltaNegative {
+  color: var(--color-red-700);
+  background: var(--color-red-50);
+}
+
+.previewViz {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+}
+
+.previewPeriod,
+.previewComparison {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+}
+
+/* ——— Popular section ——— */
+
+.popularSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+}
+
+.popularTitle {
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  margin: 0;
+}
+
+.popularList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2xs);
+}
+
+
+
+/* ——— Mini viz helpers ——— */
+
+.miniBarChart {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sp-3xs);
+  width: 100%;
+  height: 48px;
+}
+
+.miniBarTrack {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.miniBarFill {
+  width: 100%;
+  border-radius: var(--radius-2xs) var(--radius-2xs) 0 0;
+  background: var(--color-chart-1);
+  transition: height 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.miniProgress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+  width: 100%;
+}
+
+/* Ranking uses DS GoalProgressBar, Heatmap uses DS Heatmap */
+
+.miniTable {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+
+.miniTableRow {
+  display: flex;
+  gap: var(--sp-2xs);
+}
+
+.miniTableCell {
+  flex: 1;
+  padding: 2px var(--sp-3xs);
+  background: var(--color-caramel-100);
+  border-radius: var(--radius-2xs);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+  text-align: center;
+}
+
+/* ——— Responsive ——— */
+
+@media (max-width: 768px) {
+  .settingsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .bodyWrapper {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .previewPanel {
+    padding: var(--sp-sm);
+  }
+}

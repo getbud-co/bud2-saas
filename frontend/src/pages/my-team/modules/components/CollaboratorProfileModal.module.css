@@ -1,0 +1,414 @@
+/* ─── CollaboratorProfileModal ────────────────────────────────────────────── */
+
+/* ── 1. Header identity: avatar + nome ── */
+
+/* ── Footer: agrupamento de ações ── */
+
+.footerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+}
+
+.headerIdentity {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-xs);
+}
+
+.headerDescription {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-xs);
+}
+
+/* ── Trend pill ── */
+
+.trendPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px var(--sp-2xs);
+  border-radius: var(--radius-full);
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  font-weight: 500;
+}
+
+.trend_up {
+  background: var(--color-green-50);
+  color: var(--color-green-600);
+}
+
+.trend_down {
+  background: var(--color-red-50);
+  color: var(--color-red-600);
+}
+
+.trend_stable {
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-500);
+}
+
+.trendInfoIcon {
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+/* ── 3. Scores: 3 cards lado a lado ── */
+
+.scoreGrid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: var(--sp-xs);
+  margin-bottom: var(--sp-md);
+}
+
+.scoreCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+  padding: var(--sp-sm);
+  border: 1px solid var(--color-caramel-200);
+  border-radius: var(--radius-sm);
+  background: var(--color-neutral-0);
+}
+
+.scoreCardPrimary {
+  border-color: var(--color-caramel-300);
+  background: var(--color-caramel-50);
+}
+
+.scoreCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2xs);
+}
+
+.scoreCardLabel {
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-neutral-500);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.scoreInfoIcon {
+  color: var(--color-neutral-400);
+  cursor: help;
+  flex-shrink: 0;
+}
+
+.scoreCardValue {
+  font-family: var(--font-heading);
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.scoreCardBar {
+  margin-top: 2px;
+}
+
+.scoreGood { color: var(--color-green-600); }
+.scoreWarn { color: var(--color-yellow-600); }
+.scoreBad  { color: var(--color-red-600);   }
+
+/* ── Period filter ── */
+
+.periodRow {
+  margin-bottom: var(--sp-sm);
+}
+
+.filterItem {
+  position: relative;
+  display: inline-flex;
+}
+
+.filterDropdownBody {
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-3xs);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.filterDropdownItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  width: 100%;
+  padding: var(--sp-2xs);
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-2xs);
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-950);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 120ms ease;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.filterDropdownItem:hover {
+  background-color: var(--color-caramel-100);
+}
+
+.filterDropdownItemActive {
+  background-color: var(--color-caramel-50);
+}
+
+.checkIcon {
+  color: var(--color-orange-500);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.periodDropdownFooter {
+  border-top: 1px solid var(--color-caramel-300);
+  padding: var(--sp-3xs);
+}
+
+.moreMenuArrow {
+  margin-left: auto;
+  color: var(--color-neutral-400);
+  flex-shrink: 0;
+}
+
+.periodCustomPopover {
+  padding: var(--sp-xs);
+}
+
+/* ── 4. Accordion de alertas ── */
+
+.alertsAccordion {
+  margin-bottom: var(--sp-md);
+}
+
+/* Título dentro do trigger do accordion */
+.alertAccordionTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  font-family: var(--font-label);
+  font-weight: 500;
+  color: var(--color-yellow-700);
+}
+
+.alertAccordionIcon {
+  color: var(--color-yellow-500);
+  flex-shrink: 0;
+}
+
+/* Lista de alertas dentro do painel */
+.alertList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+}
+
+.alertListItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-900);
+  padding: var(--sp-2xs) 0;
+}
+
+.alertListIcon {
+  color: var(--color-yellow-500);
+  flex-shrink: 0;
+}
+
+/* ── 5. Sections ── */
+
+.section {
+  margin-bottom: var(--sp-lg);
+}
+
+.section:last-child {
+  margin-bottom: 0;
+}
+
+.sectionTitle {
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-neutral-400);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 var(--sp-xs);
+}
+
+/* ── Stat rows ── */
+
+.statList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.statRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+  padding: var(--sp-2xs) var(--sp-2xs);
+  border-radius: var(--radius-xs);
+}
+
+.statRow:nth-child(even) {
+  background: var(--color-caramel-50);
+}
+
+.statIcon {
+  color: var(--color-neutral-400);
+  flex-shrink: 0;
+}
+
+.statIconWarn {
+  color: var(--color-yellow-500);
+  flex-shrink: 0;
+}
+
+.statLabel {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-600);
+  flex: 1;
+}
+
+.statValue {
+  font-family: var(--font-label);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-neutral-900);
+  white-space: nowrap;
+}
+
+.statValueWarn {
+  color: var(--color-yellow-600);
+}
+
+/* ── Progress bar dentro de seção de missões ── */
+
+.progressBarRow {
+  margin-top: var(--sp-sm);
+  padding-top: var(--sp-sm);
+  border-top: 1px solid var(--color-caramel-200);
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 480px) {
+  .scoreGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Mobile Bottom Sheet ──────────────────────────────────────────────────── */
+
+.sheetBackdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  z-index: 9099;
+}
+
+.sheet {
+  position: fixed;
+  top: var(--sp-4xl);
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: var(--color-neutral-0);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: var(--shadow-xl);
+  z-index: 9100;
+  display: flex;
+  flex-direction: column;
+  /* drag handle via pseudo-element */
+}
+
+.sheet::before {
+  content: "";
+  position: absolute;
+  top: var(--sp-2xs);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 4px;
+  background: var(--color-caramel-300);
+  border-radius: var(--radius-full);
+}
+
+.sheetHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-sm);
+  padding: var(--sp-md) var(--sp-md) var(--sp-sm);
+  padding-top: var(--sp-lg); /* espaço para o drag handle */
+  border-bottom: 1px solid var(--color-caramel-200);
+}
+
+.sheetInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.sheetMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+  flex-wrap: wrap;
+}
+
+.sheetName {
+  font-family: var(--font-heading);
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--color-neutral-900);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheetJob {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-500);
+}
+
+.sheetHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  flex-shrink: 0;
+}
+
+.sheetBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--sp-md);
+}
+
+.sheetFooter {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-2xs);
+  padding: var(--sp-sm) var(--sp-md);
+  border-top: 1px solid var(--color-caramel-200);
+}

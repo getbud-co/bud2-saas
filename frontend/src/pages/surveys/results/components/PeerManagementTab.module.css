@@ -1,0 +1,272 @@
+.tab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-md);
+  padding: var(--sp-lg);
+}
+
+/* ——— Phase status bar ——— */
+
+.phaseBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-md);
+  padding: var(--sp-sm) var(--sp-md);
+  background: var(--color-caramel-50);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-caramel-200);
+}
+
+.phaseLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+}
+
+.phaseDeadline {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-500);
+}
+
+/* ——— KPI grid ——— */
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--sp-sm);
+}
+
+.kpi {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+}
+
+.kpiIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.kpiContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+}
+
+.kpiValue {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: var(--text-lg);
+  color: var(--color-neutral-950);
+}
+
+.kpiLabel {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+}
+
+/* ——— People list ——— */
+
+.peopleList {
+  display: flex;
+  flex-direction: column;
+}
+
+.personItem {
+  border-bottom: 1px solid var(--color-caramel-100);
+}
+
+.personItem:last-child {
+  border-bottom: none;
+}
+
+.personRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--sp-sm) var(--sp-2xs);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 150ms ease;
+}
+
+.personRow:hover {
+  background: var(--color-caramel-50);
+}
+
+.personRowExpanded {
+  background: var(--color-caramel-50);
+}
+
+.personMetrics {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+}
+
+.metricChip {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3xs);
+  padding: var(--sp-3xs) var(--sp-2xs);
+  background: var(--color-neutral-50);
+  border-radius: var(--radius-xs);
+}
+
+.metricLabel {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+}
+
+.metricValue {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-950);
+}
+
+.metricError {
+  color: var(--color-error-600);
+}
+
+.metricWarning {
+  color: var(--color-warning-600);
+}
+
+/* ——— Person expanded panel ——— */
+
+.personPanel {
+  padding: var(--sp-sm) var(--sp-md) var(--sp-md);
+  background: var(--color-neutral-0);
+  border-top: 1px solid var(--color-caramel-100);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-lg);
+}
+
+.panelSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-xs);
+}
+
+.panelSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-sm);
+}
+
+.panelSectionTitle {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-800);
+}
+
+.emptyText {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-400);
+  font-style: italic;
+}
+
+.nominationList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+}
+
+.nominationRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+  padding: var(--sp-xs) var(--sp-sm);
+  border: 1px solid var(--color-caramel-200);
+  border-radius: var(--radius-sm);
+  background: var(--color-neutral-0);
+}
+
+.nominationPending {
+  border-color: var(--color-warning-300);
+  background: var(--color-warning-50);
+}
+
+.nominationMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  margin-left: auto;
+}
+
+.nominationActions {
+  display: flex;
+  gap: var(--sp-2xs);
+  flex-shrink: 0;
+}
+
+.addPeerRow {
+  max-width: 300px;
+  margin-top: var(--sp-2xs);
+}
+
+/* ——— Responsive ——— */
+
+@media (max-width: 960px) {
+  .kpiGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .phaseBar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .kpiGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .personRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-xs);
+  }
+
+  .personMetrics {
+    align-self: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .nominationRow {
+    flex-wrap: wrap;
+  }
+
+  .nominationActions {
+    width: 100%;
+  }
+
+  .panelSectionHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .kpiGrid {
+    grid-template-columns: 1fr;
+  }
+}

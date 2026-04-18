@@ -1,0 +1,102 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+  width: 100%;
+}
+
+.pageHeader {
+  padding: var(--sp-sm) var(--sp-sm) 0;
+}
+
+/* ——— Toolbar (filters + actions) ——— */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-sm);
+  flex-wrap: wrap;
+}
+
+.filterBar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+}
+
+.toolbarActions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+}
+
+/* ——— Metrics ——— */
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-sm);
+  padding: var(--sp-xs) 0;
+}
+
+.metricCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+  padding: var(--sp-sm);
+  background-color: var(--color-caramel-50);
+  border-radius: var(--radius-xs);
+}
+
+.metricValue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+}
+
+/* ——— Mission list ——— */
+
+.missionList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-xs);
+  padding: var(--sp-xs) 0;
+}
+
+.teamHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+  padding: var(--sp-2xs) 0;
+}
+
+.missionItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+  padding: var(--sp-xs) var(--sp-sm);
+  background-color: var(--color-caramel-50);
+  border-radius: var(--radius-xs);
+}
+
+.missionInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+}
+
+/* ——— Responsive ——— */
+
+@media (max-width: 768px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .metrics {
+    grid-template-columns: 1fr;
+  }
+}

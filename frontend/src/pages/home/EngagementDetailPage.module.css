@@ -1,0 +1,166 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2xs);
+}
+
+/* ── Toolbar ── */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+  flex-wrap: wrap;
+}
+
+.filterItem {
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* ── Dropdown de times (checkboxes) ── */
+
+.dropdownBody {
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-2xs);
+  min-width: 180px;
+}
+
+.checkboxRow {
+  padding: var(--sp-2xs) var(--sp-xs);
+  border-radius: var(--radius-xs);
+  transition: background 120ms ease;
+}
+
+.checkboxRow:hover {
+  background: var(--color-caramel-50);
+}
+
+/* ── Dropdown items (período, saúde) ── */
+
+.filterDropdownBody {
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-3xs);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.filterDropdownItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  width: 100%;
+  padding: var(--sp-2xs);
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-2xs);
+  font-family: var(--font-label);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-950);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 120ms ease;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.filterDropdownItem:hover {
+  background-color: var(--color-caramel-100);
+}
+
+.filterDropdownItemActive {
+  background-color: var(--color-caramel-50);
+}
+
+.checkIcon {
+  color: var(--color-orange-500);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.periodDropdownFooter {
+  border-top: 1px solid var(--color-caramel-300);
+  padding: var(--sp-3xs);
+}
+
+.moreMenuArrow {
+  margin-left: auto;
+  color: var(--color-neutral-400);
+  flex-shrink: 0;
+}
+
+.periodCustomPopover {
+  padding: var(--sp-xs);
+}
+
+/* ── Gauges ── */
+
+.gaugeRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-sm);
+  padding-bottom: var(--sp-sm);
+  border-bottom: 1px solid var(--color-caramel-200);
+}
+
+.gaugeItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2xs);
+}
+
+.gaugeLabel {
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+}
+
+/* ── Chart ── */
+
+.chartSection {
+  margin-top: var(--sp-xl);
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-neutral-900);
+  margin-bottom: var(--sp-lg);
+}
+
+.chartWrapper {
+  width: 100%;
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 768px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filterItem {
+    width: 100%;
+  }
+
+  .filterItem > button {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 480px) {
+  .gaugeRow {
+    grid-template-columns: 1fr;
+    gap: var(--sp-xs);
+  }
+}

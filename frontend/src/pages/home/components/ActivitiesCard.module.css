@@ -1,0 +1,131 @@
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2xs);
+}
+
+.list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+  padding: var(--sp-xs) 0;
+  border-bottom: 1px solid var(--color-caramel-200);
+  cursor: pointer;
+  transition: background-color 120ms;
+}
+
+.item:last-child {
+  border-bottom: none;
+}
+
+.item:hover {
+  background-color: var(--color-caramel-50);
+}
+
+.iconBox {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-caramel-50);
+  border: 1px solid var(--color-caramel-200);
+  color: var(--color-neutral-600);
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3xs);
+}
+
+.title {
+  font-family: var(--font-label);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-neutral-900);
+}
+
+.subtitle {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+}
+
+.subtitleUrgent {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-red-500);
+}
+
+.caret {
+  flex-shrink: 0;
+  color: var(--color-neutral-400);
+}
+
+/* Modal expanded view */
+.modalSummary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-2xs);
+  padding-bottom: var(--sp-sm);
+  border-bottom: 1px solid var(--color-caramel-200);
+  margin-bottom: var(--sp-sm);
+}
+
+.summaryItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3xs);
+  padding: var(--sp-xs);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-caramel-50);
+}
+
+.summaryNumber {
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-neutral-900);
+}
+
+.urgentNumber {
+  color: var(--color-red-600);
+}
+
+.summaryLabel {
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+}
+
+/* ——— Responsive ——— */
+
+@media (max-width: 480px) {
+  .modalSummary {
+    grid-template-columns: 1fr;
+  }
+}
+
+.modalSection {
+  margin-bottom: var(--sp-sm);
+}
+
+.sectionTitle {
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-neutral-900);
+  margin-bottom: var(--sp-2xs);
+}
