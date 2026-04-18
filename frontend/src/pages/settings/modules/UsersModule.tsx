@@ -194,7 +194,7 @@ export function UsersModule() {
     ignoreChipRefs,
   } = useFilterChips({
     chipRefs,
-    onResetFilter: (id) => {
+    onResetFilter: (id: string) => {
       if (id === "status") setFilterStatus("all");
       if (id === "role") setFilterRole("all");
     },
@@ -360,8 +360,20 @@ export function UsersModule() {
     setEditGender(user.gender ?? "");
     setEditLanguage(user.language);
     if (user.birthDate) {
-      const [y, m, d] = user.birthDate.split("-").map(Number);
-      setEditBirthDate({ year: y, month: m, day: d });
+      const parts = user.birthDate.split("-");
+      if (parts.length === 3) {
+        const year = Number(parts[0]);
+        const month = Number(parts[1]);
+        const day = Number(parts[2]);
+
+        if ([year, month, day].every((part) => !Number.isNaN(part))) {
+          setEditBirthDate({ year, month, day });
+        } else {
+          setEditBirthDate(null);
+        }
+      } else {
+        setEditBirthDate(null);
+      }
     } else {
       setEditBirthDate(null);
     }
@@ -458,7 +470,7 @@ export function UsersModule() {
             }}
             onClearAll={activeFilters.length > 0 ? clearAllFilters : undefined}
           >
-            {activeFilters.map((filterId) => (
+            {activeFilters.map((filterId: string) => (
               <div key={filterId} ref={chipRefs[filterId]} style={{ display: "inline-flex" }}>
                 <FilterChip
                   label={getFilterLabel(filterId)}

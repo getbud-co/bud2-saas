@@ -348,7 +348,7 @@ export function SurveyTemplatesModule() {
     let deletedCount = 0;
     let blockedCount = 0;
 
-    selectedRows.forEach((templateId) => {
+    selectedRows.forEach((templateId: string) => {
       const deleted = deleteSurveyTemplate(templateId);
       if (deleted) deletedCount += 1;
       else blockedCount += 1;

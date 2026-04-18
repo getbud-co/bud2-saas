@@ -43,8 +43,15 @@ const AUTH_PROVIDER_LABEL: Record<string, string> = {
 
 function parseBirthDate(dateStr: string | null): CalendarDate | null {
   if (!dateStr) return null;
-  const [y, m, d] = dateStr.split("-").map(Number);
-  return { year: y, month: m, day: d };
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return null;
+
+  const year = Number(parts[0]);
+  const month = Number(parts[1]);
+  const day = Number(parts[2]);
+  if ([year, month, day].some((part) => Number.isNaN(part))) return null;
+
+  return { year, month, day };
 }
 
 function formatBirthDate(date: CalendarDate | null): string | null {

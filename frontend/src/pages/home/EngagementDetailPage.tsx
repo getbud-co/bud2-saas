@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   Card,
   CardBody,
@@ -60,7 +59,6 @@ function formatCalendarDate(d: CalendarDate): string {
 // ── Component ───────────────────────────────────────────────────────────────
 
 export function EngagementDetailPage() {
-  const navigate = useNavigate();
   const { teams: allTeams, currentUserId } = usePeopleData();
   const { cycles } = useConfigData();
 
@@ -141,7 +139,7 @@ export function EngagementDetailPage() {
   }, [selectedCycleId, customRange, cycles]);
 
   // ── Data (same source as Meu Time) ─────────────────────────────────────
-  const { teamEngagement, memberEngagements } = useTeamOverviewData(selectedTeamIds, activePeriod);
+  const { memberEngagements } = useTeamOverviewData(selectedTeamIds, activePeriod);
 
   // ── People filter ───────────────────────────────────────────────────────
   const [selectedPersonIds, setSelectedPersonIds] = useState<Set<string>>(new Set());

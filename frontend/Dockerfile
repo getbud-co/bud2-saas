@@ -1,5 +1,5 @@
 # ── Dev: Vite dev server com hot-reload ──
-FROM node:25.9.0-alpine AS dev
+FROM node:24.15.0-alpine AS dev
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
@@ -8,7 +8,7 @@ EXPOSE 5173
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
 # ── Build ──
-FROM node:25.9.0-alpine AS builder
+FROM node:24.15.0-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci

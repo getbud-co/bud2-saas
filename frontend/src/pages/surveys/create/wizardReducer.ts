@@ -172,17 +172,6 @@ export const initialWizardState: SurveyWizardState = {
 
 /* ——— Helpers ——— */
 
-let questionIdCounter = 0;
-let sectionIdCounter = 0;
-
-function generateQuestionId(): string {
-  return `q-${Date.now()}-${++questionIdCounter}`;
-}
-
-function generateSectionId(): string {
-  return `s-${Date.now()}-${++sectionIdCounter}`;
-}
-
 /**
  * Load template questions with deterministic IDs matching the format
  * used by localSurveyAdapters and seed data: {type}-question-{section}-{question}
