@@ -491,6 +491,7 @@ export function WidgetBuilder({ open, onClose, onAdd }: WidgetBuilderProps) {
     widgetName,
     suggestedName,
     onAdd,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleClose is defined below, circular ref
   ]);
 
   const handleClose = useCallback(() => {

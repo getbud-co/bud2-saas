@@ -31,7 +31,7 @@ export interface TeamHealthReadModel {
 }
 
 export function useTeamHealthReadModel(): TeamHealthReadModel {
-  const { users, teams, teamOptions } = usePeopleData();
+  const { users, teamOptions } = usePeopleData();
   const { missions, checkInHistory } = useMissionsData();
 
   return useMemo(() => {
@@ -85,5 +85,5 @@ export function useTeamHealthReadModel(): TeamHealthReadModel {
       members,
       teamOptions: [allTeamsOption, ...teamOptions],
     };
-  }, [users, teams, teamOptions, missions, checkInHistory]);
+  }, [users, teamOptions, missions, checkInHistory]);
 }

@@ -17,20 +17,18 @@ services:
       retries: 5
       start_period: 10s
 
-  # frontend: rodar localmente com 'cd frontend && npm run dev' (porta 5173)
-  # O Vite dev server precisa do Design System em ../../bud2-design-system
-  # que não está disponível no contexto Docker.
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile
-  #     target: dev
-  #   ports:
-  #     - "5173:5173"
-  #   env_file:
-  #     - ./frontend/.env
-  #   depends_on:
-  #     - backend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+      args:
+        NODE_AUTH_TOKEN: ${NODE_AUTH_TOKEN}
+    ports:
+      - "3000:8080"
+    depends_on:
+      backend:
+        condition: service_started
 
   db:
     image: postgres:18-alpine

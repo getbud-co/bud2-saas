@@ -591,7 +591,7 @@ export function OrgChartModule() {
         </div>
       );
     },
-    [expanded, highlightId, filterTeam, selectedId],
+    [expanded, highlightId, filterTeam, selectedId, selectPerson],
   );
 
   /* ——— Render chart node (tree diagram view) ——— */
@@ -650,7 +650,7 @@ export function OrgChartModule() {
         </div>
       );
     },
-    [expanded, highlightId, filterTeam, selectedId],
+    [expanded, highlightId, filterTeam, selectedId, selectPerson],
   );
 
   /* stats */
