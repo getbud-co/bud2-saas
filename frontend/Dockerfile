@@ -1,18 +1,22 @@
 # ── Dev: Vite dev server com hot-reload ──
 FROM node:24.15.0-alpine AS dev
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci
+ARG NODE_AUTH_TOKEN
+COPY package*.json .npmrc ./
+RUN npm install && rm -f .npmrc
 COPY . .
+RUN rm -f .npmrc
 EXPOSE 5173
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
 # ── Build ──
 FROM node:24.15.0-alpine AS builder
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci
+ARG NODE_AUTH_TOKEN
+COPY package*.json .npmrc ./
+RUN npm install && rm -f .npmrc
 COPY . .
+RUN rm -f .npmrc
 RUN npm run build
 
 # ── Prod: nginx ──
