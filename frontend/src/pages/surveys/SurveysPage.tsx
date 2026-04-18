@@ -514,7 +514,7 @@ export function SurveysPage() {
     }
 
     return list;
-  }, [surveys, search, activeFilters, selectedStatus, selectedType, selectedCategory, sortKey, sortDir]);
+  }, [surveys, search, activeFilters, selectedStatus, selectedType, selectedCategory, sortKey, sortDir, respondentSurveyIds]);
 
   const rowIds = useMemo(() => filtered.map((s) => s.id), [filtered]);
 

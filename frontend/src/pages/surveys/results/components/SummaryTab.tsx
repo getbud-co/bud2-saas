@@ -95,6 +95,7 @@ export function SummaryTab({ data }: SummaryTabProps) {
     department: deptChipRef,
     period: periodChipRef,
   };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- chipRefs is a stable object literal
   const ignoreChipRefs = useMemo(() => Object.values(chipRefs), []);
 
   function handleAddFilter(id: string) {

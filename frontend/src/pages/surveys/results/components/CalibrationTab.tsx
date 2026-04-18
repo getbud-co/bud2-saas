@@ -391,6 +391,7 @@ function CycleCalibration({ data }: { data: SurveyResultData }) {
     bias: biasChipRef,
     period: periodChipRef,
   };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- chipRefs is a stable object literal
   const ignoreChipRefs = useMemo(() => Object.values(chipRefs), []);
 
   /* ——— Table / grid state ——— */

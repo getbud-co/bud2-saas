@@ -522,8 +522,7 @@ describe("wizardReducer", () => {
 
   describe("default case", () => {
     it("returns state unchanged for unknown action", () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const state = dispatch({ type: "UNKNOWN_ACTION" } as any);
+      const state = dispatch({ type: "UNKNOWN_ACTION" } as never);
       expect(state).toEqual(initialWizardState);
     });
   });

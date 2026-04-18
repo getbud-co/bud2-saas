@@ -85,5 +85,5 @@ export function useTeamHealthReadModel(): TeamHealthReadModel {
       members,
       teamOptions: [allTeamsOption, ...teamOptions],
     };
-  }, [users, teams, teamOptions, missions, checkInHistory]);
+  }, [users, teamOptions, missions, checkInHistory]);
 }

@@ -77,6 +77,7 @@ export function AppLayout() {
   useEffect(() => {
     if (sidebarOpen) setSidebarOpen(false);
     mainRef.current?.scrollTo(0, 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only react to route changes
   }, [location.pathname]);
 
   return (
