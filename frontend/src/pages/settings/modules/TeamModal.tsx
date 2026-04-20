@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback, memo } from "react";
 import {
   Modal,
   ModalHeader,
@@ -121,7 +121,7 @@ function memberFromPerson(
 
 /* ——— Component ——— */
 
-export function TeamModal({
+export const TeamModal = memo(function TeamModal({
   open,
   team,
   initialTab = "details",
@@ -918,4 +918,4 @@ export function TeamModal({
       </ModalFooter>
     </Modal>
   );
-}
+});

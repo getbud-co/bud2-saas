@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, type ReactNode } from "react";
+import { useState, useMemo, useCallback, memo, type ReactNode } from "react";
 import {
   Modal,
   ModalHeader,
@@ -328,7 +328,7 @@ interface WidgetConfig {
   name: string;
 }
 
-export function WidgetBuilder({ open, onClose, onAdd }: WidgetBuilderProps) {
+export const WidgetBuilder = memo(function WidgetBuilder({ open, onClose, onAdd }: WidgetBuilderProps) {
   const { users, teams, currentUser } = usePeopleData();
   const [step, setStep] = useState(1);
 
@@ -464,6 +464,27 @@ export function WidgetBuilder({ open, onClose, onAdd }: WidgetBuilderProps) {
     if (step > 1) setStep((s) => s - 1);
   }, [step]);
 
+  const handleClose = useCallback(() => {
+    onClose();
+    // Reset state after animation
+    setTimeout(() => {
+      setStep(1);
+      setSubject(undefined);
+      setSelectedPeople([]);
+      setPeopleSearch("");
+      setCategoryFilter("all");
+      setMetricSearch("");
+      setSelectedMetric(undefined);
+      setSelectedViz(undefined);
+      setPeriod("month");
+      setComparison("none");
+      setShowVariation(true);
+      setShowTarget(false);
+      setAlertBelow(false);
+      setWidgetName("");
+    }, 250);
+  }, [onClose]);
+
   const handleAdd = useCallback(() => {
     onAdd?.({
       subject: subject!,
@@ -491,29 +512,8 @@ export function WidgetBuilder({ open, onClose, onAdd }: WidgetBuilderProps) {
     widgetName,
     suggestedName,
     onAdd,
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleClose is defined below, circular ref
+    handleClose,
   ]);
-
-  const handleClose = useCallback(() => {
-    onClose();
-    // Reset state after animation
-    setTimeout(() => {
-      setStep(1);
-      setSubject(undefined);
-      setSelectedPeople([]);
-      setPeopleSearch("");
-      setCategoryFilter("all");
-      setMetricSearch("");
-      setSelectedMetric(undefined);
-      setSelectedViz(undefined);
-      setPeriod("month");
-      setComparison("none");
-      setShowVariation(true);
-      setShowTarget(false);
-      setAlertBelow(false);
-      setWidgetName("");
-    }, 250);
-  }, [onClose]);
 
   const handlePopularClick = useCallback(
     (pw: PopularWidget) => {
@@ -846,7 +846,7 @@ export function WidgetBuilder({ open, onClose, onAdd }: WidgetBuilderProps) {
       </ModalFooter>
     </Modal>
   );
-}
+});
 
 /* ——— Mini visualization SVG previews ——— */
 
