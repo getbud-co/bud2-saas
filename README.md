@@ -1,6 +1,6 @@
 # bud2
 
-SaaS multi-tenant — monorepo com backend em Go e frontend em Next.js.
+SaaS multi-tenant — monorepo com backend em Go e frontend em React + Vite + TypeScript.
 
 Este documento é o ponto de entrada para novos desenvolvedores. O objetivo é construir um modelo mental sólido da arquitetura antes de tocar em código.
 
@@ -26,14 +26,14 @@ Este documento é o ponto de entrada para novos desenvolvedores. O objetivo é c
 
 ## Início rápido
 
-**Pré-requisitos:** Go 1.22+, Node.js 20+, Docker, `make`.
+**Pré-requisitos:** Go 1.26+, Node.js 20+, Docker, `make`.
 
 ```bash
 # 1. Copie as variáveis de ambiente
 cp backend/.env.example backend/.env
 
 # 2. Suba o banco e rode backend + frontend
-make dev            # hot-reload local (Go + yarn dev)
+make dev            # hot-reload local (Go + npm run dev)
 # ou
 make compose-up     # tudo via Docker Compose
 
@@ -68,12 +68,14 @@ bud2/
 │   └── sqlc.yml            # Configuração de geração de código SQL
 ├── frontend/
 │   └── src/
-│       ├── app/            # App Router (Next.js 15)
-│       ├── components/     # Componentes React
-│       ├── lib/
-│       │   ├── api.ts      # Cliente HTTP para o backend
-│       │   └── types.ts    # Tipos gerados do OpenAPI spec
-│       └── hooks/
+│       ├── pages/        # Páginas por funcionalidade
+│       ├── components/   # Componentes React
+│       ├── contexts/     # React Context providers
+│       ├── hooks/        # Custom hooks
+│       ├── lib/          # Utilidades e stores
+│       ├── routes/       # Configuração de rotas (react-router-dom)
+│       ├── types/        # Tipos TypeScript
+│       └── utils/        # Funções utilitárias
 ├── docs/                   # ADRs (Architecture Decision Records)
 ├── compose.yml
 └── Makefile
@@ -624,7 +626,7 @@ O fluxo natural ao adicionar algo novo:
 | `make dev` | Inicia backend + frontend com hot-reload |
 | `make compose-up` | Sobe tudo via Docker Compose |
 | `make test` | Roda testes do backend e lint do frontend |
-| `make lint` | golangci-lint + yarn lint |
+| `make lint` | golangci-lint + npm run lint |
 | `make migrate-up` | Aplica migrations pendentes |
 | `make sqlc-gen` | Gera código Go a partir das queries SQL |
 | `make api-types` | Gera tipos TypeScript a partir do OpenAPI spec |
