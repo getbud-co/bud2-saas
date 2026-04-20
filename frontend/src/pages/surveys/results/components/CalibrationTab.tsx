@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, type ChangeEvent } from "react";
+import { useState, useRef, useMemo, memo, type ChangeEvent } from "react";
 import {
   Card,
   CardBody,
@@ -65,7 +65,7 @@ interface CalibrationTabProps {
   data: SurveyResultData;
 }
 
-export function CalibrationTab({ data }: CalibrationTabProps) {
+export const CalibrationTab = memo(function CalibrationTab({ data }: CalibrationTabProps) {
   if (!data.calibration) {
     return (
       <div className={styles.tab}>
@@ -74,7 +74,7 @@ export function CalibrationTab({ data }: CalibrationTabProps) {
     );
   }
   return <CycleCalibration data={data} />;
-}
+});
 
 /* ——— 9-Box Grid ——— */
 
@@ -547,7 +547,7 @@ function CycleCalibration({ data }: { data: SurveyResultData }) {
   const modalQuestions = useMemo(() => {
     if (!modalParticipant) return [];
     return getQuestionScores(modalParticipant);
-  }, [modalParticipant, data.sections]);
+  }, [modalParticipant]);
 
   function handleSaveCalibration(participantId: string, saveData: CalibrationSaveData) {
     setParticipants(prev => prev.map(p => {

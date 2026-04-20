@@ -9,7 +9,6 @@ import {
   CardBody,
   CardDivider,
   GoalProgressBar,
-  GoalGaugeBar,
   Chart,
   Avatar,
   AvatarGroup,
@@ -32,7 +31,7 @@ import {
   Alert,
   toast,
 } from "@getbud-co/buds";
-import type { FilterOption, CalendarDate, BreadcrumbItem, MissionItem as DsMissionItem } from "@getbud-co/buds";
+import type { CalendarDate } from "@getbud-co/buds";
 import type { IconProps } from "@phosphor-icons/react";
 import {
   Users,
@@ -64,11 +63,6 @@ import {
   MagnifyingGlass,
   Ruler,
   ListChecks,
-  Gauge,
-  UploadSimple,
-  ChartLineUp,
-  TrendDown,
-  ArrowsInLineHorizontal,
   Crosshair,
   ChartBar,
   X,
@@ -88,6 +82,8 @@ import {
   flattenMissions,
 } from "./utils/missionTree";
 import { buildCheckInChartData, sortCheckInsDesc } from "./utils/checkinReadModels";
+import { addChildToParent, removeChildFromTree, replaceItemInTree, calendarDateToIso, unitFromValue, getGoalSummary, countAllItems } from "./utils/missionItemTree";
+import { filterMissions } from "./utils/filterMissions";
 import { useSavedViews } from "@/contexts/SavedViewsContext";
 import { useMissionsData } from "@/contexts/MissionsDataContext";
 import { usePeopleData } from "@/contexts/PeopleDataContext";
@@ -98,1210 +94,41 @@ import type { Mission, KeyResult, MissionTask, MissionMember, KanbanStatus, Conf
 import {
   numVal,
   getGoalLabel,
-  formatPeriodRange,
   getOwnerName,
   getOwnerInitials,
   getIndicatorIcon,
 } from "@/lib/missions";
+import type { MissionItemData, CheckinPayload } from "./missionTypes";
+import {
+  FILTER_OPTIONS,
+  STATUS_OPTIONS,
+  ITEM_TYPE_OPTIONS,
+  INDICATOR_TYPE_OPTIONS,
+  CONTRIBUTION_OPTIONS,
+  TASK_STATE_OPTIONS,
+  MISSION_STATUS_OPTIONS,
+  MISSION_TEMPLATES,
+  EXAMPLE_LIBRARY,
+  CREATE_STEPS,
+  MORE_MISSION_OPTIONS,
+  ASSISTANT_MISSIONS,
+  MEASUREMENT_MODES,
+  MANUAL_INDICATOR_TYPES,
+  UNIT_OPTIONS,
+  KANBAN_COLUMNS,
+  CONFIDENCE_OPTIONS,
+  getTemplateConfig,
+  generateItemId,
+  parseKeyResultGoal,
+  splitFullName,
+  isoToCalendarDate,
+} from "./missionConstants";
+import { MissionItem } from "./components/MissionItem";
+import { ModalMissionContent } from "./components/ModalMissionContent";
+import { collectMissionIds } from "./utils/missionItemTree";
+import { DRAWER_TASKS_BY_INDICATOR } from "@/lib/missions";
+import { MissionFilterDropdowns } from "./components/MissionFilterDropdowns";
 import styles from "./MissionsPage.module.css";
-
-/* ——— Filter options ——— */
-
-const FILTER_OPTIONS: FilterOption[] = [
-  { id: "team", label: "Time", icon: Users },
-  { id: "period", label: "Período", icon: CalendarBlank },
-  { id: "status", label: "Status", icon: FunnelSimple },
-  { id: "owner", label: "Responsável", icon: User },
-  { id: "itemType", label: "Tipo", icon: ListBullets },
-  { id: "indicatorType", label: "Indicador", icon: Crosshair },
-  { id: "contribution", label: "Contribuição", icon: GitBranch },
-  { id: "supporter", label: "Apoio", icon: UsersThree },
-  { id: "taskState", label: "Tarefa", icon: ListChecks },
-  { id: "missionStatus", label: "Missão", icon: Target },
-];
-
-const STATUS_OPTIONS = [
-  { id: "all", label: "Todos" },
-  { id: "on-track", label: "Dentro do previsto" },
-  { id: "attention", label: "Atenção" },
-  { id: "off-track", label: "Atrasado" },
-  { id: "completed", label: "Concluído" },
-];
-
-const ITEM_TYPE_OPTIONS = [
-  { id: "all", label: "Todos os itens" },
-  { id: "mission", label: "Missão" },
-  { id: "indicator", label: "Indicador" },
-  { id: "task", label: "Tarefa" },
-];
-
-const INDICATOR_TYPE_OPTIONS = [
-  { id: "all", label: "Todos os tipos" },
-  { id: "reach", label: "Atingir" },
-  { id: "above", label: "Manter acima" },
-  { id: "below", label: "Manter abaixo" },
-  { id: "between", label: "Manter entre" },
-  { id: "reduce", label: "Reduzir" },
-  { id: "survey", label: "Pesquisa" },
-  { id: "external", label: "Fonte externa" },
-  { id: "linked_mission", label: "Missão vinculada" },
-];
-
-const CONTRIBUTION_OPTIONS = [
-  { id: "all", label: "Todas" },
-  { id: "contributing", label: "Contribuindo para outras" },
-  { id: "receiving", label: "Recebendo contribuição" },
-  { id: "none", label: "Sem contribuição" },
-];
-
-const TASK_STATE_OPTIONS = [
-  { id: "all", label: "Todas" },
-  { id: "pending", label: "Pendentes" },
-  { id: "done", label: "Concluídas" },
-];
-
-const MISSION_STATUS_OPTIONS = [
-  { id: "all", label: "Todos" },
-  { id: "draft", label: "Rascunho" },
-  { id: "active", label: "Ativa" },
-  { id: "paused", label: "Pausada" },
-  { id: "completed", label: "Concluída" },
-  { id: "cancelled", label: "Cancelada" },
-];
-
-/* ——— Mission templates ——— */
-
-const MISSION_TEMPLATES = [
-  { value: "okr", title: "OKR", description: "Objetivo + Key Results" },
-  { value: "pdi", title: "PDI", description: "Plano de Desenvolvimento Individual" },
-  { value: "bsc", title: "BSC", description: "Balanced Scorecard — 4 perspectivas" },
-  { value: "kpi", title: "KPI", description: "Indicador chave com alvo e frequência" },
-  { value: "meta", title: "Meta simples", description: "Título, descrição, alvo e prazo" },
-  { value: "scratch", title: "Criar do zero", description: "Monte sua estrutura com campos livres" },
-];
-
-interface TemplateConfig {
-  stepTitle: string;
-  namePlaceholder: string;
-  descPlaceholder: string;
-  addItemLabel: string;
-  addItemFormTitle: string;
-  editItemFormTitle: string;
-  itemTitlePlaceholder: string;
-  itemDescPlaceholder: string;
-  /** Which measurement modes to show; null = show all */
-  allowedModes: string[] | null;
-  /** Override label for "Tags" in more options menu */
-  tagLabel?: string;
-}
-
-const TEMPLATE_CONFIGS: Record<string, TemplateConfig> = {
-  okr: {
-    stepTitle: "Definir objetivo",
-    namePlaceholder: "Nome do objetivo",
-    descPlaceholder: "Descrição do objetivo",
-    addItemLabel: "Adicionar resultado-chave (KR)",
-    addItemFormTitle: "Adicionar resultado-chave",
-    editItemFormTitle: "Editar resultado-chave",
-    itemTitlePlaceholder: "Título do resultado-chave",
-    itemDescPlaceholder: "Descrição",
-    allowedModes: ["manual", "task", "external"],
-  },
-  pdi: {
-    stepTitle: "Montar plano de desenvolvimento",
-    namePlaceholder: "Nome do PDI",
-    descPlaceholder: "Descreva o foco de desenvolvimento",
-    addItemLabel: "Adicionar ação de desenvolvimento",
-    addItemFormTitle: "Adicionar ação de desenvolvimento",
-    editItemFormTitle: "Editar ação de desenvolvimento",
-    itemTitlePlaceholder: "Título da ação",
-    itemDescPlaceholder: "Descrição",
-    allowedModes: ["task", "manual"],
-  },
-  bsc: {
-    stepTitle: "Objetivo estratégico BSC",
-    namePlaceholder: "Objetivo BSC",
-    descPlaceholder: "Descreva onde deseja chegar com o objetivo",
-    addItemLabel: "Adicionar indicador",
-    addItemFormTitle: "Adicionar indicador",
-    editItemFormTitle: "Editar indicador",
-    itemTitlePlaceholder: "Título do indicador",
-    itemDescPlaceholder: "Descrição",
-    allowedModes: ["mission", "manual", "task", "external"],
-    tagLabel: "Tag / perspectiva",
-  },
-  kpi: {
-    stepTitle: "Definir KPI",
-    namePlaceholder: "Nome do KPI",
-    descPlaceholder: "Descrição do indicador",
-    addItemLabel: "Adicionar meta do KPI",
-    addItemFormTitle: "Adicionar meta",
-    editItemFormTitle: "Editar meta",
-    itemTitlePlaceholder: "Título da meta",
-    itemDescPlaceholder: "Descrição",
-    allowedModes: ["manual", "external"],
-  },
-  meta: {
-    stepTitle: "Definir meta",
-    namePlaceholder: "Nome da meta",
-    descPlaceholder: "Descrição da meta",
-    addItemLabel: "Adicionar sub-meta",
-    addItemFormTitle: "Adicionar sub-meta",
-    editItemFormTitle: "Editar sub-meta",
-    itemTitlePlaceholder: "Título da sub-meta",
-    itemDescPlaceholder: "Descrição",
-    allowedModes: ["manual", "task", "external"],
-  },
-  scratch: {
-    stepTitle: "Construir missão",
-    namePlaceholder: "Nome da missão",
-    descPlaceholder: "Descrição",
-    addItemLabel: "Adicionar item",
-    addItemFormTitle: "Adicionar item",
-    editItemFormTitle: "Editar item",
-    itemTitlePlaceholder: "Título",
-    itemDescPlaceholder: "Descrição",
-    allowedModes: null,
-  },
-};
-
-function getTemplateConfig(template: string | undefined): TemplateConfig {
-  const key = template ?? "scratch";
-  return TEMPLATE_CONFIGS[key] ?? TEMPLATE_CONFIGS["scratch"] as TemplateConfig;
-}
-
-function generateItemId(): string {
-  return `item-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-/**
- * Example library organized by department — used as inspiration in the AI Assistant panel.
- * Following the Perdoo model: examples are for reference, not pre-filled templates.
- */
-interface ExampleEntry {
-  objective: string;
-  keyResults: string[];
-}
-
-interface ExampleCategory {
-  label: string;
-  examples: ExampleEntry[];
-}
-
-const EXAMPLE_LIBRARY: Record<string, ExampleCategory[]> = {
-  okr: [
-    { label: "Produto e Engenharia", examples: [
-      { objective: "Melhorar a confiabilidade da plataforma", keyResults: ["Atingir 99,9% de uptime", "Reduzir tempo médio de resposta da API para < 200ms", "Zero incidentes críticos (P0) no trimestre"] },
-      { objective: "Acelerar a velocidade de entrega", keyResults: ["Reduzir cycle time de 12 para 5 dias", "Aumentar frequência de deploys para 3x/semana", "100% dos PRs revisados em < 24h"] },
-    ]},
-    { label: "Marketing", examples: [
-      { objective: "Fortalecer a marca no mercado mid-market", keyResults: ["Aumentar tráfego orgânico em 40%", "Gerar 500 MQLs no trimestre", "Publicar 12 artigos de thought leadership"] },
-    ]},
-    { label: "Vendas", examples: [
-      { objective: "Expandir receita no segmento Enterprise", keyResults: ["Fechar 5 contas Enterprise com ACV > R$ 200k", "Aumentar pipeline qualificado em 60%", "Reduzir ciclo médio de venda de 90 para 60 dias"] },
-    ]},
-    { label: "Customer Success", examples: [
-      { objective: "Aumentar a retenção de clientes", keyResults: ["Reduzir churn mensal de 5% para 2,5%", "Aumentar NPS de clientes ativos para 75+", "90% dos clientes com health score verde"] },
-    ]},
-    { label: "People / RH", examples: [
-      { objective: "Construir uma cultura de alta performance", keyResults: ["100% dos colaboradores com OKRs definidos até semana 2", "eNPS > 60", "Reduzir turnover voluntário para < 10% anual"] },
-    ]},
-  ],
-  pdi: [
-    { label: "Liderança", examples: [
-      { objective: "Desenvolver habilidades de liderança", keyResults: ["Completar curso de Liderança Situacional", "Liderar 3 reuniões como facilitador", "Receber feedback 360° ≥ 4 em liderança"] },
-    ]},
-    { label: "Comunicação", examples: [
-      { objective: "Melhorar comunicação assertiva", keyResults: ["Apresentar em 2 all-hands da empresa", "Participar de mentoria mensal com gestor", "Nota ≥ 4 em comunicação na avaliação de pares"] },
-    ]},
-    { label: "Técnico", examples: [
-      { objective: "Dominar nova stack tecnológica", keyResults: ["Completar certificação AWS Solutions Architect", "Implementar 2 projetos usando a nova stack", "Conduzir 1 tech talk para o time"] },
-    ]},
-  ],
-  bsc: [
-    { label: "Balanced Scorecard", examples: [
-      { objective: "Perspectiva Financeira — Crescimento sustentável", keyResults: ["Aumentar MRR em 30%", "Reduzir CAC para R$ 800", "Atingir margem EBITDA de 15%"] },
-      { objective: "Perspectiva do Cliente — Excelência no atendimento", keyResults: ["NPS ≥ 70 em todas as linhas", "Tempo de resposta ao cliente < 4h", "95% de satisfação no onboarding"] },
-      { objective: "Perspectiva de Processos — Eficiência operacional", keyResults: ["Reduzir tempo de deploy para < 30min", "Automatizar 80% dos processos repetitivos", "Zero retrabalho em entregas críticas"] },
-      { objective: "Perspectiva de Aprendizado — Desenvolvimento do time", keyResults: ["100% dos líderes com PDI ativo", "40h de capacitação por colaborador/ano", "Implementar programa de mentoria cruzada"] },
-    ]},
-  ],
-  kpi: [
-    { label: "Vendas", examples: [
-      { objective: "Taxa de conversão do funil", keyResults: ["25% de conversão MQL → SQL", "Tempo de resposta a lead < 2h", "Win rate ≥ 30%"] },
-    ]},
-    { label: "Produto", examples: [
-      { objective: "Engajamento do produto", keyResults: ["DAU/MAU ≥ 40%", "Retenção D30 ≥ 60%", "Tempo médio de sessão > 8min"] },
-    ]},
-    { label: "Operações", examples: [
-      { objective: "Eficiência operacional", keyResults: ["SLA de atendimento cumprido em 95%", "Custo por ticket < R$ 15", "First contact resolution ≥ 70%"] },
-    ]},
-  ],
-  meta: [
-    { label: "Projeto", examples: [
-      { objective: "Lançar módulo de relatórios customizados", keyResults: ["Design e protótipo validado", "Backend da API desenvolvido e testado", "Beta com 10 clientes piloto"] },
-    ]},
-    { label: "Processo", examples: [
-      { objective: "Implementar processo de code review", keyResults: ["Documentar guidelines de review", "100% dos PRs revisados antes do merge", "Tempo médio de review < 4h"] },
-    ]},
-  ],
-};
-
-/**
- * Parse a key result string to extract manualType, goalValue and goalUnit.
- * E.g. "Reduzir churn mensal de 5% para 2,5%" → { manualType: "reduce", goalValue: "2.5", goalUnit: "%" }
- *      "NPS ≥ 70"                             → { manualType: "above", goalValue: "70", goalUnit: "NPS" }
- */
-function parseKeyResultGoal(kr: string): { manualType: string; goalValue: string; goalUnit: string } {
-  const defaults = { manualType: "reach", goalValue: "", goalUnit: "" };
-
-  // Detect manualType from keywords
-  let manualType = "reach";
-  if (/reduzir|diminuir/i.test(kr)) manualType = "reduce";
-  else if (/manter acima|≥|>=|mínimo/i.test(kr)) manualType = "above";
-  else if (/manter abaixo|≤|<=|máximo|< \d/i.test(kr)) manualType = "below";
-  else if (/zero /i.test(kr)) manualType = "below";
-
-  // Try to find numeric target — prefer the last number in "para X" or "para < X" patterns
-  const paraMatch = kr.match(/para\s*<?[≤≥]?\s*([\d.,]+)/i);
-  const gteMatch = kr.match(/[≥>=]\s*([\d.,]+)/);
-  const lteMatch = kr.match(/[≤<=<]\s*([\d.,]+)/);
-  const percentMatch = kr.match(/([\d.,]+)\s*%/);
-  const plainNumMatch = kr.match(/\b([\d.,]+)\b/);
-
-  let rawValue = "";
-  if (paraMatch?.[1]) rawValue = paraMatch[1];
-  else if (gteMatch?.[1]) { rawValue = gteMatch[1]; manualType = "above"; }
-  else if (lteMatch?.[1]) { rawValue = lteMatch[1]; manualType = "below"; }
-  else if (percentMatch?.[1]) rawValue = percentMatch[1];
-  else if (plainNumMatch?.[1]) rawValue = plainNumMatch[1];
-
-  if (/^zero\b/i.test(kr)) rawValue = "0";
-
-  // Normalize comma decimal
-  const goalValue = rawValue.replace(",", ".");
-
-  // Detect unit
-  let goalUnit = "";
-  if (/%/.test(kr)) goalUnit = "%";
-  else if (/R\$/.test(kr)) goalUnit = "R$";
-  else if (/US\$/.test(kr)) goalUnit = "US$";
-  else if (/\bNPS\b/i.test(kr)) goalUnit = "NPS";
-  else if (/\bdias?\b/i.test(kr)) goalUnit = "dias";
-  else if (/\bhoras?\b/i.test(kr)) goalUnit = "hrs";
-  else if (/\bminutos?\b|\bmin\b/i.test(kr)) goalUnit = "min";
-  else if (/\bpontos?\b|\bpts\b/i.test(kr)) goalUnit = "pts";
-  else if (/\bpessoas?\b|\bcolaborador/i.test(kr)) goalUnit = "pessoas";
-  else if (/\bnota\b/i.test(kr)) goalUnit = "nota-10";
-  else if (goalValue) goalUnit = "un";
-
-  if (!goalValue) return defaults;
-  return { manualType, goalValue, goalUnit };
-}
-
-function splitFullName(label: string): { firstName: string; lastName: string } {
-  const [firstName = "", ...rest] = label.trim().split(" ");
-  return {
-    firstName,
-    lastName: rest.join(" "),
-  };
-}
-
-const CREATE_STEPS: BreadcrumbItem[] = [
-  { label: "Escolher template" },
-  { label: "Construir missão" },
-  { label: "Revisão" },
-];
-
-const MORE_MISSION_OPTIONS = [
-  { id: "team-support", label: "Time de apoio", icon: Users },
-  { id: "organizers", label: "Tags", icon: Tag },
-  { id: "visibility", label: "Quem pode ver", icon: Eye },
-];
-
-// visibilityOptions is now generated dynamically inside MissionsPage using teamOptions
-
-const ASSISTANT_MISSIONS: DsMissionItem[] = [
-  { id: "okr-1", label: "Reduzir churn do produto de Crédito Imobiliário" },
-  { id: "okr-2", label: "Aumentar NPS do onboarding para 75+" },
-  { id: "okr-3", label: "Lançar feature Y até final do Q1" },
-];
-
-/* ——— Measurement mode options ——— */
-
-const MEASUREMENT_MODES = [
-  { id: "mission", label: "Nova missão", description: "Missão com indicadores dentro", icon: Target },
-  { id: "task", label: "Tarefa", description: "Pendente, em andamento e concluída", icon: ListChecks },
-  { id: "manual", label: "Indicador manual", description: "Defina meta e acompanhe manualmente", icon: Gauge },
-  { id: "external", label: "Importar de fonte externa", description: "Google Sheets, Power BI, etc.", icon: UploadSimple },
-];
-
-const MANUAL_INDICATOR_TYPES = [
-  { id: "reach", label: "Atingir", icon: Crosshair },
-  { id: "above", label: "Manter acima", icon: ChartLineUp },
-  { id: "below", label: "Manter abaixo", icon: TrendDown },
-  { id: "between", label: "Manter entre", icon: ArrowsInLineHorizontal },
-  { id: "reduce", label: "Reduzir", icon: TrendDown },
-  { id: "survey", label: "De uma pesquisa", icon: ChartBar },
-];
-
-function isoToCalendarDate(iso: string): CalendarDate {
-  const [year = 0, month = 1, day = 1] = iso.split("-").map(Number);
-  return { year, month, day };
-}
-
-const UNIT_OPTIONS = [
-  { value: "%", label: "% (Percentual)" },
-  { value: "R$", label: "R$ (Reais)" },
-  { value: "US$", label: "US$ (Dólar)" },
-  { value: "un", label: "Unidades" },
-  { value: "pessoas", label: "Pessoas" },
-  { value: "pts", label: "Pontos" },
-  { value: "NPS", label: "NPS" },
-  { value: "nota-10", label: "Nota (1-10)" },
-  { value: "nota-5", label: "Nota (1-5)" },
-  { value: "dias", label: "Dias" },
-  { value: "hrs", label: "Horas" },
-  { value: "min", label: "Minutos" },
-  { value: "bool", label: "Sim/Não" },
-];
-
-interface MissionItemData {
-  id: string;
-  name: string;
-  description: string;
-  measurementMode: string | null;
-  manualType: string | null;
-  surveyId: string | null;
-  period: [CalendarDate | null, CalendarDate | null];
-  goalValue: string;
-  goalValueMin: string;
-  goalValueMax: string;
-  goalUnit: string;
-  /** Override owner — null means inherit from parent mission */
-  ownerId: string | null;
-  /** Override team — null means inherit from parent mission */
-  teamId: string | null;
-  children?: MissionItemData[];
-}
-
-const KANBAN_COLUMNS: { id: KanbanStatus; label: string; color: string }[] = [
-  { id: "uncategorized", label: "Não categorizado", color: "var(--color-neutral-400)" },
-  { id: "todo", label: "Para fazer", color: "var(--color-caramel-400)" },
-  { id: "doing", label: "Fazendo", color: "var(--color-orange-500)" },
-  { id: "done", label: "Feito", color: "var(--color-green-500)" },
-];
-
-/* (Mock data and types imported from @/types and @/lib/missions) */
-
-const CONFIDENCE_OPTIONS: { id: ConfidenceLevel; label: string; description: string; color: string }[] = [
-  { id: "high", label: "Alta confiança", description: "Se tudo continuar assim, esperamos alcançar o resultado", color: "var(--color-green-500)" },
-  { id: "medium", label: "Média confiança", description: "Existe um risco de não alcançarmos o resultado-chave, mas seguimos otimistas", color: "var(--color-yellow-500)" },
-  { id: "low", label: "Baixa confiança", description: "Não vamos alcançar o resultado a não ser que a gente mude nossa abordagem", color: "var(--color-red-500)" },
-  { id: "barrier", label: "Com barreira", description: "Existe um fator externo impedindo o progresso desse resultado-chave", color: "var(--color-wine-500)" },
-  { id: "deprioritized", label: "Despriorizado", description: "Este resultado-chave foi despriorizado e deixado de lado por enquanto", color: "var(--color-neutral-400)" },
-];
-
-/* ——— Mission item (recursive) ——— */
-
-interface CheckinPayload {
-  keyResult: KeyResult;
-  currentValue: number;
-  newValue: number;
-}
-
-interface MissionItemProps {
-  mission: Mission;
-  isOpen: boolean;
-  onToggle: (id: string) => void;
-  onExpand: (mission: Mission) => void;
-  onEdit: (mission: Mission) => void;
-  onDelete?: (mission: Mission) => void;
-  onCheckin?: (payload: CheckinPayload) => void;
-  onToggleTask?: (taskId: string) => void;
-  onOpenTaskDrawer?: (task: MissionTask, parentLabel: string) => void;
-  expandedMissions: Set<string>;
-  depth?: number;
-  isLast?: boolean;
-  isChild?: boolean;
-  hideExpand?: boolean;
-  /* row menu (⋯) for indicators and tasks */
-  openRowMenu?: string | null;
-  setOpenRowMenu?: (id: string | null) => void;
-  openContributeFor?: string | null;
-  setOpenContributeFor?: (id: string | null) => void;
-  contributePickerSearch?: string;
-  setContributePickerSearch?: (s: string) => void;
-  rowMenuBtnRefs?: React.MutableRefObject<Record<string, HTMLButtonElement | null>>;
-  allMissions?: { id: string; title: string }[];
-  onAddContribution?: (item: KeyResult | MissionTask, itemType: "indicator" | "task", sourceMissionId: string, sourceMissionTitle: string, targetMissionId: string, targetMissionTitle: string) => void;
-  onRemoveContribution?: (itemId: string, itemType: "indicator" | "task", targetMissionId: string, targetMissionTitle: string) => void;
-  onOpenExternalContrib?: (ec: ExternalContribution) => void;
-  onToggleSubtask?: (taskId: string, subtaskId: string) => void;
-}
-
-function MissionItem({
-  mission,
-  isOpen,
-  onToggle,
-  onExpand,
-  onEdit,
-  onDelete,
-  onCheckin,
-  onToggleTask,
-  onOpenTaskDrawer,
-  expandedMissions,
-  isChild = false,
-  isLast = false,
-  hideExpand = false,
-  openRowMenu = null,
-  setOpenRowMenu,
-  openContributeFor = null,
-  setOpenContributeFor,
-  contributePickerSearch = "",
-  setContributePickerSearch,
-  rowMenuBtnRefs,
-  allMissions = [],
-  onAddContribution,
-  onRemoveContribution,
-  onOpenExternalContrib,
-  onToggleSubtask,
-}: MissionItemProps) {
-  const missionItemNavigate = useNavigate();
-  const [indicatorValues, setIndicatorValues] = useState<Record<string, number>>({});
-  const [expandedIndicators, setExpandedIndicators] = useState<Set<string>>(new Set());
-  const dragRef = useRef<{ keyResult: KeyResult; value: number } | null>(null);
-
-  function getIndicatorValue(kr: KeyResult) {
-    return indicatorValues[kr.id] ?? kr.progress;
-  }
-
-  function handleIndicatorDrag(kr: KeyResult, newValue: number) {
-    dragRef.current = { keyResult: kr, value: newValue };
-    setIndicatorValues((prev) => ({ ...prev, [kr.id]: newValue }));
-  }
-
-  useEffect(() => {
-    if (!onCheckin) return;
-    function onPointerUp() {
-      if (!dragRef.current) return;
-      const { keyResult, value } = dragRef.current;
-      dragRef.current = null;
-      // Reset bar to original value
-      setIndicatorValues((prev) => {
-        const next = { ...prev };
-        delete next[keyResult.id];
-        return next;
-      });
-      requestAnimationFrame(() => {
-        onCheckin!({ keyResult, currentValue: keyResult.progress, newValue: value });
-      });
-    }
-    document.addEventListener("pointerup", onPointerUp);
-    return () => document.removeEventListener("pointerup", onPointerUp);
-  }, [onCheckin]);
-
-  function handleIndicatorClick(kr: KeyResult) {
-    if (onCheckin) {
-      onCheckin({ keyResult: kr, currentValue: getIndicatorValue(kr), newValue: getIndicatorValue(kr) });
-    }
-  }
-
-  const keyResults = mission.keyResults ?? [];
-  const rs = mission.restrictedSummary;
-  const hasRestricted = rs != null && (rs.keyResults > 0 || rs.tasks > 0 || rs.children > 0);
-  const extContribs = mission.externalContributions ?? [];
-  const hasContent = keyResults.length > 0 || (mission.tasks?.length ?? 0) > 0 || (mission.children?.length ?? 0) > 0 || hasRestricted || extContribs.length > 0;
-  const items: { type: "indicator" | "task" | "mission"; data: KeyResult | MissionTask | Mission }[] = [
-    ...keyResults.map((kr) => ({ type: "indicator" as const, data: kr })),
-    ...(mission.tasks ?? []).map((task) => ({ type: "task" as const, data: task })),
-    ...(mission.children ?? []).map((child) => ({ type: "mission" as const, data: child })),
-  ];
-
-  const cardClasses = [
-    styles.missionCard,
-    mission.status === "draft" ? styles.missionCardDraft : "",
-  ].filter(Boolean).join(" ");
-
-  return (
-    <div className={`${isChild ? styles.childMissionWrapper : ""} ${isChild && isLast ? styles.childMissionWrapperLast : ""}`}>
-      <Card
-        padding="sm"
-        className={cardClasses}
-        onClick={() => hasContent && onToggle(mission.id)}
-        role={hasContent ? "button" : undefined}
-        tabIndex={hasContent ? 0 : undefined}
-        onKeyDown={(e: React.KeyboardEvent) => {
-          if (hasContent && (e.key === "Enter" || e.key === " ")) {
-            e.preventDefault();
-            onToggle(mission.id);
-          }
-        }}
-      >
-        <CardBody>
-          <div className={styles.missionRow}>
-            <Chart value={mission.progress} size={40} />
-            <span className={styles.missionTitleText}>{mission.title}</span>
-            {mission.status === "draft" && <Badge color="caramel">Rascunho</Badge>}
-            <div className={styles.missionActions}>
-              <Button
-                variant="tertiary"
-                size="sm"
-                leftIcon={PencilSimple}
-                aria-label="Editar missão"
-                className={styles.missionEditBtn}
-                onClick={(e: React.MouseEvent) => {
-                  e.stopPropagation();
-                  onEdit(mission);
-                }}
-              />
-              <Button
-                variant="tertiary"
-                size="sm"
-                leftIcon={Trash}
-                aria-label="Excluir missão"
-                className={styles.missionEditBtn}
-                onClick={(e: React.MouseEvent) => {
-                  e.stopPropagation();
-                  onDelete?.(mission);
-                }}
-              />
-              {!hideExpand && (
-                <Button
-                  variant="tertiary"
-                  size="sm"
-                  leftIcon={ArrowsOutSimple}
-                  aria-label="Expandir missão"
-                  onClick={(e: React.MouseEvent) => {
-                    e.stopPropagation();
-                    onExpand(mission);
-                  }}
-                />
-              )}
-            </div>
-            {hasContent && (
-              <span className={styles.missionToggleIcon}>
-                {isOpen ? <CaretUp size={20} /> : <CaretDown size={20} />}
-              </span>
-            )}
-          </div>
-
-          <div className={`${styles.indicatorCollapse} ${isOpen ? styles.indicatorCollapseOpen : ""}`}>
-            <div className={styles.indicatorTree}>
-              {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-              <div className={styles.indicatorList} onClick={(e) => e.stopPropagation()}>
-                {items.map((item, idx) => {
-                  const itemIsLast = idx === items.length - 1;
-
-                  if (item.type === "indicator") {
-                    const kr = item.data as KeyResult;
-                    const Icon = getIndicatorIcon(kr);
-                    const hasIndChildren = (kr.tasks?.length ?? 0) > 0;
-                    const isIndExpanded = expandedIndicators.has(kr.id);
-                    return (
-                      <div key={kr.id} className={styles.indicatorWrapper}>
-                        <div
-                          className={`${styles.indicatorRow} ${itemIsLast ? styles.indicatorRowLast : ""} ${onCheckin ? styles.indicatorRowClickable : ""} ${hasIndChildren ? styles.indicatorRowWithBadge : ""}`}
-                          onClick={() => handleIndicatorClick(kr)}
-                          role={onCheckin ? "button" : undefined}
-                          tabIndex={onCheckin ? 0 : undefined}
-                          onKeyDown={(e) => {
-                            if (onCheckin && (e.key === "Enter" || e.key === " ")) {
-                              e.preventDefault();
-                              handleIndicatorClick(kr);
-                            }
-                          }}
-                        >
-                          {hasIndChildren && (
-                            <div className={styles.indicatorBadgeRow}>
-                              <Badge color="neutral">
-                                {kr.tasks?.length ?? 0} {(kr.tasks?.length ?? 0) === 1 ? "tarefa" : "tarefas"}
-                              </Badge>
-                            </div>
-                          )}
-                          <div className={styles.indicatorTitle}>
-                            {hasIndChildren && (
-                              <button
-                                type="button"
-                                className={styles.indicatorExpandBtn}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setExpandedIndicators((prev) => {
-                                    const next = new Set(prev);
-                                    if (next.has(kr.id)) next.delete(kr.id);
-                                    else next.add(kr.id);
-                                    return next;
-                                  });
-                                }}
-                                aria-label={isIndExpanded ? "Recolher" : "Expandir"}
-                              >
-                                {isIndExpanded ? <CaretUp size={14} /> : <CaretDown size={14} />}
-                              </button>
-                            )}
-                            <Icon size={24} className={styles.indicatorIcon} />
-                            <span className={styles.indicatorName}>{kr.title}</span>
-                          </div>
-                          <div className={styles.indicatorDetails}>
-                            <div className={styles.indicatorPeriod}>
-                              <span className={styles.periodBold}>{kr.periodLabel ?? ""}</span>
-                              <span className={styles.periodRange}>{formatPeriodRange(kr.periodStart, kr.periodEnd)}</span>
-                            </div>
-                            {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-                            <div className={styles.indicatorProgress} onClick={(e) => e.stopPropagation()}>
-                              {(() => {
-                                const val = getIndicatorValue(kr);
-                                return kr.goalType === "reach" ? (
-                                  <GoalProgressBar
-                                    label={getGoalLabel(kr)}
-                                    value={val}
-                                    target={numVal(kr.targetValue)}
-                                    expected={numVal(kr.expectedValue)}
-                                    formattedValue={`${val}%`}
-                                    onChange={(v: number) => handleIndicatorDrag(kr, v)}
-                                  />
-                                ) : (
-                                  <GoalGaugeBar
-                                    label={getGoalLabel(kr)}
-                                    value={val}
-                                    goalType={kr.goalType as "above" | "below" | "between"}
-                                    low={numVal(kr.lowThreshold)}
-                                    high={numVal(kr.highThreshold)}
-                                    min={0}
-                                    max={100}
-                                    formattedValue={String(val)}
-                                    onChange={(v: number) => handleIndicatorDrag(kr, v)}
-                                  />
-                                );
-                              })()}
-                            </div>
-                            <div className={styles.indicatorRowActions}>
-                              <Avatar initials={getOwnerInitials(kr.owner)} size="sm" />
-                              {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-                              <div className={styles.indicatorRowMenu} onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
-                                <Button
-                                  ref={(el: HTMLButtonElement | null) => { if (rowMenuBtnRefs) rowMenuBtnRefs.current[kr.id] = el; }}
-                                  variant="tertiary"
-                                  size="sm"
-                                  leftIcon={DotsThree}
-                                  aria-label="Mais ações"
-                                  onClick={() => {
-                                    setOpenRowMenu?.(openRowMenu === kr.id ? null : kr.id);
-                                    setOpenContributeFor?.(null);
-                                  }}
-                                />
-                                <FilterDropdown
-                                  open={openRowMenu === kr.id && openContributeFor !== kr.id}
-                                  onClose={() => setOpenRowMenu?.(null)}
-                                  anchorRef={{ current: rowMenuBtnRefs?.current[kr.id] ?? null }}
-                                  noOverlay
-                                >
-                                  <div className={styles.filterDropdownBody}>
-                                    <button
-                                      type="button"
-                                      className={styles.filterDropdownItem}
-                                      onClick={() => { setOpenContributeFor?.(kr.id); setContributePickerSearch?.(""); }}
-                                    >
-                                      <GitBranch size={14} />
-                                      <span>Contribui para...</span>
-                                    </button>
-                                    {(kr.contributesTo?.length ?? 0) > 0 && (
-                                      <>
-                                        <div className={styles.filterDropdownSeparator} />
-                                        {kr.contributesTo!.map((ct) => (
-                                          <button
-                                            key={ct.missionId}
-                                            type="button"
-                                            className={`${styles.filterDropdownItem} ${styles.filterDropdownItemDanger}`}
-                                            onClick={() => onRemoveContribution?.(kr.id, "indicator", ct.missionId, ct.missionTitle)}
-                                          >
-                                            <X size={14} />
-                                            <span className={styles.contributeMissionLabel} title={`Desconectar de ${ct.missionTitle}`}>Desconectar de {ct.missionTitle}</span>
-                                          </button>
-                                        ))}
-                                      </>
-                                    )}
-                                  </div>
-                                </FilterDropdown>
-                                <FilterDropdown
-                                  open={openContributeFor === kr.id}
-                                  onClose={() => { setOpenContributeFor?.(null); setOpenRowMenu?.(null); }}
-                                  anchorRef={{ current: rowMenuBtnRefs?.current[kr.id] ?? null }}
-                                  noOverlay
-                                >
-                                  <div className={styles.filterDropdownBody}>
-                                    <div className={styles.searchRow}>
-                                      <MagnifyingGlass size={14} className={styles.searchIcon} />
-                                      <input
-                                        type="text"
-                                        className={styles.searchInput}
-                                        placeholder="Buscar missão..."
-                                        value={contributePickerSearch}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setContributePickerSearch?.(e.target.value)}
-                                      />
-                                    </div>
-                                    {allMissions
-                                      .filter((m) => m.id !== mission.id)
-                                      .filter((m) => !kr.contributesTo?.some((c) => c.missionId === m.id))
-                                      .filter((m) => m.title.toLowerCase().includes(contributePickerSearch.toLowerCase()))
-                                      .map((m) => (
-                                        <button
-                                          key={m.id}
-                                          type="button"
-                                          className={styles.filterDropdownItem}
-                                          onClick={() => onAddContribution?.(kr, "indicator", mission.id, mission.title, m.id, m.title)}
-                                        >
-                                          <Target size={14} />
-                                          <span className={styles.contributeMissionLabel} title={m.title}>{m.title}</span>
-                                        </button>
-                                      ))}
-                                  </div>
-                                </FilterDropdown>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        {hasIndChildren && isIndExpanded && (
-                          <div className={styles.indicatorChildren}>
-                            {kr.tasks?.map((task) => {
-                              return (
-                              <Fragment key={task.id}>
-                              <div className={`${styles.indicatorRow} ${styles.indicatorRowNested}`} style={{ cursor: "pointer" }} onClick={() => onOpenTaskDrawer?.(task, `${mission.title} › ${kr.title}`)}>
-                                <div className={styles.indicatorTitle}>
-                                  {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-                                  <div onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
-                                    <Checkbox
-                                      checked={task.isDone}
-                                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => { e.stopPropagation(); onToggleTask?.(task.id); }}
-                                    />
-                                  </div>
-                                  <span className={`${styles.indicatorName} ${task.isDone ? styles.taskNameDone : ""}`}>{task.title}</span>
-                                </div>
-                                <div className={styles.indicatorDetails}>
-                                  <Badge color={task.isDone ? "success" : "neutral"}>
-                                    {task.isDone ? "Concluída" : "Pendente"}
-                                  </Badge>
-                                  <div className={styles.taskRowActions}>
-                                    <Avatar initials={getOwnerInitials(task.owner)} size="sm" />
-                                    {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-                                    <div className={styles.taskRowMenu} onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
-                                      <Button
-                                        ref={(el: HTMLButtonElement | null) => { if (rowMenuBtnRefs) rowMenuBtnRefs.current[task.id] = el; }}
-                                        variant="tertiary"
-                                        size="sm"
-                                        leftIcon={DotsThree}
-                                        aria-label="Mais ações"
-                                        onClick={() => {
-                                          setOpenRowMenu?.(openRowMenu === task.id ? null : task.id);
-                                          setOpenContributeFor?.(null);
-                                        }}
-                                      />
-                                      <FilterDropdown
-                                        open={openRowMenu === task.id && openContributeFor !== task.id}
-                                        onClose={() => setOpenRowMenu?.(null)}
-                                        anchorRef={{ current: rowMenuBtnRefs?.current[task.id] ?? null }}
-                                        noOverlay
-                                      >
-                                        <div className={styles.filterDropdownBody}>
-                                          <button
-                                            type="button"
-                                            className={styles.filterDropdownItem}
-                                            onClick={() => { setOpenContributeFor?.(task.id); setContributePickerSearch?.(""); }}
-                                          >
-                                            <GitBranch size={14} />
-                                            <span>Contribui para...</span>
-                                          </button>
-                                          {(task.contributesTo?.length ?? 0) > 0 && (
-                                            <>
-                                              <div className={styles.filterDropdownSeparator} />
-                                              {task.contributesTo!.map((ct) => (
-                                                <button
-                                                  key={ct.missionId}
-                                                  type="button"
-                                                  className={`${styles.filterDropdownItem} ${styles.filterDropdownItemDanger}`}
-                                                  onClick={() => onRemoveContribution?.(task.id, "task", ct.missionId, ct.missionTitle)}
-                                                >
-                                                  <X size={14} />
-                                                  <span className={styles.contributeMissionLabel} title={`Desconectar de ${ct.missionTitle}`}>Desconectar de {ct.missionTitle}</span>
-                                                </button>
-                                              ))}
-                                            </>
-                                          )}
-                                        </div>
-                                      </FilterDropdown>
-                                      <FilterDropdown
-                                        open={openContributeFor === task.id}
-                                        onClose={() => { setOpenContributeFor?.(null); setOpenRowMenu?.(null); }}
-                                        anchorRef={{ current: rowMenuBtnRefs?.current[task.id] ?? null }}
-                                        noOverlay
-                                      >
-                                        <div className={styles.filterDropdownBody}>
-                                          <div className={styles.searchRow}>
-                                            <MagnifyingGlass size={14} className={styles.searchIcon} />
-                                            <input
-                                              type="text"
-                                              className={styles.searchInput}
-                                              placeholder="Buscar missão..."
-                                              value={contributePickerSearch}
-                                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setContributePickerSearch?.(e.target.value)}
-                                            />
-                                          </div>
-                                          {allMissions
-                                            .filter((m) => m.id !== mission.id)
-                                            .filter((m) => !task.contributesTo?.some((c) => c.missionId === m.id))
-                                            .filter((m) => m.title.toLowerCase().includes(contributePickerSearch.toLowerCase()))
-                                            .map((m) => (
-                                              <button
-                                                key={m.id}
-                                                type="button"
-                                                className={styles.filterDropdownItem}
-                                                onClick={() => onAddContribution?.(task, "task", mission.id, mission.title, m.id, m.title)}
-                                              >
-                                                <Target size={14} />
-                                                <span>{m.title}</span>
-                                              </button>
-                                            ))}
-                                        </div>
-                                      </FilterDropdown>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                              </Fragment>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  }
-
-                  if (item.type === "task") {
-                    const task = item.data as MissionTask;
-                    return (
-                      <Fragment key={task.id}>
-                      <div
-                        className={`${styles.indicatorRow} ${itemIsLast ? styles.indicatorRowLast : ""}`}
-                        style={{ cursor: "pointer" }}
-                        onClick={() => onOpenTaskDrawer?.(task, mission.title)}
-                      >
-                        <div className={styles.indicatorTitle}>
-                          {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-                          <div onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
-                            <Checkbox
-                              checked={task.isDone}
-                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => { e.stopPropagation(); onToggleTask?.(task.id); }}
-                            />
-                          </div>
-                          <span className={`${styles.indicatorName} ${task.isDone ? styles.taskNameDone : ""}`}>{task.title}</span>
-                        </div>
-                        <div className={styles.indicatorDetails}>
-                          <Badge color={task.isDone ? "success" : "neutral"}>
-                            {task.isDone ? "Concluída" : "Pendente"}
-                          </Badge>
-                          <div className={styles.taskRowActions}>
-                            <Avatar initials={getOwnerInitials(task.owner)} size="sm" />
-                            {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-                            <div className={styles.taskRowMenu} onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
-                              <Button
-                                ref={(el: HTMLButtonElement | null) => { if (rowMenuBtnRefs) rowMenuBtnRefs.current[task.id] = el; }}
-                                variant="tertiary"
-                                size="sm"
-                                leftIcon={DotsThree}
-                                aria-label="Mais ações"
-                                onClick={() => {
-                                  setOpenRowMenu?.(openRowMenu === task.id ? null : task.id);
-                                  setOpenContributeFor?.(null);
-                                }}
-                              />
-                              <FilterDropdown
-                                open={openRowMenu === task.id && openContributeFor !== task.id}
-                                onClose={() => setOpenRowMenu?.(null)}
-                                anchorRef={{ current: rowMenuBtnRefs?.current[task.id] ?? null }}
-                                noOverlay
-                              >
-                                <div className={styles.filterDropdownBody}>
-                                  <button
-                                    type="button"
-                                    className={styles.filterDropdownItem}
-                                    onClick={() => { setOpenContributeFor?.(task.id); setContributePickerSearch?.(""); }}
-                                  >
-                                    <GitBranch size={14} />
-                                    <span>Contribui para...</span>
-                                  </button>
-                                  {(task.contributesTo?.length ?? 0) > 0 && (
-                                    <>
-                                      <div className={styles.filterDropdownSeparator} />
-                                      {task.contributesTo!.map((ct) => (
-                                        <button
-                                          key={ct.missionId}
-                                          type="button"
-                                          className={`${styles.filterDropdownItem} ${styles.filterDropdownItemDanger}`}
-                                          onClick={() => onRemoveContribution?.(task.id, "task", ct.missionId, ct.missionTitle)}
-                                        >
-                                          <X size={14} />
-                                          <span className={styles.contributeMissionLabel} title={`Desconectar de ${ct.missionTitle}`}>Desconectar de {ct.missionTitle}</span>
-                                        </button>
-                                      ))}
-                                    </>
-                                  )}
-                                </div>
-                              </FilterDropdown>
-                              <FilterDropdown
-                                open={openContributeFor === task.id}
-                                onClose={() => { setOpenContributeFor?.(null); setOpenRowMenu?.(null); }}
-                                anchorRef={{ current: rowMenuBtnRefs?.current[task.id] ?? null }}
-                                noOverlay
-                              >
-                                <div className={styles.filterDropdownBody}>
-                                  <div className={styles.searchRow}>
-                                    <MagnifyingGlass size={14} className={styles.searchIcon} />
-                                    <input
-                                      type="text"
-                                      className={styles.searchInput}
-                                      placeholder="Buscar missão..."
-                                      value={contributePickerSearch}
-                                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setContributePickerSearch?.(e.target.value)}
-                                    />
-                                  </div>
-                                  {allMissions
-                                    .filter((m) => m.id !== mission.id)
-                                    .filter((m) => !task.contributesTo?.some((c) => c.missionId === m.id))
-                                    .filter((m) => m.title.toLowerCase().includes(contributePickerSearch.toLowerCase()))
-                                    .map((m) => (
-                                      <button
-                                        key={m.id}
-                                        type="button"
-                                        className={styles.filterDropdownItem}
-                                        onClick={() => onAddContribution?.(task, "task", mission.id, mission.title, m.id, m.title)}
-                                      >
-                                        <Target size={14} />
-                                        <span>{m.title}</span>
-                                      </button>
-                                    ))}
-                                </div>
-                              </FilterDropdown>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      </Fragment>
-                    );
-                  }
-
-                  const child = item.data as Mission;
-                  return (
-                    <MissionItem
-                      key={child.id}
-                      mission={child}
-                      isOpen={expandedMissions.has(child.id)}
-                      onToggle={onToggle}
-                      onExpand={onExpand}
-                      onEdit={onEdit}
-                      onDelete={onDelete}
-                      onCheckin={onCheckin}
-                      onToggleTask={onToggleTask}
-                      onOpenTaskDrawer={onOpenTaskDrawer}
-                      expandedMissions={expandedMissions}
-                      isChild
-                      isLast={itemIsLast}
-                      openRowMenu={openRowMenu}
-                      setOpenRowMenu={setOpenRowMenu}
-                      openContributeFor={openContributeFor}
-                      setOpenContributeFor={setOpenContributeFor}
-                      contributePickerSearch={contributePickerSearch}
-                      setContributePickerSearch={setContributePickerSearch}
-                      rowMenuBtnRefs={rowMenuBtnRefs}
-                      allMissions={allMissions}
-                      onAddContribution={onAddContribution}
-                      onRemoveContribution={onRemoveContribution}
-                      onOpenExternalContrib={onOpenExternalContrib}
-                      onToggleSubtask={onToggleSubtask}
-                    />
-                  );
-                })}
-                {extContribs.length > 0 && (
-                  <>
-                    <div className={styles.externalSectionHeader}>
-                      <GitBranch size={14} />
-                      <span>Contribuições externas</span>
-                      <Badge color="neutral" size="sm">{extContribs.length}</Badge>
-                    </div>
-                    {extContribs.map((ec: ExternalContribution) => (
-                      <div
-                        key={ec.id}
-                        className={`${styles.externalRow} ${styles.indicatorRowClickable}`}
-                        onClick={() => onOpenExternalContrib?.(ec)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => { if (e.key === "Enter") onOpenExternalContrib?.(ec); }}
-                      >
-                        <div className={styles.externalRowContent}>
-                          <div className={styles.externalRowMain}>
-                            {ec.type === "indicator" ? <Gauge size={16} /> : <ListChecks size={16} />}
-                            <span className={styles.externalRowTitle}>{ec.title}</span>
-                            {ec.type === "indicator" && ec.status && (
-                              <Badge
-                                color={ec.status === "on_track" ? "success" : ec.status === "attention" ? "warning" : ec.status === "off_track" ? "error" : "neutral"}
-                                size="sm"
-                              >
-                                {ec.status === "on_track" ? "No ritmo" : ec.status === "attention" ? "Atenção" : ec.status === "off_track" ? "Atrasado" : "Concluído"}
-                              </Badge>
-                            )}
-                            {ec.type === "task" && (
-                              <Badge color={ec.isDone ? "success" : "neutral"} size="sm">
-                                {ec.isDone ? "Concluída" : "Pendente"}
-                              </Badge>
-                            )}
-                            {ec.type === "indicator" && ec.progress != null && (
-                              <span className={styles.externalRowProgress}>{ec.progress}%</span>
-                            )}
-                          </div>
-                          <div className={styles.externalRowSource}>
-                            <Target size={12} />
-                            <span
-                              className={styles.externalSourceLink}
-                              onClick={(e) => { e.stopPropagation(); missionItemNavigate(`/missions/${ec.sourceMission.id}`); }}
-                              role="link"
-                              tabIndex={0}
-                              onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); missionItemNavigate(`/missions/${ec.sourceMission.id}`); } }}
-                            >
-                              de {ec.sourceMission.title}
-                            </span>
-                          </div>
-                        </div>
-                        {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="tertiary"
-                            size="sm"
-                            leftIcon={X}
-                            aria-label="Remover contribuição"
-                            onClick={() => onRemoveContribution?.(ec.id, ec.type, mission.id, mission.title)}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </>
-                )}
-                {hasRestricted && (() => {
-                  const parts: string[] = [];
-                  if (rs!.keyResults > 0) parts.push(`${rs!.keyResults} indicador${rs!.keyResults > 1 ? "es" : ""}`);
-                  if (rs!.tasks > 0) parts.push(`${rs!.tasks} tarefa${rs!.tasks > 1 ? "s" : ""}`);
-                  if (rs!.children > 0) parts.push(`${rs!.children} sub-miss${rs!.children > 1 ? "ões" : "ão"}`);
-                  const joined = parts.length > 1
-                    ? parts.slice(0, -1).join(", ") + " e " + parts[parts.length - 1]
-                    : parts[0];
-                  return (
-                    <div className={styles.restrictedBanner}>
-                      <EyeSlash size={16} weight="regular" />
-                      <span>{joined} oculto{(rs!.keyResults + rs!.tasks + rs!.children) > 1 ? "s" : ""} contribuem para o progresso desta missão</span>
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
-          </div>
-        </CardBody>
-      </Card>
-    </div>
-  );
-}
-
-/* ——— Modal mission content (reuses MissionItem with own state) ——— */
-
-function collectMissionIds(mission: Mission): string[] {
-  const ids = [mission.id];
-  for (const child of mission.children ?? []) {
-    ids.push(...collectMissionIds(child));
-  }
-  return ids;
-}
-
-function ModalMissionContent({
-  mission,
-  onExpand,
-  onEdit,
-  onDelete,
-  onCheckin,
-  onToggleTask,
-  onOpenTaskDrawer,
-  onAddContribution,
-  onRemoveContribution,
-  onOpenExternalContrib,
-  onToggleSubtask,
-  allMissions = [],
-}: {
-  mission: Mission;
-  onExpand: (mission: Mission) => void;
-  onEdit: (mission: Mission) => void;
-  onDelete?: (mission: Mission) => void;
-  onCheckin?: (payload: CheckinPayload) => void;
-  onToggleTask?: (taskId: string) => void;
-  onOpenTaskDrawer?: (task: MissionTask, parentLabel: string) => void;
-  onAddContribution?: MissionItemProps["onAddContribution"];
-  onRemoveContribution?: MissionItemProps["onRemoveContribution"];
-  onOpenExternalContrib?: MissionItemProps["onOpenExternalContrib"];
-  onToggleSubtask?: MissionItemProps["onToggleSubtask"];
-  allMissions?: { id: string; title: string }[];
-}) {
-  const [modalExpanded, setModalExpanded] = useState<Set<string>>(
-    () => new Set(collectMissionIds(mission)),
-  );
-  const [openRowMenu, setOpenRowMenu] = useState<string | null>(null);
-  const [openContributeFor, setOpenContributeFor] = useState<string | null>(null);
-  const [contributePickerSearch, setContributePickerSearch] = useState("");
-  const rowMenuBtnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-
-  function toggleModal(id: string) {
-    setModalExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  return (
-    <MissionItem
-      mission={mission}
-      isOpen={modalExpanded.has(mission.id)}
-      onToggle={toggleModal}
-      onExpand={onExpand}
-      onEdit={onEdit}
-      onDelete={onDelete}
-      onCheckin={onCheckin}
-      onToggleTask={onToggleTask}
-      onOpenTaskDrawer={onOpenTaskDrawer}
-      expandedMissions={modalExpanded}
-      hideExpand
-      openRowMenu={openRowMenu}
-      setOpenRowMenu={setOpenRowMenu}
-      openContributeFor={openContributeFor}
-      setOpenContributeFor={setOpenContributeFor}
-      contributePickerSearch={contributePickerSearch}
-      setContributePickerSearch={setContributePickerSearch}
-      rowMenuBtnRefs={rowMenuBtnRefs}
-      allMissions={allMissions}
-      onAddContribution={onAddContribution}
-      onRemoveContribution={onRemoveContribution}
-      onOpenExternalContrib={onOpenExternalContrib}
-      onToggleSubtask={onToggleSubtask}
-    />
-  );
-}
-
-const DRAWER_TASKS_BY_INDICATOR: Record<string, { id: string; title: string; isDone: boolean }[]> = {
-  i1: [
-    { id: "t1", title: "Revisar contratos pendentes com jurídico", isDone: true },
-    { id: "t2", title: "Agendar reunião com time comercial", isDone: true },
-    { id: "t3", title: "Preparar relatório de pipeline Q1", isDone: false },
-  ],
-  i5: [
-    { id: "t4", title: "Definir escopo do módulo de pesquisas v2", isDone: true },
-    { id: "t5", title: "Criar protótipos de alta fidelidade", isDone: false },
-    { id: "t6", title: "Validar fluxo com 3 clientes beta", isDone: false },
-  ],
-};
 
 /* ——— Component ——— */
 
@@ -2183,7 +1010,7 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
     }
     // Clear navigation state so a page refresh doesn't re-apply
     window.history.replaceState({}, "", window.location.pathname + window.location.search);
-  }, [filterOwnerUserId, filterSupporterUserId, filterPeriod]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filterOwnerUserId, filterSupporterUserId, filterPeriod]);  
 
   // Open drawer for a specific KR when navigating from Home activities
   useEffect(() => {
@@ -2334,19 +1161,39 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
 
   /** All chip wrapper refs — passed as ignoreRefs to FilterDropdowns so that
    *  clicking a sibling chip never triggers the outside-click onClose. */
-  const ignoreChipRefs = useMemo(() => Object.values(chipRefs), []);
+  const ignoreChipRefs = useMemo(
+    () => [
+      teamChipRef, periodChipRef, statusChipRef, ownerChipRef,
+      itemTypeChipRef, indicatorTypeChipRef, contributionChipRef,
+      supporterChipRef, taskStateChipRef, missionStatusChipRef,
+    ],
+    [
+      teamChipRef, periodChipRef, statusChipRef, ownerChipRef,
+      itemTypeChipRef, indicatorTypeChipRef, contributionChipRef,
+      supporterChipRef, taskStateChipRef, missionStatusChipRef,
+    ],
+  );
 
   /* ——— Filtered missions ——— */
-  const ownerFilterActive = activeFilters.includes("owner") && !selectedOwners.includes("all") && selectedOwners.length > 0;
   const teamFilterActive = activeFilters.includes("team") && !selectedTeams.includes("all") && selectedTeams.length > 0;
-  const periodFilterActive = activeFilters.includes("period") && (!!selectedPeriod[0] || !!selectedPeriod[1]);
-  const statusFilterActive = activeFilters.includes("status") && selectedStatus !== "all";
-  const itemTypeFilterActive = activeFilters.includes("itemType") && !selectedItemTypes.includes("all") && selectedItemTypes.length > 0;
-  const indicatorTypeFilterActive = activeFilters.includes("indicatorType") && !selectedIndicatorTypes.includes("all") && selectedIndicatorTypes.length > 0;
-  const contributionFilterActive = activeFilters.includes("contribution") && !selectedContributions.includes("all") && selectedContributions.length > 0;
-  const taskStateFilterActive = activeFilters.includes("taskState") && selectedTaskState !== "all";
-  const missionStatusFilterActive = activeFilters.includes("missionStatus") && !selectedMissionStatuses.includes("all") && selectedMissionStatuses.length > 0;
-  const supporterFilterActive = activeFilters.includes("supporter") && !selectedSupporters.includes("all") && selectedSupporters.length > 0;
+
+  const filterState = useMemo(() => ({
+    activeFilters,
+    selectedTeams,
+    selectedPeriod,
+    selectedStatus,
+    selectedOwners,
+    selectedItemTypes,
+    selectedIndicatorTypes,
+    selectedContributions,
+    selectedSupporters,
+    selectedTaskState,
+    selectedMissionStatuses,
+  }), [
+    activeFilters, selectedTeams, selectedPeriod, selectedStatus, selectedOwners,
+    selectedItemTypes, selectedIndicatorTypes, selectedContributions, selectedSupporters,
+    selectedTaskState, selectedMissionStatuses,
+  ]);
 
   const userTeamsMap = useMemo(() => {
     // user.teams contains team names, not IDs — resolve to IDs
@@ -2363,264 +1210,17 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
     return map;
   }, [users, teamOptions]);
 
-  const displayedMissions = useMemo(() => {
-    const selectedTeamSet = new Set(selectedTeams.filter((id) => id !== "all").map((id) => resolveTeamId(id)));
-    const selectedItemTypeSet = new Set(selectedItemTypes.filter((id) => id !== "all"));
-    const selectedIndicatorTypeSet = new Set(selectedIndicatorTypes.filter((id) => id !== "all"));
-    const selectedContributionSet = new Set(selectedContributions.filter((id) => id !== "all"));
-    const selectedMissionStatusSet = new Set(selectedMissionStatuses.filter((id) => id !== "all"));
-    const selectedOwnerIds = new Set(
-      selectedOwners
-        .filter((id) => id !== "all")
-        .map((id) => resolveUserId(id).toLowerCase()),
-    );
-    const selectedOwnerInitials = new Set(
-      selectedOwners
-        .filter((id) => id !== "all")
-        .map((id) => ownerFilterOptions.find((option) => option.id === id)?.initials?.toLowerCase() ?? id.toLowerCase())
-        .filter((value) => value.length > 0),
-    );
-    const statusValue = selectedStatus.replace("-", "_");
-
-    function ownerBelongsToSelectedTeam(ownerId: string | undefined | null): boolean {
-      if (!ownerId) return false;
-      const ownerTeams = userTeamsMap.get(resolveUserId(ownerId));
-      if (!ownerTeams) return false;
-      for (const tid of selectedTeamSet) {
-        if (ownerTeams.has(tid)) return true;
-      }
-      return false;
-    }
-
-    function toTimestampFromCalendar(value: CalendarDate | null): number | null {
-      if (!value) return null;
-      return new Date(value.year, value.month - 1, value.day).getTime();
-    }
-
-    function toTimestampFromIso(value: string | null | undefined): number | null {
-      if (!value) return null;
-      const parsed = new Date(value).getTime();
-      return Number.isNaN(parsed) ? null : parsed;
-    }
-
-    function dateRangeMatches(startIso: string | null | undefined, endIso: string | null | undefined): boolean {
-      if (!periodFilterActive) return true;
-
-      const filterStart = toTimestampFromCalendar(selectedPeriod[0]);
-      const filterEnd = toTimestampFromCalendar(selectedPeriod[1]);
-      const normalizedFilterStart = filterStart ?? filterEnd;
-      const normalizedFilterEnd = filterEnd ?? filterStart;
-
-      if (normalizedFilterStart === null || normalizedFilterEnd === null) {
-        return true;
-      }
-
-      const start = toTimestampFromIso(startIso);
-      const end = toTimestampFromIso(endIso);
-      const normalizedStart = start ?? end;
-      const normalizedEnd = end ?? start;
-
-      if (normalizedStart === null || normalizedEnd === null) {
-        return false;
-      }
-
-      return normalizedStart <= normalizedFilterEnd && normalizedEnd >= normalizedFilterStart;
-    }
-
-    function ownerMatches(owner?: { id: string; firstName: string; lastName: string; initials: string | null }): boolean {
-      if (!ownerFilterActive) return true;
-      if (!owner) return false;
-
-      const initials = getOwnerInitials(owner).toLowerCase();
-      return selectedOwnerInitials.has(initials) || selectedOwnerIds.has(resolveUserId(owner.id).toLowerCase());
-    }
-
-    // Matches missions where the selected users are in the support team (role="supporter")
-    const selectedSupporterIds = new Set(
-      selectedSupporters.filter((id) => id !== "all").map((id) => resolveUserId(id).toLowerCase()),
-    );
-
-    function missionSupporterMatches(mission: Mission): boolean {
-      if (!supporterFilterActive) return true;
-      return (mission.members ?? []).some(
-        (m) => m.role === "supporter" && selectedSupporterIds.has(resolveUserId(m.userId).toLowerCase()),
-      );
-    }
-
-    function keyResultHasContribution(kr: KeyResult): boolean {
-      if ((kr.contributesTo?.length ?? 0) > 0) return true;
-      if ((kr.tasks ?? []).some((task) => (task.contributesTo?.length ?? 0) > 0)) return true;
-      if ((kr.children ?? []).some((child) => keyResultHasContribution(child))) return true;
-      return false;
-    }
-
-    function missionHasContribution(mission: Mission): boolean {
-      if ((mission.tasks ?? []).some((task) => (task.contributesTo?.length ?? 0) > 0)) return true;
-      if ((mission.keyResults ?? []).some((kr) => keyResultHasContribution(kr))) return true;
-      return false;
-    }
-
-    function missionContributionMatches(mission: Mission): boolean {
-      if (!contributionFilterActive) return true;
-
-      const hasContributing = missionHasContribution(mission);
-      const hasReceiving = (mission.externalContributions?.length ?? 0) > 0;
-      const hasNone = !hasContributing && !hasReceiving;
-
-      if (selectedContributionSet.has("contributing") && hasContributing) return true;
-      if (selectedContributionSet.has("receiving") && hasReceiving) return true;
-      if (selectedContributionSet.has("none") && hasNone) return true;
-      return false;
-    }
-
-    function keyResultContributionMatches(kr: KeyResult): boolean {
-      if (!contributionFilterActive) return true;
-
-      const hasContributing = (kr.contributesTo?.length ?? 0) > 0;
-      if (selectedContributionSet.has("contributing") && hasContributing) return true;
-      if (selectedContributionSet.has("none") && !hasContributing) return true;
-      return false;
-    }
-
-    function taskContributionMatches(task: MissionTask): boolean {
-      if (!contributionFilterActive) return true;
-
-      const hasContributing = (task.contributesTo?.length ?? 0) > 0;
-      if (selectedContributionSet.has("contributing") && hasContributing) return true;
-      if (selectedContributionSet.has("none") && !hasContributing) return true;
-      return false;
-    }
-
-    function indicatorTypeMatches(kr: KeyResult): boolean {
-      if (!indicatorTypeFilterActive) return true;
-      if (selectedIndicatorTypeSet.has(kr.goalType)) return true;
-      if (selectedIndicatorTypeSet.has("external") && kr.measurementMode === "external") return true;
-      if (selectedIndicatorTypeSet.has("linked_mission") && kr.measurementMode === "mission") return true;
-      return false;
-    }
-
-    function taskStateMatches(task: MissionTask): boolean {
-      if (!taskStateFilterActive) return true;
-      if (selectedTaskState === "done") return task.isDone;
-      if (selectedTaskState === "pending") return !task.isDone;
-      return true;
-    }
-
-    function missionStatusMatches(mission: Mission): boolean {
-      if (!missionStatusFilterActive) return true;
-      return selectedMissionStatusSet.has(mission.status);
-    }
-
-    function filterTaskNode(task: MissionTask, missionScopeMatches: boolean): MissionTask | null {
-      const directMatch =
-        missionScopeMatches
-        && (!itemTypeFilterActive || selectedItemTypeSet.has("task"))
-        && !indicatorTypeFilterActive
-        && !statusFilterActive
-        && dateRangeMatches(task.dueDate, task.dueDate)
-        && ownerMatches(task.owner)
-        && taskContributionMatches(task)
-        && taskStateMatches(task);
-
-      return directMatch ? task : null;
-    }
-
-    function filterKeyResultNode(kr: KeyResult, missionScopeMatches: boolean): KeyResult | null {
-      const nextChildren = (kr.children ?? [])
-        .map((child) => filterKeyResultNode(child, missionScopeMatches))
-        .filter((child): child is KeyResult => !!child);
-      const nextTasks = (kr.tasks ?? [])
-        .map((task) => filterTaskNode(task, missionScopeMatches))
-        .filter((task): task is MissionTask => !!task);
-
-      const directMatch =
-        missionScopeMatches
-        && (!itemTypeFilterActive || selectedItemTypeSet.has("indicator"))
-        && !taskStateFilterActive
-        && dateRangeMatches(kr.periodStart, kr.periodEnd)
-        && ownerMatches(kr.owner)
-        && (!statusFilterActive || kr.status === statusValue)
-        && indicatorTypeMatches(kr)
-        && keyResultContributionMatches(kr);
-
-      if (!directMatch && nextChildren.length === 0 && nextTasks.length === 0) {
-        return null;
-      }
-
-      return {
-        ...kr,
-        children: nextChildren.length > 0 ? nextChildren : kr.children ? [] : undefined,
-        tasks: nextTasks.length > 0 ? nextTasks : kr.tasks ? [] : undefined,
-      };
-    }
-
-    function filterMissionNode(mission: Mission): Mission | null {
-      const missionTeamMatches = !teamFilterActive || ownerBelongsToSelectedTeam(mission.ownerId);
-      const missionScopeMatches = missionTeamMatches && missionStatusMatches(mission);
-
-      const nextChildren = (mission.children ?? [])
-        .map((child) => filterMissionNode(child))
-        .filter((child): child is Mission => !!child);
-      const nextKeyResults = (mission.keyResults ?? [])
-        .map((kr) => filterKeyResultNode(kr, missionScopeMatches))
-        .filter((kr): kr is KeyResult => !!kr);
-      const nextTasks = (mission.tasks ?? [])
-        .map((task) => filterTaskNode(task, missionScopeMatches))
-        .filter((task): task is MissionTask => !!task);
-
-      const directMatch =
-        missionScopeMatches
-        && (!itemTypeFilterActive || selectedItemTypeSet.has("mission"))
-        && !indicatorTypeFilterActive
-        && !statusFilterActive
-        && !taskStateFilterActive
-        && dateRangeMatches(mission.dueDate, mission.dueDate)
-        && ownerMatches(mission.owner)
-        && missionContributionMatches(mission)
-        && missionSupporterMatches(mission);
-
-      if (!directMatch && nextChildren.length === 0 && nextKeyResults.length === 0 && nextTasks.length === 0) {
-        return null;
-      }
-
-      return {
-        ...mission,
-        children: nextChildren.length > 0 ? nextChildren : mission.children ? [] : undefined,
-        keyResults: nextKeyResults.length > 0 ? nextKeyResults : mission.keyResults ? [] : undefined,
-        tasks: nextTasks.length > 0 ? nextTasks : mission.tasks ? [] : undefined,
-      };
-    }
-
-    return missions
-      .map((mission) => filterMissionNode(mission))
-      .filter((mission): mission is Mission => !!mission);
-  }, [
-    missions,
-    ownerFilterActive,
-    teamFilterActive,
-    periodFilterActive,
-    statusFilterActive,
-    itemTypeFilterActive,
-    indicatorTypeFilterActive,
-    contributionFilterActive,
-    supporterFilterActive,
-    taskStateFilterActive,
-    missionStatusFilterActive,
-    selectedOwners,
-    selectedTeams,
-    selectedPeriod,
-    selectedStatus,
-    selectedItemTypes,
-    selectedIndicatorTypes,
-    selectedContributions,
-    selectedSupporters,
-    selectedTaskState,
-    selectedMissionStatuses,
+  const filterCtx = useMemo(() => ({
     ownerFilterOptions,
     resolveTeamId,
     resolveUserId,
     userTeamsMap,
-  ]);
+  }), [ownerFilterOptions, resolveTeamId, resolveUserId, userTeamsMap]);
+
+  const displayedMissions = useMemo(
+    () => filterMissions(missions, filterState, filterCtx),
+    [missions, filterState, filterCtx],
+  );
 
   /* ——— Team context for filtered view ——— */
   const activeTeamIds = selectedTeams.filter((id) => id !== "all").map(resolveTeamId);
@@ -3019,11 +1619,6 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
     setSelectedVisibility("public");
   }
 
-  function toIsoDate(date: CalendarDate | null): string | null {
-    if (!date) return null;
-    return `${date.year}-${String(date.month).padStart(2, "0")}-${String(date.day).padStart(2, "0")}`;
-  }
-
   function ownerFromSelection() {
     const selected = missionOwnerOptions.find((option) => option.id === selectedMissionOwners[0]);
     const fallback = currentUserOption ?? missionOwnerOptions[0] ?? { id: "local-user", label: "Usuário local", initials: "UL" };
@@ -3036,13 +1631,6 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
       lastName: name.lastName,
       initials: owner.initials,
     };
-  }
-
-  function unitFromValue(unit: string): KeyResult["unit"] {
-    if (unit === "%") return "percent";
-    if (unit === "R$" || unit === "US$") return "currency";
-    if (!unit || unit === "un") return "count";
-    return "custom";
   }
 
   function materializeMissionItems(rootMissionId: string, items: MissionItemData[], ownerId: string): { keyResults: KeyResult[]; children: Mission[] } {
@@ -3076,7 +1664,7 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
           progress: childProgress,
           kanbanStatus: "doing",
           sortOrder: children.length,
-          dueDate: toIsoDate(item.period[1]) ?? toIsoDate(missionPeriod[1]),
+          dueDate: calendarDateToIso(item.period[1]) ?? calendarDateToIso(missionPeriod[1]),
           completedAt: null,
           createdAt: now,
           updatedAt: now,
@@ -3103,7 +1691,7 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
           description: child.description || null,
           ownerId: child.ownerId ?? item.ownerId ?? ownerId,
           teamId: child.teamId ?? item.teamId ?? selectedMissionTeam,
-          dueDate: toIsoDate(child.period[1]) ?? toIsoDate(item.period[1]) ?? toIsoDate(missionPeriod[1]),
+          dueDate: calendarDateToIso(child.period[1]) ?? calendarDateToIso(item.period[1]) ?? calendarDateToIso(missionPeriod[1]),
           isDone: false,
           sortOrder: idx,
           completedAt: null,
@@ -3137,8 +1725,8 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
         status: "attention",
         progress: 0,
         periodLabel: null,
-        periodStart: toIsoDate(item.period[0]) ?? toIsoDate(missionPeriod[0]),
-        periodEnd: toIsoDate(item.period[1]) ?? toIsoDate(missionPeriod[1]),
+        periodStart: calendarDateToIso(item.period[0]) ?? calendarDateToIso(missionPeriod[0]),
+        periodEnd: calendarDateToIso(item.period[1]) ?? calendarDateToIso(missionPeriod[1]),
         sortOrder: keyResults.length,
         createdAt: now,
         updatedAt: now,
@@ -3190,7 +1778,7 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
       progress,
       kanbanStatus: existing?.kanbanStatus ?? "doing",
       sortOrder: existing?.sortOrder ?? missions.length,
-      dueDate: toIsoDate(missionPeriod[1]),
+      dueDate: calendarDateToIso(missionPeriod[1]),
       completedAt: existing?.completedAt ?? null,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
@@ -3375,53 +1963,6 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
     taskState: ListChecks,
     missionStatus: Target,
   };
-
-  /* ——— Helper: goal summary text ——— */
-  function getGoalSummary(item: MissionItemData): string {
-    if (item.measurementMode !== "manual" || !item.manualType) return "";
-    const unit = UNIT_OPTIONS.find((u) => u.value === item.goalUnit)?.label ?? item.goalUnit;
-    if (item.manualType === "between") return item.goalValueMin && item.goalValueMax ? `${item.goalValueMin} – ${item.goalValueMax} ${unit}` : "";
-    if (item.manualType === "above") return item.goalValueMin ? `≥ ${item.goalValueMin} ${unit}` : "";
-    if (item.manualType === "below") return item.goalValueMax ? `≤ ${item.goalValueMax} ${unit}` : "";
-    if (item.goalValue) return `${item.goalValue} ${unit}`;
-    return "";
-  }
-
-  /* ——— Helper: recursively add child to a parent anywhere in the tree ——— */
-  function addChildToParent(items: MissionItemData[], parentId: string, child: MissionItemData): MissionItemData[] {
-    return items.map((item) => {
-      if (item.id === parentId) {
-        return { ...item, children: [...(item.children ?? []), child] };
-      }
-      if (item.children?.length) {
-        return { ...item, children: addChildToParent(item.children, parentId, child) };
-      }
-      return item;
-    });
-  }
-
-  /* ——— Helper: recursively remove a child from anywhere in the tree ——— */
-  function removeChildFromTree(items: MissionItemData[], childId: string): MissionItemData[] {
-    return items
-      .filter((item) => item.id !== childId)
-      .map((item) =>
-        item.children?.length
-          ? { ...item, children: removeChildFromTree(item.children, childId) }
-          : item
-      );
-  }
-
-  /* ——— Helper: save current editing item ——— */
-  /* ——— Helper: recursively replace an item in the tree ——— */
-  function replaceItemInTree(items: MissionItemData[], itemId: string, newItem: MissionItemData): MissionItemData[] {
-    return items.map((item) => {
-      if (item.id === itemId) return newItem;
-      if (item.children?.length) {
-        return { ...item, children: replaceItemInTree(item.children, itemId, newItem) };
-      }
-      return item;
-    });
-  }
 
   function handleSaveItem() {
     if (!editingItem || !editingItem.name.trim()) return;
@@ -4070,11 +2611,6 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
     );
   }
 
-  /* ——— Helper: count all items recursively ——— */
-  function countAllItems(items: MissionItemData[]): number {
-    return items.reduce((sum, item) => sum + 1 + countAllItems(item.children ?? []), 0);
-  }
-
   /* ——— Helper: render review items tree ——— */
   function renderReviewItems(items: MissionItemData[], depth: number) {
     return items.map((item) => {
@@ -4183,7 +2719,7 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
                     {isExpanded ? <CaretUp size={14} /> : <CaretDown size={14} />}
                   </button>
                 )}
-                {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+                { }
                 <div className={styles.addedItemClickable} onClick={handleEdit}>
                   <div className={styles.addedItemInfo}>
                     <span className={styles.addedItemName}>{item.name}</span>
@@ -4335,7 +2871,7 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
               }))}
               maxVisible={4}
             />
-            {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+            { }
             <div className={styles.cardGridActions} onClick={(e) => e.stopPropagation()}>
               <Button
                 variant="tertiary"
@@ -4473,401 +3009,52 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
             )}
           </FilterBar>
 
+
           {/* ——— Filter dropdowns ——— */}
+          <MissionFilterDropdowns
+            openFilter={openFilter}
+            setOpenFilter={setOpenFilter}
+            ignoreChipRefs={ignoreChipRefs}
+            teamChipRef={teamChipRef}
+            statusChipRef={statusChipRef}
+            ownerChipRef={ownerChipRef}
+            itemTypeChipRef={itemTypeChipRef}
+            indicatorTypeChipRef={indicatorTypeChipRef}
+            contributionChipRef={contributionChipRef}
+            supporterChipRef={supporterChipRef}
+            taskStateChipRef={taskStateChipRef}
+            missionStatusChipRef={missionStatusChipRef}
+            periodChipRef={periodChipRef}
+            filterPeriodCustomBtnRef={filterPeriodCustomBtnRef}
+            teamFilterOptions={teamFilterOptions}
+            ownerFilterOptions={ownerFilterOptions}
+            presetPeriods={presetPeriods}
+            selectedTeams={selectedTeams}
+            setSelectedTeams={setSelectedTeams}
+            selectedStatus={selectedStatus}
+            setSelectedStatus={setSelectedStatus}
+            selectedOwners={selectedOwners}
+            setSelectedOwners={setSelectedOwners}
+            selectedItemTypes={selectedItemTypes}
+            setSelectedItemTypes={setSelectedItemTypes}
+            selectedIndicatorTypes={selectedIndicatorTypes}
+            setSelectedIndicatorTypes={setSelectedIndicatorTypes}
+            selectedContributions={selectedContributions}
+            setSelectedContributions={setSelectedContributions}
+            selectedSupporters={selectedSupporters}
+            setSelectedSupporters={setSelectedSupporters}
+            selectedTaskState={selectedTaskState}
+            setSelectedTaskState={setSelectedTaskState}
+            selectedMissionStatuses={selectedMissionStatuses}
+            setSelectedMissionStatuses={setSelectedMissionStatuses}
+            selectedPeriod={selectedPeriod}
+            setSelectedPeriod={setSelectedPeriod}
+            filterPeriodCustom={filterPeriodCustom}
+            setFilterPeriodCustom={setFilterPeriodCustom}
+            resolveTeamId={resolveTeamId}
+            resolveUserId={resolveUserId}
+          />
 
-          <FilterDropdown
-            open={openFilter === "team"}
-            onClose={() => setOpenFilter(null)}
-            anchorRef={teamChipRef}
-            ignoreRefs={ignoreChipRefs}
-          >
-            <div className={styles.filterDropdownBody}>
-              {teamFilterOptions.map((opt) => {
-                const isAll = opt.id === "all";
-                const checked = isAll
-                  ? selectedTeams.length === 0 || selectedTeams.includes("all")
-                  : selectedTeams.some((teamId) => resolveTeamId(teamId) === opt.id);
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    className={`${styles.filterDropdownItem} ${checked ? styles.filterDropdownItemActive : ""}`}
-                    onClick={() => {
-                      if (isAll) {
-                        setSelectedTeams(["all"]);
-                      } else {
-                        setSelectedTeams((prev) => {
-                          const withoutAll = prev.filter((id) => id !== "all").map((id) => resolveTeamId(id));
-                          const without = Array.from(new Set(withoutAll));
-                          return without.includes(opt.id)
-                            ? without.filter((id) => id !== opt.id)
-                            : [...without, opt.id];
-                        });
-                      }
-                    }}
-                  >
-                    <Checkbox checked={checked} readOnly />
-                    <span>{opt.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </FilterDropdown>
-
-
-
-          <FilterDropdown
-            open={openFilter === "status"}
-            onClose={() => setOpenFilter(null)}
-            anchorRef={statusChipRef}
-            ignoreRefs={ignoreChipRefs}
-          >
-            <div className={styles.filterDropdownBody}>
-              {STATUS_OPTIONS.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  className={`${styles.filterDropdownItem} ${selectedStatus === opt.id ? styles.filterDropdownItemActive : ""}`}
-                  onClick={() => {
-                    setSelectedStatus(opt.id);
-                    setOpenFilter(null);
-                  }}
-                >
-                  <Radio checked={selectedStatus === opt.id} readOnly />
-                  <span>{opt.label}</span>
-                </button>
-              ))}
-            </div>
-          </FilterDropdown>
-
-          <FilterDropdown
-            open={openFilter === "owner"}
-            onClose={() => setOpenFilter(null)}
-            anchorRef={ownerChipRef}
-            ignoreRefs={ignoreChipRefs}
-          >
-            <div className={styles.filterDropdownBody}>
-              {ownerFilterOptions.map((opt) => {
-                const isAll = opt.id === "all";
-                const checked = isAll
-                  ? selectedOwners.length === 0 || selectedOwners.includes("all")
-                  : selectedOwners.some((ownerId) => resolveUserId(ownerId) === opt.id);
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    className={`${styles.filterDropdownItem} ${checked ? styles.filterDropdownItemActive : ""}`}
-                    onClick={() => {
-                      if (isAll) {
-                        setSelectedOwners(["all"]);
-                      } else {
-                        setSelectedOwners((prev) => {
-                          const withoutAll = prev.filter((id) => id !== "all").map((id) => resolveUserId(id));
-                          const without = Array.from(new Set(withoutAll));
-                          return without.includes(opt.id)
-                            ? without.filter((id) => id !== opt.id)
-                            : [...without, opt.id];
-                        });
-                      }
-                    }}
-                  >
-                    <Checkbox checked={checked} readOnly />
-                    {opt.initials && <Avatar initials={opt.initials} size="xs" />}
-                    <span>{opt.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </FilterDropdown>
-
-          <FilterDropdown
-            open={openFilter === "itemType"}
-            onClose={() => setOpenFilter(null)}
-            anchorRef={itemTypeChipRef}
-            ignoreRefs={ignoreChipRefs}
-          >
-            <div className={styles.filterDropdownBody}>
-              {ITEM_TYPE_OPTIONS.map((opt) => {
-                const isAll = opt.id === "all";
-                const checked = isAll
-                  ? selectedItemTypes.length === 0 || selectedItemTypes.includes("all")
-                  : selectedItemTypes.includes(opt.id);
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    className={`${styles.filterDropdownItem} ${checked ? styles.filterDropdownItemActive : ""}`}
-                    onClick={() => {
-                      if (isAll) {
-                        setSelectedItemTypes(["all"]);
-                      } else {
-                        setSelectedItemTypes((prev) => {
-                          const without = prev.filter((id) => id !== "all");
-                          const next = without.includes(opt.id)
-                            ? without.filter((id) => id !== opt.id)
-                            : [...without, opt.id];
-                          return next.length > 0 ? next : ["all"];
-                        });
-                      }
-                    }}
-                  >
-                    <Checkbox checked={checked} readOnly />
-                    <span>{opt.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </FilterDropdown>
-
-          <FilterDropdown
-            open={openFilter === "indicatorType"}
-            onClose={() => setOpenFilter(null)}
-            anchorRef={indicatorTypeChipRef}
-            ignoreRefs={ignoreChipRefs}
-          >
-            <div className={styles.filterDropdownBody}>
-              {INDICATOR_TYPE_OPTIONS.map((opt) => {
-                const isAll = opt.id === "all";
-                const checked = isAll
-                  ? selectedIndicatorTypes.length === 0 || selectedIndicatorTypes.includes("all")
-                  : selectedIndicatorTypes.includes(opt.id);
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    className={`${styles.filterDropdownItem} ${checked ? styles.filterDropdownItemActive : ""}`}
-                    onClick={() => {
-                      if (isAll) {
-                        setSelectedIndicatorTypes(["all"]);
-                      } else {
-                        setSelectedIndicatorTypes((prev) => {
-                          const without = prev.filter((id) => id !== "all");
-                          const next = without.includes(opt.id)
-                            ? without.filter((id) => id !== opt.id)
-                            : [...without, opt.id];
-                          return next.length > 0 ? next : ["all"];
-                        });
-                      }
-                    }}
-                  >
-                    <Checkbox checked={checked} readOnly />
-                    <span>{opt.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </FilterDropdown>
-
-          <FilterDropdown
-            open={openFilter === "contribution"}
-            onClose={() => setOpenFilter(null)}
-            anchorRef={contributionChipRef}
-            ignoreRefs={ignoreChipRefs}
-          >
-            <div className={styles.filterDropdownBody}>
-              {CONTRIBUTION_OPTIONS.map((opt) => {
-                const isAll = opt.id === "all";
-                const checked = isAll
-                  ? selectedContributions.length === 0 || selectedContributions.includes("all")
-                  : selectedContributions.includes(opt.id);
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    className={`${styles.filterDropdownItem} ${checked ? styles.filterDropdownItemActive : ""}`}
-                    onClick={() => {
-                      if (isAll) {
-                        setSelectedContributions(["all"]);
-                      } else {
-                        setSelectedContributions((prev) => {
-                          const without = prev.filter((id) => id !== "all");
-                          const next = without.includes(opt.id)
-                            ? without.filter((id) => id !== opt.id)
-                            : [...without, opt.id];
-                          return next.length > 0 ? next : ["all"];
-                        });
-                      }
-                    }}
-                  >
-                    <Checkbox checked={checked} readOnly />
-                    <span>{opt.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </FilterDropdown>
-
-          {/* ——— Filtro: Time de apoio ——— */}
-          <FilterDropdown
-            open={openFilter === "supporter"}
-            onClose={() => setOpenFilter(null)}
-            anchorRef={supporterChipRef}
-            ignoreRefs={ignoreChipRefs}
-          >
-            <div className={styles.filterDropdownBody}>
-              {ownerFilterOptions.map((opt) => {
-                const isAll = opt.id === "all";
-                const checked = isAll
-                  ? selectedSupporters.length === 0 || selectedSupporters.includes("all")
-                  : selectedSupporters.includes(opt.id);
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    className={`${styles.filterDropdownItem} ${checked ? styles.filterDropdownItemActive : ""}`}
-                    onClick={() => {
-                      if (isAll) {
-                        setSelectedSupporters(["all"]);
-                      } else {
-                        setSelectedSupporters((prev) => {
-                          const without = prev.filter((id) => id !== "all");
-                          return without.includes(opt.id)
-                            ? without.filter((id) => id !== opt.id)
-                            : [...without, opt.id];
-                        });
-                      }
-                    }}
-                  >
-                    <Checkbox checked={checked} readOnly />
-                    {opt.initials && <Avatar initials={opt.initials} size="xs" />}
-                    <span>{opt.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </FilterDropdown>
-
-          <FilterDropdown
-            open={openFilter === "taskState"}
-            onClose={() => setOpenFilter(null)}
-            anchorRef={taskStateChipRef}
-            ignoreRefs={ignoreChipRefs}
-          >
-            <div className={styles.filterDropdownBody}>
-              {TASK_STATE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  className={`${styles.filterDropdownItem} ${selectedTaskState === opt.id ? styles.filterDropdownItemActive : ""}`}
-                  onClick={() => {
-                    setSelectedTaskState(opt.id);
-                    setOpenFilter(null);
-                  }}
-                >
-                  <Radio checked={selectedTaskState === opt.id} readOnly />
-                  <span>{opt.label}</span>
-                </button>
-              ))}
-            </div>
-          </FilterDropdown>
-
-          <FilterDropdown
-            open={openFilter === "missionStatus"}
-            onClose={() => setOpenFilter(null)}
-            anchorRef={missionStatusChipRef}
-            ignoreRefs={ignoreChipRefs}
-          >
-            <div className={styles.filterDropdownBody}>
-              {MISSION_STATUS_OPTIONS.map((opt) => {
-                const isAll = opt.id === "all";
-                const checked = isAll
-                  ? selectedMissionStatuses.length === 0 || selectedMissionStatuses.includes("all")
-                  : selectedMissionStatuses.includes(opt.id);
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    className={`${styles.filterDropdownItem} ${checked ? styles.filterDropdownItemActive : ""}`}
-                    onClick={() => {
-                      if (isAll) {
-                        setSelectedMissionStatuses(["all"]);
-                      } else {
-                        setSelectedMissionStatuses((prev) => {
-                          const without = prev.filter((id) => id !== "all");
-                          const next = without.includes(opt.id)
-                            ? without.filter((id) => id !== opt.id)
-                            : [...without, opt.id];
-                          return next.length > 0 ? next : ["all"];
-                        });
-                      }
-                    }}
-                  >
-                    <Checkbox checked={checked} readOnly />
-                    <span>{opt.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </FilterDropdown>
-
-          {/* Period filter dropdown — presets */}
-          <FilterDropdown
-            open={openFilter === "period"}
-            onClose={() => { setOpenFilter(null); setFilterPeriodCustom(false); }}
-            anchorRef={periodChipRef}
-            ignoreRefs={ignoreChipRefs}
-          >
-            <div className={styles.filterDropdownBody}>
-              {presetPeriods.map((p) => {
-                const isActive = selectedPeriod[0]?.year === p.start.year
-                  && selectedPeriod[0]?.month === p.start.month
-                  && selectedPeriod[0]?.day === p.start.day
-                  && selectedPeriod[1]?.year === p.end.year
-                  && selectedPeriod[1]?.month === p.end.month
-                  && selectedPeriod[1]?.day === p.end.day;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    className={`${styles.filterDropdownItem} ${isActive ? styles.filterDropdownItemActive : ""}`}
-                    onClick={() => {
-                      setSelectedPeriod([p.start, p.end]);
-                      setOpenFilter(null);
-                      setFilterPeriodCustom(false);
-                    }}
-                  >
-                    <Radio checked={isActive} readOnly />
-                    <span>{p.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <div className={styles.periodDropdownFooter}>
-              <button
-                ref={filterPeriodCustomBtnRef}
-                type="button"
-                className={`${styles.filterDropdownItem} ${filterPeriodCustom ? styles.filterDropdownItemActive : ""}`}
-                onClick={() => setFilterPeriodCustom((v) => !v)}
-              >
-                <Plus size={14} />
-                <span>Período personalizado</span>
-                <CaretRight size={12} className={styles.moreMenuArrow} />
-              </button>
-            </div>
-          </FilterDropdown>
-
-          {/* Period filter — sub-panel: custom calendar */}
-          <FilterDropdown
-            open={openFilter === "period" && filterPeriodCustom}
-            onClose={() => setFilterPeriodCustom(false)}
-            anchorRef={filterPeriodCustomBtnRef}
-            placement="right-start"
-            noOverlay
-          >
-            <div className={styles.periodCustomPopover}>
-              <DatePicker
-                mode="range"
-                value={selectedPeriod}
-                onChange={(range: [CalendarDate | null, CalendarDate | null]) => {
-                  setSelectedPeriod(range);
-                  if (range[0] && range[1]) {
-                    setOpenFilter(null);
-                    setFilterPeriodCustom(false);
-                  }
-                }}
-              />
-            </div>
-          </FilterDropdown>
 
           <div className={styles.actionBar}>
             <Button
@@ -5171,7 +3358,7 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
                                   </div>
                                 ) : (
                                   <>
-                                    {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+                                    { }
                                     <div className={styles.kanbanCardProgress} onClick={(e) => e.stopPropagation()}>
                                       <GoalProgressBar
                                         label=""
@@ -5194,7 +3381,7 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
                                     />
                                     {item.period && <span className={styles.kanbanCardPeriod}>{item.period}</span>}
                                   </div>
-                                  {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+                                  { }
                                   <div className={styles.cardGridActions} onClick={(e) => e.stopPropagation()}>
                                     <Button
                                       ref={(el: HTMLButtonElement | null) => { kanbanMoveBtnRefs.current[item.id] = el; }}

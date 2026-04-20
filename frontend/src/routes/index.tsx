@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LoginPage } from "@/pages/auth/LoginPage";
 import { LoadingDemo } from "@/pages/auth/LoadingDemo";
 import { PageSkeleton } from "@/components/layout/PageSkeleton";
@@ -46,7 +47,7 @@ export function AppRoutes() {
       </Route>
 
       {/* Main app layout */}
-      <Route element={<AppLayout />}>
+      <Route element={<ErrorBoundary><AppLayout /></ErrorBoundary>}>
         <Route path="home" element={<Suspense fallback={<HomePageSkeleton />}><HomePage /></Suspense>} />
         <Route path="home/engagement" element={<SuspenseOutlet><EngagementDetailPage /></SuspenseOutlet>} />
         <Route path="home/activities" element={<SuspenseOutlet><ActivitiesDetailPage /></SuspenseOutlet>} />
