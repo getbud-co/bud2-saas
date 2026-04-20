@@ -1,5 +1,4 @@
 import { useState, useRef } from "react";
-import type { Mission } from "@/types";
 import type { MissionItemProps } from "../missionTypes";
 import { collectMissionIds } from "../utils/missionItemTree";
 import { MissionItem } from "./MissionItem";

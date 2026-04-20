@@ -36,7 +36,7 @@ import {
   getOwnerInitials,
   getIndicatorIcon,
 } from "@/lib/missions";
-import type { CheckinPayload, MissionItemProps } from "../missionTypes";
+import type { MissionItemProps } from "../missionTypes";
 import styles from "../MissionsPage.module.css";
 
 /* ——— Mission item (recursive) ——— */
