@@ -117,14 +117,16 @@ import {
   UNIT_OPTIONS,
   KANBAN_COLUMNS,
   CONFIDENCE_OPTIONS,
-  DRAWER_TASKS_BY_INDICATOR,
   getTemplateConfig,
   generateItemId,
   parseKeyResultGoal,
   splitFullName,
   isoToCalendarDate,
 } from "./missionConstants";
-import { MissionItem, ModalMissionContent, collectMissionIds } from "./components/MissionItem";
+import { MissionItem } from "./components/MissionItem";
+import { ModalMissionContent } from "./components/ModalMissionContent";
+import { collectMissionIds } from "./utils/missionItemTree";
+import { DRAWER_TASKS_BY_INDICATOR } from "@/lib/missions";
 import { MissionFilterDropdowns } from "./components/MissionFilterDropdowns";
 import styles from "./MissionsPage.module.css";
 

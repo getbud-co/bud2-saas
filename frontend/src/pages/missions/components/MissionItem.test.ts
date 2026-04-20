@@ -2,7 +2,7 @@
 
 import { describe, it, expect } from "vitest";
 import type { Mission } from "@/types";
-import { collectMissionIds } from "./MissionItem";
+import { collectMissionIds } from "../utils/missionItemTree";
 
 /* ─── Helper de factory ─────────────────────────────────────────────────────── */
 

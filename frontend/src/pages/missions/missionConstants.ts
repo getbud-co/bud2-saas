@@ -327,7 +327,13 @@ export const MANUAL_INDICATOR_TYPES = [
 ];
 
 export function isoToCalendarDate(iso: string): CalendarDate {
-  const [year = 0, month = 1, day = 1] = iso.split("-").map(Number);
+  const parts = iso.split("-").map(Number);
+  const year = parts[0] ?? 0;
+  const month = parts[1] ?? 1;
+  const day = parts[2] ?? 1;
+  if (!year || !month || !day || Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day)) {
+    throw new Error(`isoToCalendarDate: invalid ISO date string "${iso}"`);
+  }
   return { year, month, day };
 }
 
@@ -362,15 +368,3 @@ export const CONFIDENCE_OPTIONS: { id: ConfidenceLevel; label: string; descripti
   { id: "deprioritized", label: "Despriorizado", description: "Este resultado-chave foi despriorizado e deixado de lado por enquanto", color: "var(--color-neutral-400)" },
 ];
 
-export const DRAWER_TASKS_BY_INDICATOR: Record<string, { id: string; title: string; isDone: boolean }[]> = {
-  i1: [
-    { id: "t1", title: "Revisar contratos pendentes com jurídico", isDone: true },
-    { id: "t2", title: "Agendar reunião com time comercial", isDone: true },
-    { id: "t3", title: "Preparar relatório de pipeline Q1", isDone: false },
-  ],
-  i5: [
-    { id: "t4", title: "Definir escopo do módulo de pesquisas v2", isDone: true },
-    { id: "t5", title: "Criar protótipos de alta fidelidade", isDone: false },
-    { id: "t6", title: "Validar fluxo com 3 clientes beta", isDone: false },
-  ],
-};

@@ -1,4 +1,5 @@
 import type { CalendarDate } from "@getbud-co/buds";
+import type { Mission } from "@/types";
 import type { MissionItemData } from "../missionTypes";
 import { UNIT_OPTIONS } from "../missionConstants";
 
@@ -70,4 +71,13 @@ export function countAllItems(items: MissionItemData[]): number {
     if (item.children?.length) count += countAllItems(item.children);
   }
   return count;
+}
+
+/** Collect the IDs of a mission and all its nested children */
+export function collectMissionIds(mission: Mission): string[] {
+  const ids = [mission.id];
+  for (const child of mission.children ?? []) {
+    ids.push(...collectMissionIds(child));
+  }
+  return ids;
 }

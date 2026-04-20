@@ -129,4 +129,12 @@ describe("isoToCalendarDate", () => {
   it("converte mês e dia com um dígito corretamente", () => {
     expect(isoToCalendarDate("2026-01-05")).toEqual({ year: 2026, month: 1, day: 5 });
   });
+
+  it("lança erro para string malformada", () => {
+    expect(() => isoToCalendarDate("not-a-date")).toThrow(/invalid ISO date string/);
+  });
+
+  it("lança erro para string vazia", () => {
+    expect(() => isoToCalendarDate("")).toThrow(/invalid ISO date string/);
+  });
 });

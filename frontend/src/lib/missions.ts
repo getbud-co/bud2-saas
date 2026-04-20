@@ -17,4 +17,4 @@ export {
   formatCheckinDate,
 } from "./missions-utils";
 
-export { MOCK_MISSIONS, MOCK_CHECKIN_HISTORY } from "./missions-mock";
+export { MOCK_MISSIONS, MOCK_CHECKIN_HISTORY, DRAWER_TASKS_BY_INDICATOR } from "./missions-mock";

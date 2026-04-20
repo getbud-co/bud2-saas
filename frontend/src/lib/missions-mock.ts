@@ -1953,3 +1953,16 @@ export const MOCK_CHECKIN_HISTORY: Record<string, CheckIn[]> = {
   ],
 };
 
+export const DRAWER_TASKS_BY_INDICATOR: Record<string, { id: string; title: string; isDone: boolean }[]> = {
+  i1: [
+    { id: "t1", title: "Revisar contratos pendentes com jurídico", isDone: true },
+    { id: "t2", title: "Agendar reunião com time comercial", isDone: true },
+    { id: "t3", title: "Preparar relatório de pipeline Q1", isDone: false },
+  ],
+  i5: [
+    { id: "t4", title: "Definir escopo do módulo de pesquisas v2", isDone: true },
+    { id: "t5", title: "Criar protótipos de alta fidelidade", isDone: false },
+    { id: "t6", title: "Validar fluxo com 3 clientes beta", isDone: false },
+  ],
+};
+

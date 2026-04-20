@@ -11,6 +11,7 @@ import {
   GoalGaugeBar,
   FilterDropdown,
   Checkbox,
+  Input,
 } from "@getbud-co/buds";
 import {
   CaretDown,
@@ -188,7 +189,6 @@ export function MissionItem({
 
           <div className={`${styles.indicatorCollapse} ${isOpen ? styles.indicatorCollapseOpen : ""}`}>
             <div className={styles.indicatorTree}>
-              { }
               <div className={styles.indicatorList} onClick={(e) => e.stopPropagation()}>
                 {items.map((item, idx) => {
                   const itemIsLast = idx === items.length - 1;
@@ -246,7 +246,6 @@ export function MissionItem({
                               <span className={styles.periodBold}>{kr.periodLabel ?? ""}</span>
                               <span className={styles.periodRange}>{formatPeriodRange(kr.periodStart, kr.periodEnd)}</span>
                             </div>
-                            { }
                             <div className={styles.indicatorProgress} onClick={(e) => e.stopPropagation()}>
                               {(() => {
                                 const val = getIndicatorValue(kr);
@@ -276,7 +275,6 @@ export function MissionItem({
                             </div>
                             <div className={styles.indicatorRowActions}>
                               <Avatar initials={getOwnerInitials(kr.owner)} size="sm" />
-                              { }
                               <div className={styles.indicatorRowMenu} onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
                                 <Button
                                   ref={(el: HTMLButtonElement | null) => { if (rowMenuBtnRefs) rowMenuBtnRefs.current[kr.id] = el; }}
@@ -329,16 +327,12 @@ export function MissionItem({
                                   noOverlay
                                 >
                                   <div className={styles.filterDropdownBody}>
-                                    <div className={styles.searchRow}>
-                                      <MagnifyingGlass size={14} className={styles.searchIcon} />
-                                      <input
-                                        type="text"
-                                        className={styles.searchInput}
-                                        placeholder="Buscar missão..."
-                                        value={contributePickerSearch}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setContributePickerSearch?.(e.target.value)}
-                                      />
-                                    </div>
+                                    <Input
+                                      leftIcon={MagnifyingGlass}
+                                      placeholder="Buscar missão..."
+                                      value={contributePickerSearch}
+                                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setContributePickerSearch?.(e.target.value)}
+                                    />
                                     {allMissions
                                       .filter((m) => m.id !== mission.id)
                                       .filter((m) => !kr.contributesTo?.some((c) => c.missionId === m.id))
@@ -365,9 +359,14 @@ export function MissionItem({
                             {kr.tasks?.map((task) => {
                               return (
                               <Fragment key={task.id}>
-                              <div className={`${styles.indicatorRow} ${styles.indicatorRowNested}`} style={{ cursor: "pointer" }} onClick={() => onOpenTaskDrawer?.(task, `${mission.title} › ${kr.title}`)}>
+                              <div
+                                className={`${styles.indicatorRow} ${styles.indicatorRowNested} ${styles.indicatorRowClickable}`}
+                                onClick={() => onOpenTaskDrawer?.(task, `${mission.title} › ${kr.title}`)}
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenTaskDrawer?.(task, `${mission.title} › ${kr.title}`); } }}
+                              >
                                 <div className={styles.indicatorTitle}>
-                                  { }
                                   <div onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
                                     <Checkbox
                                       checked={task.isDone}
@@ -382,7 +381,6 @@ export function MissionItem({
                                   </Badge>
                                   <div className={styles.taskRowActions}>
                                     <Avatar initials={getOwnerInitials(task.owner)} size="sm" />
-                                    { }
                                     <div className={styles.taskRowMenu} onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
                                       <Button
                                         ref={(el: HTMLButtonElement | null) => { if (rowMenuBtnRefs) rowMenuBtnRefs.current[task.id] = el; }}
@@ -435,16 +433,12 @@ export function MissionItem({
                                         noOverlay
                                       >
                                         <div className={styles.filterDropdownBody}>
-                                          <div className={styles.searchRow}>
-                                            <MagnifyingGlass size={14} className={styles.searchIcon} />
-                                            <input
-                                              type="text"
-                                              className={styles.searchInput}
-                                              placeholder="Buscar missão..."
-                                              value={contributePickerSearch}
-                                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setContributePickerSearch?.(e.target.value)}
-                                            />
-                                          </div>
+                                          <Input
+                                            leftIcon={MagnifyingGlass}
+                                            placeholder="Buscar missão..."
+                                            value={contributePickerSearch}
+                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setContributePickerSearch?.(e.target.value)}
+                                          />
                                           {allMissions
                                             .filter((m) => m.id !== mission.id)
                                             .filter((m) => !task.contributesTo?.some((c) => c.missionId === m.id))
@@ -480,12 +474,13 @@ export function MissionItem({
                     return (
                       <Fragment key={task.id}>
                       <div
-                        className={`${styles.indicatorRow} ${itemIsLast ? styles.indicatorRowLast : ""}`}
-                        style={{ cursor: "pointer" }}
+                        className={`${styles.indicatorRow} ${itemIsLast ? styles.indicatorRowLast : ""} ${styles.indicatorRowClickable}`}
                         onClick={() => onOpenTaskDrawer?.(task, mission.title)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenTaskDrawer?.(task, mission.title); } }}
                       >
                         <div className={styles.indicatorTitle}>
-                          { }
                           <div onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
                             <Checkbox
                               checked={task.isDone}
@@ -500,7 +495,6 @@ export function MissionItem({
                           </Badge>
                           <div className={styles.taskRowActions}>
                             <Avatar initials={getOwnerInitials(task.owner)} size="sm" />
-                            { }
                             <div className={styles.taskRowMenu} onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
                               <Button
                                 ref={(el: HTMLButtonElement | null) => { if (rowMenuBtnRefs) rowMenuBtnRefs.current[task.id] = el; }}
@@ -553,16 +547,12 @@ export function MissionItem({
                                 noOverlay
                               >
                                 <div className={styles.filterDropdownBody}>
-                                  <div className={styles.searchRow}>
-                                    <MagnifyingGlass size={14} className={styles.searchIcon} />
-                                    <input
-                                      type="text"
-                                      className={styles.searchInput}
-                                      placeholder="Buscar missão..."
-                                      value={contributePickerSearch}
-                                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setContributePickerSearch?.(e.target.value)}
-                                    />
-                                  </div>
+                                  <Input
+                                    leftIcon={MagnifyingGlass}
+                                    placeholder="Buscar missão..."
+                                    value={contributePickerSearch}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setContributePickerSearch?.(e.target.value)}
+                                  />
                                   {allMissions
                                     .filter((m) => m.id !== mission.id)
                                     .filter((m) => !task.contributesTo?.some((c) => c.missionId === m.id))
@@ -669,7 +659,6 @@ export function MissionItem({
                             </span>
                           </div>
                         </div>
-                        { }
                         <div onClick={(e) => e.stopPropagation()}>
                           <Button
                             variant="tertiary"
@@ -707,85 +696,3 @@ export function MissionItem({
   );
 }
 
-/* ——— Modal mission content (reuses MissionItem with own state) ——— */
-
-export function collectMissionIds(mission: Mission): string[] {
-  const ids = [mission.id];
-  for (const child of mission.children ?? []) {
-    ids.push(...collectMissionIds(child));
-  }
-  return ids;
-}
-
-export function ModalMissionContent({
-  mission,
-  onExpand,
-  onEdit,
-  onDelete,
-  onCheckin,
-  onToggleTask,
-  onOpenTaskDrawer,
-  onAddContribution,
-  onRemoveContribution,
-  onOpenExternalContrib,
-  onToggleSubtask,
-  allMissions = [],
-}: {
-  mission: Mission;
-  onExpand: (mission: Mission) => void;
-  onEdit: (mission: Mission) => void;
-  onDelete?: (mission: Mission) => void;
-  onCheckin?: (payload: CheckinPayload) => void;
-  onToggleTask?: (taskId: string) => void;
-  onOpenTaskDrawer?: (task: MissionTask, parentLabel: string) => void;
-  onAddContribution?: MissionItemProps["onAddContribution"];
-  onRemoveContribution?: MissionItemProps["onRemoveContribution"];
-  onOpenExternalContrib?: MissionItemProps["onOpenExternalContrib"];
-  onToggleSubtask?: MissionItemProps["onToggleSubtask"];
-  allMissions?: { id: string; title: string }[];
-}) {
-  const [modalExpanded, setModalExpanded] = useState<Set<string>>(
-    () => new Set(collectMissionIds(mission)),
-  );
-  const [openRowMenu, setOpenRowMenu] = useState<string | null>(null);
-  const [openContributeFor, setOpenContributeFor] = useState<string | null>(null);
-  const [contributePickerSearch, setContributePickerSearch] = useState("");
-  const rowMenuBtnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-
-  function toggleModal(id: string) {
-    setModalExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  return (
-    <MissionItem
-      mission={mission}
-      isOpen={modalExpanded.has(mission.id)}
-      onToggle={toggleModal}
-      onExpand={onExpand}
-      onEdit={onEdit}
-      onDelete={onDelete}
-      onCheckin={onCheckin}
-      onToggleTask={onToggleTask}
-      onOpenTaskDrawer={onOpenTaskDrawer}
-      expandedMissions={modalExpanded}
-      hideExpand
-      openRowMenu={openRowMenu}
-      setOpenRowMenu={setOpenRowMenu}
-      openContributeFor={openContributeFor}
-      setOpenContributeFor={setOpenContributeFor}
-      contributePickerSearch={contributePickerSearch}
-      setContributePickerSearch={setContributePickerSearch}
-      rowMenuBtnRefs={rowMenuBtnRefs}
-      allMissions={allMissions}
-      onAddContribution={onAddContribution}
-      onRemoveContribution={onRemoveContribution}
-      onOpenExternalContrib={onOpenExternalContrib}
-      onToggleSubtask={onToggleSubtask}
-    />
-  );
-}

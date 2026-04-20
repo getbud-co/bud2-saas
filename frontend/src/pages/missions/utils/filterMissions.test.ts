@@ -178,6 +178,16 @@ describe("filterMissions — filtro por team", () => {
     const ctx = makeCtx({ userTeamsMap });
     expect(filterMissions(missions, filters, ctx)).toHaveLength(0);
   });
+
+  it("preserva missão pai quando filho aninhado tem owner do time", () => {
+    const userTeamsMap = new Map([["u2", new Set(["team-1"])]]);
+    const child = makeMission({ id: "m2", ownerId: "u2" });
+    const missions = [makeMission({ id: "m1", ownerId: "u1", children: [child] })];
+    const filters = makeFilters({ activeFilters: ["team"], selectedTeams: ["team-1"] });
+    const ctx = makeCtx({ userTeamsMap });
+    const result = filterMissions(missions, filters, ctx);
+    expect(result[0]?.children?.[0]?.id).toBe("m2");
+  });
 });
 
 describe("filterMissions — filtro por período", () => {
@@ -245,6 +255,24 @@ describe("filterMissions — filtro por status do KR", () => {
     const filters = makeFilters({ activeFilters: ["status"], selectedStatus: "off-track" });
     const result = filterMissions(missions, filters, makeCtx());
     expect(result[0]?.keyResults).toHaveLength(1);
+  });
+
+  it("filtra status 'attention' sem conversão (sem dash)", () => {
+    const krAttention = makeKR({ id: "kr1", status: "attention" });
+    const krOnTrack = makeKR({ id: "kr2", status: "on_track" });
+    const missions = [makeMission({ id: "m1", keyResults: [krAttention, krOnTrack] })];
+    const filters = makeFilters({ activeFilters: ["status"], selectedStatus: "attention" });
+    const result = filterMissions(missions, filters, makeCtx());
+    expect(result[0]?.keyResults?.map((k) => k.id)).toEqual(["kr1"]);
+  });
+
+  it("filtra status 'completed' sem conversão (sem dash)", () => {
+    const krCompleted = makeKR({ id: "kr1", status: "completed" });
+    const krOnTrack = makeKR({ id: "kr2", status: "on_track" });
+    const missions = [makeMission({ id: "m1", keyResults: [krCompleted, krOnTrack] })];
+    const filters = makeFilters({ activeFilters: ["status"], selectedStatus: "completed" });
+    const result = filterMissions(missions, filters, makeCtx());
+    expect(result[0]?.keyResults?.map((k) => k.id)).toEqual(["kr1"]);
   });
 });
 
@@ -322,6 +350,21 @@ describe("filterMissions — filtro por contribuição", () => {
     const filters = makeFilters({ activeFilters: ["contribution"], selectedContributions: ["none"] });
     const result = filterMissions(missions, filters, makeCtx());
     expect(result[0]?.keyResults?.map((k) => k.id)).toEqual(["kr2"]);
+  });
+
+  it("'receiving' mantém missão com externalContributions", () => {
+    const kr = makeKR({ id: "kr1" });
+    const missionWithExtContrib = makeMission({
+      id: "m1",
+      keyResults: [kr],
+      externalContributions: [{ id: "ec1", type: "indicator", title: "Contrib", sourceMission: { id: "m99", title: "Origem" } }],
+    });
+    // Missão sem externalContributions e sem KRs — deve ser excluída
+    const missionBare = makeMission({ id: "m2" });
+    const filters = makeFilters({ activeFilters: ["contribution"], selectedContributions: ["receiving"] });
+    const result = filterMissions([missionWithExtContrib, missionBare], filters, makeCtx());
+    expect(result.map((m) => m.id)).toContain("m1");
+    expect(result.map((m) => m.id)).not.toContain("m2");
   });
 });
 
