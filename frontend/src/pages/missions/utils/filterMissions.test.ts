@@ -66,8 +66,6 @@ function makeKR(overrides: Partial<KeyResult> = {}): KeyResult {
     linkedSurveyId: null,
     externalSource: null,
     externalConfig: null,
-    weight: 1,
-    confidence: null,
     ...overrides,
   };
 }
@@ -309,7 +307,7 @@ describe("filterMissions — filtro por tipo de indicador", () => {
 
 describe("filterMissions — filtro por contribuição", () => {
   it("'contributing' mantém KR com contributesTo", () => {
-    const krWith = makeKR({ id: "kr1", contributesTo: [{ missionId: "m2", missionTitle: "Outra", targetType: "mission", targetId: "m2" }] });
+    const krWith = makeKR({ id: "kr1", contributesTo: [{ missionId: "m2", missionTitle: "Outra" }] });
     const krWithout = makeKR({ id: "kr2", contributesTo: [] });
     const missions = [makeMission({ id: "m1", keyResults: [krWith, krWithout] })];
     const filters = makeFilters({ activeFilters: ["contribution"], selectedContributions: ["contributing"] });
@@ -318,7 +316,7 @@ describe("filterMissions — filtro por contribuição", () => {
   });
 
   it("'none' mantém KR sem contribuição", () => {
-    const krWith = makeKR({ id: "kr1", contributesTo: [{ missionId: "m2", missionTitle: "Outra", targetType: "mission", targetId: "m2" }] });
+    const krWith = makeKR({ id: "kr1", contributesTo: [{ missionId: "m2", missionTitle: "Outra" }] });
     const krWithout = makeKR({ id: "kr2", contributesTo: [] });
     const missions = [makeMission({ id: "m1", keyResults: [krWith, krWithout] })];
     const filters = makeFilters({ activeFilters: ["contribution"], selectedContributions: ["none"] });
@@ -330,7 +328,7 @@ describe("filterMissions — filtro por contribuição", () => {
 describe("filterMissions — filtro por supporter", () => {
   it("mantém missão com supporter correspondente", () => {
     const missions = [
-      makeMission({ id: "m1", members: [{ userId: "u2", role: "supporter" }] }),
+      makeMission({ id: "m1", members: [{ missionId: "m1", userId: "u2", role: "supporter", addedAt: "2025-01-01T00:00:00Z", addedBy: null }] }),
       makeMission({ id: "m2", members: [] }),
     ];
     const filters = makeFilters({ activeFilters: ["supporter"], selectedSupporters: ["u2"] });
