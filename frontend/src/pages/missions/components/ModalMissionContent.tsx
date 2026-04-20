@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
-import type { Mission, MissionTask, ExternalContribution } from "@/types";
-import type { CheckinPayload, MissionItemProps } from "../missionTypes";
+import type { Mission } from "@/types";
+import type { MissionItemProps } from "../missionTypes";
 import { collectMissionIds } from "../utils/missionItemTree";
 import { MissionItem } from "./MissionItem";
 
@@ -17,20 +17,7 @@ export function ModalMissionContent({
   onOpenExternalContrib,
   onToggleSubtask,
   allMissions = [],
-}: {
-  mission: Mission;
-  onExpand: (mission: Mission) => void;
-  onEdit: (mission: Mission) => void;
-  onDelete?: (mission: Mission) => void;
-  onCheckin?: (payload: CheckinPayload) => void;
-  onToggleTask?: (taskId: string) => void;
-  onOpenTaskDrawer?: (task: MissionTask, parentLabel: string) => void;
-  onAddContribution?: MissionItemProps["onAddContribution"];
-  onRemoveContribution?: MissionItemProps["onRemoveContribution"];
-  onOpenExternalContrib?: MissionItemProps["onOpenExternalContrib"];
-  onToggleSubtask?: MissionItemProps["onToggleSubtask"];
-  allMissions?: { id: string; title: string }[];
-}) {
+}: Pick<MissionItemProps, "mission" | "onExpand" | "onEdit" | "onDelete" | "onCheckin" | "onToggleTask" | "onOpenTaskDrawer" | "onAddContribution" | "onRemoveContribution" | "onOpenExternalContrib" | "onToggleSubtask" | "allMissions">) {
   const [modalExpanded, setModalExpanded] = useState<Set<string>>(
     () => new Set(collectMissionIds(mission)),
   );

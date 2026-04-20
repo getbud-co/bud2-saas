@@ -69,7 +69,7 @@ export function filterMissions(
       .map((id) => ctx.ownerFilterOptions.find((option) => option.id === id)?.initials?.toLowerCase() ?? id.toLowerCase())
       .filter((value) => value.length > 0),
   );
-  const statusValue = selectedStatus.replaceAll("-", "_");
+  const statusValue = selectedStatus.replace(/-/g, "_");
   const selectedSupporterIds = new Set(
     selectedSupporters.filter((id) => id !== "all").map((id) => ctx.resolveUserId(id).toLowerCase()),
   );
