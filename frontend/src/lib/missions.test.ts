@@ -13,6 +13,9 @@ import {
   getOwnerName,
   getOwnerInitials,
   getGoalLabel,
+  getGoalTypeIcon,
+  getIndicatorIcon,
+  formatCheckinDate,
 } from "./missions";
 import type { KeyResult } from "@/types";
 
@@ -170,5 +173,94 @@ describe("getGoalLabel", () => {
   it("returns survey label", () => {
     const label = getGoalLabel(makeKR({ goalType: "survey" }));
     expect(label).toContain("pesquisa");
+  });
+});
+
+describe("getGoalTypeIcon", () => {
+  it("retorna Crosshair para 'reach'", () => {
+    const Icon = getGoalTypeIcon("reach");
+    expect(Icon).toBeDefined();
+    expect(Icon.displayName ?? Icon.name).toMatch(/crosshair/i);
+  });
+
+  it("retorna ChartLineUp para 'above'", () => {
+    const Icon = getGoalTypeIcon("above");
+    expect(Icon).toBeDefined();
+    expect(Icon.displayName ?? Icon.name).toMatch(/chartlineup/i);
+  });
+
+  it("retorna TrendDown para 'below'", () => {
+    const Icon = getGoalTypeIcon("below");
+    expect(Icon).toBeDefined();
+    expect(Icon.displayName ?? Icon.name).toMatch(/trenddown/i);
+  });
+
+  it("retorna ArrowsInLineHorizontal para 'between'", () => {
+    const Icon = getGoalTypeIcon("between");
+    expect(Icon).toBeDefined();
+    expect(Icon.displayName ?? Icon.name).toMatch(/arrowsinlinehorizontal/i);
+  });
+
+  it("retorna TrendDown para 'reduce'", () => {
+    const Icon = getGoalTypeIcon("reduce");
+    expect(Icon).toBeDefined();
+    expect(Icon.displayName ?? Icon.name).toMatch(/trenddown/i);
+  });
+
+  it("retorna ChartBar para 'survey'", () => {
+    const Icon = getGoalTypeIcon("survey");
+    expect(Icon).toBeDefined();
+    expect(Icon.displayName ?? Icon.name).toMatch(/chartbar/i);
+  });
+
+  it("retorna Trophy (fallback) para goalType desconhecido", () => {
+    // @ts-expect-error testando fallback com valor inválido
+    const Icon = getGoalTypeIcon("desconhecido");
+    expect(Icon).toBeDefined();
+    expect(Icon.displayName ?? Icon.name).toMatch(/trophy/i);
+  });
+});
+
+describe("getIndicatorIcon", () => {
+  it("retorna ArrowsInLineVertical para goalType 'between'", () => {
+    const Icon = getIndicatorIcon(makeKR({ goalType: "between" }));
+    expect(Icon.displayName ?? Icon.name).toMatch(/arrowsinlinevertical/i);
+  });
+
+  it("retorna ArrowsInLineVertical para goalType 'above'", () => {
+    const Icon = getIndicatorIcon(makeKR({ goalType: "above" }));
+    expect(Icon.displayName ?? Icon.name).toMatch(/arrowsinlinevertical/i);
+  });
+
+  it("retorna ArrowsInLineVertical para goalType 'below'", () => {
+    const Icon = getIndicatorIcon(makeKR({ goalType: "below" }));
+    expect(Icon.displayName ?? Icon.name).toMatch(/arrowsinlinevertical/i);
+  });
+
+  it("retorna PlugsConnected para measurementMode 'external'", () => {
+    const Icon = getIndicatorIcon(makeKR({ goalType: "reach", measurementMode: "external" }));
+    expect(Icon.displayName ?? Icon.name).toMatch(/plugsconnected/i);
+  });
+
+  it("retorna Target para measurementMode 'mission'", () => {
+    const Icon = getIndicatorIcon(makeKR({ goalType: "reach", measurementMode: "mission" }));
+    expect(Icon.displayName ?? Icon.name).toMatch(/target/i);
+  });
+
+  it("faz fallback para getGoalTypeIcon para outros casos", () => {
+    const Icon = getIndicatorIcon(makeKR({ goalType: "reach", measurementMode: "manual" }));
+    const FallbackIcon = getGoalTypeIcon("reach");
+    expect(Icon).toBe(FallbackIcon);
+  });
+});
+
+describe("formatCheckinDate", () => {
+  it("formata data ISO para DD/MM/YYYY", () => {
+    expect(formatCheckinDate("2026-03-15T10:30:00Z")).toBe("15/03/2026");
+  });
+
+  it("faz padding de dia e mês com um dígito", () => {
+    // Usa meio-dia UTC para evitar rollover de timezone
+    expect(formatCheckinDate("2026-09-05T12:00:00Z")).toMatch(/05\/09\/2026/);
   });
 });
