@@ -252,8 +252,8 @@ export function parseKeyResultGoal(kr: string): { manualType: string; goalValue:
   else if (/zero /i.test(kr)) manualType = "below";
 
   const paraMatch = kr.match(/para\s*<?[≤≥]?\s*([\d.,]+)/i);
-  const gteMatch = kr.match(/[≥>=]\s*([\d.,]+)/);
-  const lteMatch = kr.match(/[≤<=<]\s*([\d.,]+)/);
+  const gteMatch = kr.match(/(?:≥|>=)\s*([\d.,]+)/);
+  const lteMatch = kr.match(/(?:≤|<=|<)\s*([\d.,]+)/);
   const percentMatch = kr.match(/([\d.,]+)\s*%/);
   const plainNumMatch = kr.match(/\b([\d.,]+)\b/);
 
