@@ -1,5 +1,6 @@
 import { lazy, Suspense } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { LoadingScreen } from "@getbud-co/buds";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LoginPage } from "@/pages/auth/LoginPage";
@@ -8,6 +9,7 @@ import { PageSkeleton } from "@/components/layout/PageSkeleton";
 import { HomePageSkeleton } from "@/pages/home/components/HomeSkeletons";
 import { MissionsPageSkeleton } from "@/pages/missions/components/MissionsSkeleton";
 import { SurveysPageSkeleton } from "@/pages/surveys/components/SurveysSkeleton";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Lazy-loaded pages
 const HomePage = lazy(() => import("@/pages/home/HomePage").then((m) => ({ default: m.HomePage })));
@@ -33,11 +35,31 @@ function SuspenseOutlet({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<PageSkeleton />}>{children}</Suspense>;
 }
 
+function PrivateRoute() {
+  const { isAuthenticated, initializing } = useAuth();
+  if (initializing) return <LoadingScreen />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  return <Outlet />;
+}
+
+function PublicOnlyRoute() {
+  const { isAuthenticated, initializing } = useAuth();
+  if (initializing) return <LoadingScreen />;
+  if (isAuthenticated) return <Navigate to="/home" replace />;
+  return <Outlet />;
+}
+
 export function AppRoutes() {
   return (
     <Routes>
       <Route index element={<Navigate to="/login" replace />} />
-      <Route path="login" element={<LoginPage />} />
+
+      {/* Public-only routes (redirect to /home if already authenticated) */}
+      <Route element={<PublicOnlyRoute />}>
+        <Route path="login" element={<LoginPage />} />
+      </Route>
+
+      {/* Dev / public routes */}
       <Route path="loading-demo" element={<LoadingDemo />} />
 
       {/* Standalone survey layout (no sidebar) — preview and respond */}
@@ -46,25 +68,27 @@ export function AppRoutes() {
         <Route path="surveys/:surveyId/respond" element={<SuspenseOutlet><SurveyRespondPage /></SuspenseOutlet>} />
       </Route>
 
-      {/* Main app layout */}
-      <Route element={<ErrorBoundary><AppLayout /></ErrorBoundary>}>
-        <Route path="home" element={<Suspense fallback={<HomePageSkeleton />}><HomePage /></Suspense>} />
-        <Route path="home/engagement" element={<SuspenseOutlet><EngagementDetailPage /></SuspenseOutlet>} />
-        <Route path="home/activities" element={<SuspenseOutlet><ActivitiesDetailPage /></SuspenseOutlet>} />
-        <Route path="assistant/*" element={<SuspenseOutlet><AssistantPage /></SuspenseOutlet>} />
-        <Route path="missions/mine/*" element={<Suspense fallback={<MissionsPageSkeleton />}><MyMissionsPage /></Suspense>} />
-        <Route path="missions/annual" element={<SuspenseOutlet><AnnualMissionsPage /></SuspenseOutlet>} />
-        <Route path="missions/quarterly" element={<SuspenseOutlet><QuarterlyMissionsPage /></SuspenseOutlet>} />
-        <Route path="missions/:missionId" element={<SuspenseOutlet><MissionDetailPage /></SuspenseOutlet>} />
-        <Route path="missions/*" element={<Suspense fallback={<MissionsPageSkeleton />}><MissionsPage /></Suspense>} />
-        <Route path="surveys/new/:step?" element={<SuspenseOutlet><SurveyWizardPage /></SuspenseOutlet>} />
-        <Route path="surveys/:surveyId/results" element={<SuspenseOutlet><SurveyResultsPage /></SuspenseOutlet>} />
-        <Route path="surveys/*" element={<Suspense fallback={<SurveysPageSkeleton />}><SurveysPage /></Suspense>} />
-        <Route path="my-team/*" element={<SuspenseOutlet><MyTeamPage /></SuspenseOutlet>} />
-        <Route path="account" element={<SuspenseOutlet><AccountPage /></SuspenseOutlet>} />
-        <Route path="settings/*" element={<SuspenseOutlet><SettingsPage /></SuspenseOutlet>} />
-        {/* Redirect legacy /people routes */}
-        <Route path="people/*" element={<Navigate to="/my-team" replace />} />
+      {/* Protected main app layout */}
+      <Route element={<PrivateRoute />}>
+        <Route element={<ErrorBoundary><AppLayout /></ErrorBoundary>}>
+          <Route path="home" element={<Suspense fallback={<HomePageSkeleton />}><HomePage /></Suspense>} />
+          <Route path="home/engagement" element={<SuspenseOutlet><EngagementDetailPage /></SuspenseOutlet>} />
+          <Route path="home/activities" element={<SuspenseOutlet><ActivitiesDetailPage /></SuspenseOutlet>} />
+          <Route path="assistant/*" element={<SuspenseOutlet><AssistantPage /></SuspenseOutlet>} />
+          <Route path="missions/mine/*" element={<Suspense fallback={<MissionsPageSkeleton />}><MyMissionsPage /></Suspense>} />
+          <Route path="missions/annual" element={<SuspenseOutlet><AnnualMissionsPage /></SuspenseOutlet>} />
+          <Route path="missions/quarterly" element={<SuspenseOutlet><QuarterlyMissionsPage /></SuspenseOutlet>} />
+          <Route path="missions/:missionId" element={<SuspenseOutlet><MissionDetailPage /></SuspenseOutlet>} />
+          <Route path="missions/*" element={<Suspense fallback={<MissionsPageSkeleton />}><MissionsPage /></Suspense>} />
+          <Route path="surveys/new/:step?" element={<SuspenseOutlet><SurveyWizardPage /></SuspenseOutlet>} />
+          <Route path="surveys/:surveyId/results" element={<SuspenseOutlet><SurveyResultsPage /></SuspenseOutlet>} />
+          <Route path="surveys/*" element={<Suspense fallback={<SurveysPageSkeleton />}><SurveysPage /></Suspense>} />
+          <Route path="my-team/*" element={<SuspenseOutlet><MyTeamPage /></SuspenseOutlet>} />
+          <Route path="account" element={<SuspenseOutlet><AccountPage /></SuspenseOutlet>} />
+          <Route path="settings/*" element={<SuspenseOutlet><SettingsPage /></SuspenseOutlet>} />
+          {/* Redirect legacy /people routes */}
+          <Route path="people/*" element={<Navigate to="/my-team" replace />} />
+        </Route>
       </Route>
     </Routes>
   );

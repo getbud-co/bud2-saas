@@ -31,6 +31,7 @@ import { BudLogo, BudLogoMark } from "@/components/BudLogo";
 import { PlanSelectionModal } from "@/components/PlanSelectionModal";
 import { useSavedViews } from "@/contexts/SavedViewsContext";
 import { useConfigData } from "@/contexts/ConfigDataContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AppSidebarProps {
   collapsed: boolean;
@@ -45,14 +46,20 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onMobileCl
   const [searchParams] = useSearchParams();
   const { views } = useSavedViews();
   const { organizations, activeOrganization, setActiveOrgId } = useConfigData();
+  const { logout, user: authUser } = useAuth();
   const activeViewId = searchParams.get("view");
+
+  const sidebarUserName = authUser?.name ?? "Usuário";
+  const sidebarUserInitials = authUser?.name
+    ? authUser.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
+    : "??";
 
   const [userOpen, setUserOpen] = useState(false);
   const userRef = useRef<HTMLButtonElement>(null);
 
   const userMenu: PopoverItem[] = [
     { id: "profile", label: "Minha conta", icon: UserCircle, onClick: () => { setUserOpen(false); navigate("/account"); } },
-    { id: "logout", label: "Sair", icon: SignOut, danger: true },
+    { id: "logout", label: "Sair", icon: SignOut, danger: true, onClick: () => { setUserOpen(false); logout(); } },
   ];
 
   const [orgOpen, setOrgOpen] = useState(false);
@@ -319,9 +326,9 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onMobileCl
       <SidebarFooter>
         <SidebarUser
           ref={userRef}
-          name="Maria Soares"
-          role="HR Manager"
-          avatar={<Avatar initials="MS" size="sm" />}
+          name={sidebarUserName}
+          role=""
+          avatar={<Avatar initials={sidebarUserInitials} size="sm" />}
           onClick={() => setUserOpen((v) => !v)}
         />
         <Popover

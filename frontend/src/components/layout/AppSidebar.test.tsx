@@ -10,6 +10,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { ConfigDataProvider } from "@/contexts/ConfigDataContext";
 import { SavedViewsProvider } from "@/contexts/SavedViewsContext";
+import { MockAuthProvider } from "../../../tests/setup/MockAuthProvider";
 import { AppSidebar } from "./AppSidebar";
 
 // ─── Test Helpers ───
@@ -26,11 +27,13 @@ function renderSidebar(
 
   const result = render(
     <MemoryRouter initialEntries={[route]}>
-      <ConfigDataProvider>
-        <SavedViewsProvider>
-          <AppSidebar {...defaultProps} {...props} />
-        </SavedViewsProvider>
-      </ConfigDataProvider>
+      <MockAuthProvider>
+        <ConfigDataProvider>
+          <SavedViewsProvider>
+            <AppSidebar {...defaultProps} {...props} />
+          </SavedViewsProvider>
+        </ConfigDataProvider>
+      </MockAuthProvider>
     </MemoryRouter>,
   );
 
@@ -72,7 +75,8 @@ describe("AppSidebar", () => {
 
     it("renders user footer", () => {
       renderSidebar();
-      expect(screen.getByText("Maria Soares")).toBeInTheDocument();
+      // When auth user is null (mock), falls back to "Usuário"
+      expect(screen.getByText("Usuário")).toBeInTheDocument();
     });
 
     it("renders Ajuda item", () => {

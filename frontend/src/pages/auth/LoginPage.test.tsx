@@ -2,19 +2,46 @@
  * Tests for LoginPage
  *
  * Login form with email/password fields, social login buttons, and validation.
+ * On valid submit, calls AuthContext.login() and navigates to /home.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderMinimal } from "../../../tests/setup/test-utils";
+import { AuthContext } from "@/contexts/AuthContext";
 import { LoginPage } from "./LoginPage";
+import { MemoryRouter } from "react-router-dom";
+import { render as renderRaw } from "@testing-library/react";
 
 // ─── Test Helpers ───
 
 function setup() {
   const user = userEvent.setup();
   const result = renderMinimal(<LoginPage />);
+  return { user, ...result };
+}
+
+function setupWithMockAuth(loginImpl: (email: string, password: string) => Promise<void>) {
+  const user = userEvent.setup();
+  const result = renderRaw(
+    <MemoryRouter>
+      <AuthContext.Provider
+        value={{
+          isAuthenticated: false,
+          initializing: false,
+          user: null,
+          activeOrganization: null,
+          organizations: [],
+          login: loginImpl,
+          logout: vi.fn(),
+          getToken: () => null,
+        }}
+      >
+        <LoginPage />
+      </AuthContext.Provider>
+    </MemoryRouter>,
+  );
   return { user, ...result };
 }
 
@@ -94,6 +121,64 @@ describe("LoginPage", () => {
       await waitFor(() => {
         expect(screen.getByText("Senha é obrigatória")).toBeInTheDocument();
       });
+    });
+  });
+
+  describe("API integration", () => {
+    it("calls login() with email and password on valid submit", async () => {
+      const loginMock = vi.fn().mockResolvedValue(undefined);
+      const { user } = setupWithMockAuth(loginMock);
+
+      await user.type(screen.getByLabelText(/email/i), "maria@empresa.com");
+      await user.type(screen.getByLabelText("Senha"), "senha123");
+      await user.click(screen.getByRole("button", { name: /entrar/i }));
+
+      await waitFor(() => {
+        expect(loginMock).toHaveBeenCalledWith("maria@empresa.com", "senha123");
+      });
+    });
+
+    it("disables the submit button while loading", async () => {
+      const loginMock = vi.fn().mockImplementation(
+        () => new Promise((resolve) => setTimeout(resolve, 200)),
+      );
+      const { user } = setupWithMockAuth(loginMock);
+
+      await user.type(screen.getByLabelText(/email/i), "maria@empresa.com");
+      await user.type(screen.getByLabelText("Senha"), "senha123");
+      await user.click(screen.getByRole("button", { name: /entrar/i }));
+
+      expect(screen.getByRole("button", { name: /entrando/i })).toBeDisabled();
+    });
+
+    it("shows API error message on failed login", async () => {
+      const loginMock = vi.fn().mockRejectedValue(new Error("Email ou senha incorretos."));
+      const { user } = setupWithMockAuth(loginMock);
+
+      await user.type(screen.getByLabelText(/email/i), "maria@empresa.com");
+      await user.type(screen.getByLabelText("Senha"), "senhaerrada");
+      await user.click(screen.getByRole("button", { name: /entrar/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText("Email ou senha incorretos.")).toBeInTheDocument();
+      });
+    });
+
+    it("clears API error when user types", async () => {
+      const loginMock = vi.fn().mockRejectedValue(new Error("Email ou senha incorretos."));
+      const { user } = setupWithMockAuth(loginMock);
+
+      await user.type(screen.getByLabelText(/email/i), "maria@empresa.com");
+      await user.type(screen.getByLabelText("Senha"), "senhaerrada");
+      await user.click(screen.getByRole("button", { name: /entrar/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText("Email ou senha incorretos.")).toBeInTheDocument();
+      });
+
+      await user.type(screen.getByLabelText(/email/i), "a");
+
+      expect(screen.queryByText("Email ou senha incorretos.")).not.toBeInTheDocument();
     });
   });
 });
