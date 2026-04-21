@@ -6,14 +6,15 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	domainauth "github.com/getbud-co/bud2/backend/internal/domain/auth"
 	"github.com/getbud-co/bud2/backend/internal/infra/postgres/sqlc"
 )
 
 type refreshTokenQuerier interface {
-	CreateRefreshToken(ctx context.Context, arg sqlc.CreateRefreshTokenParams) (sqlc.RefreshToken, error)
-	GetRefreshTokenByTokenHash(ctx context.Context, tokenHash string) (sqlc.RefreshToken, error)
+	CreateRefreshToken(ctx context.Context, arg sqlc.CreateRefreshTokenParams) (sqlc.CreateRefreshTokenRow, error)
+	GetRefreshTokenByTokenHash(ctx context.Context, tokenHash string) (sqlc.GetRefreshTokenByTokenHashRow, error)
 	RevokeRefreshToken(ctx context.Context, id uuid.UUID) error
 	RevokeAllRefreshTokensByUserID(ctx context.Context, userID uuid.UUID) error
 }
@@ -27,16 +28,24 @@ func NewRefreshTokenRepository(q refreshTokenQuerier) *RefreshTokenRepository {
 }
 
 func (r *RefreshTokenRepository) Create(ctx context.Context, token *domainauth.RefreshToken) (*domainauth.RefreshToken, error) {
-	row, err := r.q.CreateRefreshToken(ctx, sqlc.CreateRefreshTokenParams{
-		ID:        token.ID,
-		UserID:    token.UserID,
-		TokenHash: token.TokenHash,
-		ExpiresAt: token.ExpiresAt,
-	})
+	arg := sqlc.CreateRefreshTokenParams{
+		ID:                   token.ID,
+		UserID:               token.UserID,
+		ActiveOrganizationID: pgtype.UUID{},
+		TokenHash:            token.TokenHash,
+		ExpiresAt:            token.ExpiresAt,
+	}
+	if token.ActiveOrganizationID != nil {
+		arg.ActiveOrganizationID = pgtype.UUID{
+			Bytes: *token.ActiveOrganizationID,
+			Valid: true,
+		}
+	}
+	row, err := r.q.CreateRefreshToken(ctx, arg)
 	if err != nil {
 		return nil, err
 	}
-	return refreshTokenRowToDomain(row), nil
+	return createRefreshTokenRowToDomain(row), nil
 }
 
 func (r *RefreshTokenRepository) GetByTokenHash(ctx context.Context, tokenHash string) (*domainauth.RefreshToken, error) {
@@ -47,7 +56,7 @@ func (r *RefreshTokenRepository) GetByTokenHash(ctx context.Context, tokenHash s
 		}
 		return nil, err
 	}
-	return refreshTokenRowToDomain(row), nil
+	return getRefreshTokenByTokenHashRowToDomain(row), nil
 }
 
 func (r *RefreshTokenRepository) RevokeByID(ctx context.Context, id uuid.UUID) error {
@@ -58,13 +67,36 @@ func (r *RefreshTokenRepository) RevokeAllByUserID(ctx context.Context, userID u
 	return r.q.RevokeAllRefreshTokensByUserID(ctx, userID)
 }
 
-func refreshTokenRowToDomain(row sqlc.RefreshToken) *domainauth.RefreshToken {
+func createRefreshTokenRowToDomain(row sqlc.CreateRefreshTokenRow) *domainauth.RefreshToken {
 	t := &domainauth.RefreshToken{
 		ID:        row.ID,
 		UserID:    row.UserID,
 		TokenHash: row.TokenHash,
 		ExpiresAt: row.ExpiresAt,
 		CreatedAt: row.CreatedAt,
+	}
+	if row.ActiveOrganizationID.Valid {
+		orgID := uuid.UUID(row.ActiveOrganizationID.Bytes)
+		t.ActiveOrganizationID = &orgID
+	}
+	if row.RevokedAt.Valid {
+		ts := row.RevokedAt.Time.UTC()
+		t.RevokedAt = &ts
+	}
+	return t
+}
+
+func getRefreshTokenByTokenHashRowToDomain(row sqlc.GetRefreshTokenByTokenHashRow) *domainauth.RefreshToken {
+	t := &domainauth.RefreshToken{
+		ID:        row.ID,
+		UserID:    row.UserID,
+		TokenHash: row.TokenHash,
+		ExpiresAt: row.ExpiresAt,
+		CreatedAt: row.CreatedAt,
+	}
+	if row.ActiveOrganizationID.Valid {
+		orgID := uuid.UUID(row.ActiveOrganizationID.Bytes)
+		t.ActiveOrganizationID = &orgID
 	}
 	if row.RevokedAt.Valid {
 		ts := row.RevokedAt.Time.UTC()

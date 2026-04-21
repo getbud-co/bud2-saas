@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
+
 	domainauth "github.com/getbud-co/bud2/backend/internal/domain/auth"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	"github.com/getbud-co/bud2/backend/internal/domain/user"
@@ -83,6 +85,11 @@ func (uc *RefreshUseCase) Execute(ctx context.Context, cmd RefreshCommand) (*Ref
 	if err != nil {
 		return nil, err
 	}
+	if stored.ActiveOrganizationID != nil {
+		if active := findAccessibleOrganization(session.Organizations, *stored.ActiveOrganizationID); active != nil {
+			session.ActiveOrganization = active
+		}
+	}
 
 	// Issue new token pair.
 	newAccessToken, err := uc.support.issueTokenForSession(session)
@@ -90,7 +97,12 @@ func (uc *RefreshUseCase) Execute(ctx context.Context, cmd RefreshCommand) (*Ref
 		return nil, fmt.Errorf("failed to issue access token: %w", err)
 	}
 
-	newRefreshToken, err := uc.support.issueRefreshToken(ctx, u.ID)
+	var activeOrganizationID *uuid.UUID
+	if session.ActiveOrganization != nil {
+		id := session.ActiveOrganization.ID
+		activeOrganizationID = &id
+	}
+	newRefreshToken, err := uc.support.issueRefreshToken(ctx, u.ID, activeOrganizationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to issue refresh token: %w", err)
 	}

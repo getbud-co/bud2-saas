@@ -32,8 +32,8 @@ func (m *mockCreateUseCase) Execute(ctx context.Context, cmd apporg.CreateComman
 
 type mockGetUseCase struct{ mock.Mock }
 
-func (m *mockGetUseCase) Execute(ctx context.Context, id uuid.UUID) (*org.Organization, error) {
-	args := m.Called(ctx, id)
+func (m *mockGetUseCase) Execute(ctx context.Context, cmd apporg.GetCommand) (*org.Organization, error) {
+	args := m.Called(ctx, cmd)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -57,9 +57,16 @@ func (m *mockUpdateUseCase) Execute(ctx context.Context, cmd apporg.UpdateComman
 	return args.Get(0).(*org.Organization), args.Error(1)
 }
 
+type mockDeleteUseCase struct{ mock.Mock }
+
+func (m *mockDeleteUseCase) Execute(ctx context.Context, cmd apporg.DeleteCommand) error {
+	args := m.Called(ctx, cmd)
+	return args.Error(0)
+}
+
 func TestHandler_Create_Success(t *testing.T) {
 	createUC := new(mockCreateUseCase)
-	handler := NewHandler(createUC, nil, nil, nil)
+	handler := NewHandler(createUC, nil, nil, nil, nil)
 
 	expected := fixtures.NewOrganization()
 	createUC.On("Execute", mock.Anything, apporg.CreateCommand{
@@ -80,7 +87,7 @@ func TestHandler_Create_Success(t *testing.T) {
 }
 
 func TestHandler_Create_InvalidJSON(t *testing.T) {
-	handler := NewHandler(new(mockCreateUseCase), nil, nil, nil)
+	handler := NewHandler(new(mockCreateUseCase), nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodPost, "/organizations", bytes.NewReader([]byte("invalid")))
 	req.Header.Set("Content-Type", "application/json")
@@ -92,7 +99,7 @@ func TestHandler_Create_InvalidJSON(t *testing.T) {
 }
 
 func TestHandler_Create_ValidationError(t *testing.T) {
-	handler := NewHandler(new(mockCreateUseCase), nil, nil, nil)
+	handler := NewHandler(new(mockCreateUseCase), nil, nil, nil, nil)
 
 	body, _ := json.Marshal(createRequest{Name: "T", Domain: "not a domain", Workspace: ""})
 	req := httptest.NewRequest(http.MethodPost, "/organizations", bytes.NewReader(body))
@@ -106,7 +113,7 @@ func TestHandler_Create_ValidationError(t *testing.T) {
 
 func TestHandler_Create_DomainConflict(t *testing.T) {
 	createUC := new(mockCreateUseCase)
-	handler := NewHandler(createUC, nil, nil, nil)
+	handler := NewHandler(createUC, nil, nil, nil, nil)
 
 	createUC.On("Execute", mock.Anything, mock.Anything).Return(nil, org.ErrDomainExists)
 
@@ -122,7 +129,7 @@ func TestHandler_Create_DomainConflict(t *testing.T) {
 
 func TestHandler_Create_WorkspaceConflict(t *testing.T) {
 	createUC := new(mockCreateUseCase)
-	handler := NewHandler(createUC, nil, nil, nil)
+	handler := NewHandler(createUC, nil, nil, nil, nil)
 
 	createUC.On("Execute", mock.Anything, mock.Anything).Return(nil, org.ErrWorkspaceExists)
 
@@ -138,7 +145,7 @@ func TestHandler_Create_WorkspaceConflict(t *testing.T) {
 
 func TestHandler_Create_DomainValidationError(t *testing.T) {
 	createUC := new(mockCreateUseCase)
-	handler := NewHandler(createUC, nil, nil, nil)
+	handler := NewHandler(createUC, nil, nil, nil, nil)
 
 	createUC.On("Execute", mock.Anything, mock.Anything).Return(nil, domain.ErrValidation)
 
@@ -154,7 +161,7 @@ func TestHandler_Create_DomainValidationError(t *testing.T) {
 
 func TestHandler_Create_InternalError(t *testing.T) {
 	createUC := new(mockCreateUseCase)
-	handler := NewHandler(createUC, nil, nil, nil)
+	handler := NewHandler(createUC, nil, nil, nil, nil)
 
 	createUC.On("Execute", mock.Anything, mock.Anything).Return(nil, errors.New("internal error"))
 
@@ -170,15 +177,16 @@ func TestHandler_Create_InternalError(t *testing.T) {
 
 func TestHandler_Get_Success(t *testing.T) {
 	getUC := new(mockGetUseCase)
-	handler := NewHandler(nil, getUC, nil, nil)
+	handler := NewHandler(nil, getUC, nil, nil, nil)
 
 	expected := fixtures.NewOrganization()
-	getUC.On("Execute", mock.Anything, expected.ID).Return(expected, nil)
+	claims := fixtures.NewTestUserClaims()
+	getUC.On("Execute", mock.Anything, apporg.GetCommand{RequesterUserID: claims.UserID.UUID(), ID: expected.ID}).Return(expected, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/organizations/"+expected.ID.String(), nil)
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("id", expected.ID.String())
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req = req.WithContext(context.WithValue(fixtures.NewContextWithUserClaims(claims), chi.RouteCtxKey, rctx))
 	rr := httptest.NewRecorder()
 
 	handler.Get(rr, req)
@@ -190,12 +198,13 @@ func TestHandler_Get_Success(t *testing.T) {
 }
 
 func TestHandler_Get_InvalidID(t *testing.T) {
-	handler := NewHandler(nil, new(mockGetUseCase), nil, nil)
+	handler := NewHandler(nil, new(mockGetUseCase), nil, nil, nil)
+	claims := fixtures.NewTestUserClaims()
 
 	req := httptest.NewRequest(http.MethodGet, "/organizations/invalid", nil)
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("id", "invalid")
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req = req.WithContext(context.WithValue(fixtures.NewContextWithUserClaims(claims), chi.RouteCtxKey, rctx))
 	rr := httptest.NewRecorder()
 
 	handler.Get(rr, req)
@@ -205,15 +214,16 @@ func TestHandler_Get_InvalidID(t *testing.T) {
 
 func TestHandler_Get_NotFound(t *testing.T) {
 	getUC := new(mockGetUseCase)
-	handler := NewHandler(nil, getUC, nil, nil)
+	handler := NewHandler(nil, getUC, nil, nil, nil)
 
 	id := uuid.New()
-	getUC.On("Execute", mock.Anything, id).Return(nil, org.ErrNotFound)
+	claims := fixtures.NewTestUserClaims()
+	getUC.On("Execute", mock.Anything, apporg.GetCommand{RequesterUserID: claims.UserID.UUID(), ID: id}).Return(nil, org.ErrNotFound)
 
 	req := httptest.NewRequest(http.MethodGet, "/organizations/"+id.String(), nil)
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("id", id.String())
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req = req.WithContext(context.WithValue(fixtures.NewContextWithUserClaims(claims), chi.RouteCtxKey, rctx))
 	rr := httptest.NewRecorder()
 
 	handler.Get(rr, req)
@@ -223,14 +233,16 @@ func TestHandler_Get_NotFound(t *testing.T) {
 
 func TestHandler_List_Success(t *testing.T) {
 	listUC := new(mockListUseCase)
-	handler := NewHandler(nil, nil, listUC, nil)
+	handler := NewHandler(nil, nil, listUC, nil, nil)
 
 	orgs := fixtures.NewOrganizationList(2)
-	listUC.On("Execute", mock.Anything, apporg.ListCommand{Page: 1, Size: 20}).Return(org.ListResult{
+	claims := fixtures.NewTestUserClaims()
+	listUC.On("Execute", mock.Anything, apporg.ListCommand{RequesterUserID: claims.UserID.UUID(), Page: 1, Size: 20}).Return(org.ListResult{
 		Organizations: orgs, Total: 2,
 	}, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/organizations", nil)
+	req = req.WithContext(fixtures.NewContextWithUserClaims(claims))
 	rr := httptest.NewRecorder()
 
 	handler.List(rr, req)
@@ -244,11 +256,13 @@ func TestHandler_List_Success(t *testing.T) {
 
 func TestHandler_List_WithPagination(t *testing.T) {
 	listUC := new(mockListUseCase)
-	handler := NewHandler(nil, nil, listUC, nil)
+	handler := NewHandler(nil, nil, listUC, nil, nil)
+	claims := fixtures.NewTestUserClaims()
 
-	listUC.On("Execute", mock.Anything, apporg.ListCommand{Page: 2, Size: 10}).Return(org.ListResult{}, nil)
+	listUC.On("Execute", mock.Anything, apporg.ListCommand{RequesterUserID: claims.UserID.UUID(), Page: 2, Size: 10}).Return(org.ListResult{}, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/organizations?page=2&size=10", nil)
+	req = req.WithContext(fixtures.NewContextWithUserClaims(claims))
 	rr := httptest.NewRecorder()
 
 	handler.List(rr, req)
@@ -259,12 +273,14 @@ func TestHandler_List_WithPagination(t *testing.T) {
 
 func TestHandler_List_WithStatusFilter(t *testing.T) {
 	listUC := new(mockListUseCase)
-	handler := NewHandler(nil, nil, listUC, nil)
+	handler := NewHandler(nil, nil, listUC, nil, nil)
 
 	status := "active"
-	listUC.On("Execute", mock.Anything, apporg.ListCommand{Page: 1, Size: 20, Status: &status}).Return(org.ListResult{}, nil)
+	claims := fixtures.NewTestUserClaims()
+	listUC.On("Execute", mock.Anything, apporg.ListCommand{RequesterUserID: claims.UserID.UUID(), Page: 1, Size: 20, Status: &status}).Return(org.ListResult{}, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/organizations?status=active", nil)
+	req = req.WithContext(fixtures.NewContextWithUserClaims(claims))
 	rr := httptest.NewRecorder()
 
 	handler.List(rr, req)
@@ -275,11 +291,12 @@ func TestHandler_List_WithStatusFilter(t *testing.T) {
 
 func TestHandler_Update_Success(t *testing.T) {
 	updateUC := new(mockUpdateUseCase)
-	handler := NewHandler(nil, nil, nil, updateUC)
+	handler := NewHandler(nil, nil, nil, updateUC, nil)
 
 	expected := fixtures.NewOrganization()
+	claims := fixtures.NewTestUserClaims()
 	updateUC.On("Execute", mock.Anything, apporg.UpdateCommand{
-		ID: expected.ID, Name: "Updated", Domain: "example.com", Workspace: "updated", Status: "active",
+		RequesterUserID: claims.UserID.UUID(), ID: expected.ID, Name: "Updated", Domain: "example.com", Workspace: "updated", Status: "active",
 	}).Return(expected, nil)
 
 	body, _ := json.Marshal(updateRequest{Name: "Updated", Domain: "example.com", Workspace: "updated", Status: "active"})
@@ -287,7 +304,7 @@ func TestHandler_Update_Success(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("id", expected.ID.String())
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req = req.WithContext(context.WithValue(fixtures.NewContextWithUserClaims(claims), chi.RouteCtxKey, rctx))
 	rr := httptest.NewRecorder()
 
 	handler.Update(rr, req)
@@ -296,14 +313,15 @@ func TestHandler_Update_Success(t *testing.T) {
 }
 
 func TestHandler_Update_InvalidID(t *testing.T) {
-	handler := NewHandler(nil, nil, nil, new(mockUpdateUseCase))
+	handler := NewHandler(nil, nil, nil, new(mockUpdateUseCase), nil)
+	claims := fixtures.NewTestUserClaims()
 
 	body, _ := json.Marshal(updateRequest{Name: "Updated", Domain: "example.com", Workspace: "updated", Status: "active"})
 	req := httptest.NewRequest(http.MethodPut, "/organizations/invalid", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("id", "invalid")
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req = req.WithContext(context.WithValue(fixtures.NewContextWithUserClaims(claims), chi.RouteCtxKey, rctx))
 	rr := httptest.NewRecorder()
 
 	handler.Update(rr, req)
@@ -313,9 +331,10 @@ func TestHandler_Update_InvalidID(t *testing.T) {
 
 func TestHandler_Update_NotFound(t *testing.T) {
 	updateUC := new(mockUpdateUseCase)
-	handler := NewHandler(nil, nil, nil, updateUC)
+	handler := NewHandler(nil, nil, nil, updateUC, nil)
 
 	id := uuid.New()
+	claims := fixtures.NewTestUserClaims()
 	updateUC.On("Execute", mock.Anything, mock.Anything).Return(nil, org.ErrNotFound)
 
 	body, _ := json.Marshal(updateRequest{Name: "Updated", Domain: "example.com", Workspace: "updated", Status: "active"})
@@ -323,7 +342,7 @@ func TestHandler_Update_NotFound(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("id", id.String())
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req = req.WithContext(context.WithValue(fixtures.NewContextWithUserClaims(claims), chi.RouteCtxKey, rctx))
 	rr := httptest.NewRecorder()
 
 	handler.Update(rr, req)
@@ -332,17 +351,58 @@ func TestHandler_Update_NotFound(t *testing.T) {
 }
 
 func TestHandler_Update_InvalidJSON(t *testing.T) {
-	handler := NewHandler(nil, nil, nil, new(mockUpdateUseCase))
+	handler := NewHandler(nil, nil, nil, new(mockUpdateUseCase), nil)
+	claims := fixtures.NewTestUserClaims()
 
 	id := uuid.New()
 	req := httptest.NewRequest(http.MethodPut, "/organizations/"+id.String(), bytes.NewReader([]byte("invalid")))
 	req.Header.Set("Content-Type", "application/json")
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("id", id.String())
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req = req.WithContext(context.WithValue(fixtures.NewContextWithUserClaims(claims), chi.RouteCtxKey, rctx))
 	rr := httptest.NewRecorder()
 
 	handler.Update(rr, req)
 
 	assert.Equal(t, http.StatusBadRequest, rr.Code)
+}
+
+func TestHandler_Delete_Success(t *testing.T) {
+	deleteUC := new(mockDeleteUseCase)
+	handler := NewHandler(nil, nil, nil, nil, deleteUC)
+
+	id := uuid.New()
+	claims := fixtures.NewTestUserClaims()
+	claims.IsSystemAdmin = true
+	deleteUC.On("Execute", mock.Anything, apporg.DeleteCommand{RequesterIsSystemAdmin: true, ID: id}).Return(nil)
+
+	req := httptest.NewRequest(http.MethodDelete, "/organizations/"+id.String(), nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", id.String())
+	req = req.WithContext(context.WithValue(fixtures.NewContextWithUserClaims(claims), chi.RouteCtxKey, rctx))
+	rr := httptest.NewRecorder()
+
+	handler.Delete(rr, req)
+
+	assert.Equal(t, http.StatusNoContent, rr.Code)
+}
+
+func TestHandler_Delete_NotFound(t *testing.T) {
+	deleteUC := new(mockDeleteUseCase)
+	handler := NewHandler(nil, nil, nil, nil, deleteUC)
+
+	id := uuid.New()
+	claims := fixtures.NewTestUserClaims()
+	claims.IsSystemAdmin = true
+	deleteUC.On("Execute", mock.Anything, apporg.DeleteCommand{RequesterIsSystemAdmin: true, ID: id}).Return(org.ErrNotFound)
+
+	req := httptest.NewRequest(http.MethodDelete, "/organizations/"+id.String(), nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", id.String())
+	req = req.WithContext(context.WithValue(fixtures.NewContextWithUserClaims(claims), chi.RouteCtxKey, rctx))
+	rr := httptest.NewRecorder()
+
+	handler.Delete(rr, req)
+
+	assert.Equal(t, http.StatusNotFound, rr.Code)
 }

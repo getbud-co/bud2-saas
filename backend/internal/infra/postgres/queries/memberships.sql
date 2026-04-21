@@ -24,6 +24,14 @@ WHERE user_id = $1
 ORDER BY created_at ASC
 LIMIT $2 OFFSET $3;
 
+-- name: GetActiveOrganizationMembership :one
+SELECT id, organization_id, user_id, role, status, invited_by_user_id, joined_at, created_at, updated_at
+FROM organization_memberships
+WHERE organization_id = $1
+  AND user_id = $2
+  AND status = 'active'
+  AND deleted_at IS NULL;
+
 -- name: UpdateOrganizationMembership :one
 UPDATE organization_memberships
 SET role = $2,
@@ -32,3 +40,16 @@ SET role = $2,
 WHERE id = $1
   AND deleted_at IS NULL
 RETURNING id, organization_id, user_id, role, status, invited_by_user_id, joined_at, created_at, updated_at;
+
+-- name: SoftDeleteOrganizationMembership :exec
+UPDATE organization_memberships
+SET deleted_at = NOW()
+WHERE organization_id = $1
+  AND user_id = $2
+  AND deleted_at IS NULL;
+
+-- name: SoftDeleteOrganizationMembershipsByOrganization :exec
+UPDATE organization_memberships
+SET deleted_at = NOW()
+WHERE organization_id = $1
+  AND deleted_at IS NULL;

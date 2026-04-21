@@ -9,8 +9,8 @@
  * and ensure consistent formatting across the application.
  */
 
-// Re-export DS utilities for CalendarDate compatibility
-export { formatDate, parseDate, type CalendarDate } from "@getbud-co/buds";
+// Re-export DS type for CalendarDate compatibility
+export type { CalendarDate } from "@getbud-co/buds";
 
 /**
  * Format ISO date string (YYYY-MM-DD or ISO datetime) to Brazilian format (DD/MM/YYYY)
@@ -35,23 +35,6 @@ export function formatDateShort(isoDate: string): string {
   const day = String(date.getDate()).padStart(2, "0");
   const month = String(date.getMonth() + 1).padStart(2, "0");
   return `${day}/${month}`;
-}
-
-/**
- * Format ISO datetime to Brazilian format with time (DD/MM/YYYY HH:mm)
- * @param isoDateTime - ISO format datetime string
- * @returns Formatted datetime string
- */
-export function formatDateTimeBR(isoDateTime: string): string {
-  const date = new Date(isoDateTime);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 /**
@@ -80,43 +63,6 @@ export function formatRelativeTime(isoDateTime: string | null | undefined): stri
 }
 
 /**
- * Format month and year in Portuguese (e.g., "março de 2026")
- * @param isoDate - ISO format date string or Date object
- * @returns Month and year string in Portuguese
- */
-export function formatMonthYear(isoDate: string | Date): string {
-  const date = typeof isoDate === "string" ? new Date(isoDate) : isoDate;
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-}
-
-/**
- * Format month and year capitalized (e.g., "Março de 2026")
- * Useful for titles and headers
- * @param isoDate - ISO format date string or Date object
- * @returns Capitalized month and year string
- */
-export function formatMonthYearCapitalized(isoDate: string | Date): string {
-  const formatted = formatMonthYear(isoDate);
-  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
-}
-
-/**
- * Format a date range in Brazilian format (DD/MM/YYYY — DD/MM/YYYY)
- * @param startDate - ISO format start date
- * @param endDate - ISO format end date
- * @returns Formatted date range string
- */
-export function formatDateRange(startDate: string | null, endDate: string | null): string {
-  const start = formatDateBR(startDate);
-  const end = formatDateBR(endDate);
-  if (start && end) return `${start} — ${end}`;
-  if (start) return `A partir de ${start}`;
-  if (end) return `Até ${end}`;
-  return "";
-}
-
-/**
  * Format weekday, day and month (e.g., "Segunda-feira, 15 de março")
  * Useful for greeting cards and headers
  * @param date - Date object (defaults to today)
@@ -137,13 +83,4 @@ export function formatWeekdayDate(date: Date = new Date()): string {
  */
 export function todayIso(): string {
   return new Date().toISOString().split("T")[0]!;
-}
-
-/**
- * Get current datetime as ISO string
- * Useful for storing timestamps
- * @returns ISO datetime string
- */
-export function nowIso(): string {
-  return new Date().toISOString();
 }

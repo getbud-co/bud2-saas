@@ -11,7 +11,7 @@ import {
   ArrowsInLineHorizontal,
   ChartBar,
 } from "@phosphor-icons/react";
-import type { KeyResult, GoalType, KRStatus } from "@/types";
+import type { KeyResult, GoalType } from "@/types";
 
 /* ——— Numeric helpers ——— */
 
@@ -32,7 +32,7 @@ const GOAL_TYPE_ICONS: Record<GoalType, ComponentType<IconProps>> = {
   survey: ChartBar,
 };
 
-export function getGoalTypeIcon(goalType: GoalType): ComponentType<IconProps> {
+function getGoalTypeIcon(goalType: GoalType): ComponentType<IconProps> {
   return GOAL_TYPE_ICONS[goalType] ?? Trophy;
 }
 
@@ -58,30 +58,6 @@ export function getGoalLabel(kr: KeyResult): string {
       return `De pesquisa vinculada`;
     default:
       return "";
-  }
-}
-
-/* ——— Status helpers ——— */
-
-const STATUS_LABELS: Record<KRStatus, string> = {
-  on_track: "No ritmo",
-  attention: "Atenção",
-  off_track: "Atrasado",
-  completed: "Concluído",
-};
-
-export function getKRStatusLabel(status: KRStatus): string {
-  return STATUS_LABELS[status] ?? status;
-}
-
-/** Map KRStatus to DS Badge color */
-export function getKRStatusBadge(status: KRStatus): "success" | "warning" | "error" | "neutral" {
-  switch (status) {
-    case "on_track": return "success";
-    case "attention": return "warning";
-    case "off_track": return "error";
-    case "completed": return "success";
-    default: return "neutral";
   }
 }
 

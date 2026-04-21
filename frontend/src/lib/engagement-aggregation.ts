@@ -35,7 +35,7 @@ import { today, addWeeks, startOfWeek } from "@/lib/seed-utils";
 /**
  * Calcula as métricas de hábito de um usuário.
  */
-export function calculateHabitMetrics(
+function calculateHabitMetrics(
   userId: string,
   checkInHistory: Record<string, CheckIn[]>,
   activities: UserActivity[],
@@ -78,7 +78,7 @@ export function calculateHabitMetrics(
 /**
  * Calcula as métricas de performance de um usuário a partir das missões.
  */
-export function calculatePerformanceMetrics(
+function calculatePerformanceMetrics(
   userId: string,
   allMissions: Mission[],
   checkInHistory: Record<string, CheckIn[]>,
@@ -145,7 +145,7 @@ export function calculatePerformanceMetrics(
  * Calcula a confiança média de uma lista de check-ins.
  * Ignora "barrier" e "deprioritized" no cálculo numérico.
  */
-export function calculateAvgConfidence(
+function calculateAvgConfidence(
   checkIns: CheckIn[],
 ): "high" | "medium" | "low" | null {
   const confidenceValues: Record<string, number> = {
@@ -180,7 +180,7 @@ export function calculateAvgConfidence(
  * - Participação em pesquisas: 30%
  * - Frequência de acesso (30d): 20%
  */
-export function calculateEngagementScore(habit: UserHabitMetrics): number {
+function calculateEngagementScore(habit: UserHabitMetrics): number {
   // Check-in: média de streak (4 sem = 100) e frequência (4 por 30d = 100)
   const streakScore = Math.min(100, Math.round((habit.checkInStreak / 4) * 100));
   const freqScore = Math.min(100, Math.round((habit.checkInsLast30d / 4) * 100));
@@ -210,7 +210,7 @@ export function calculateEngagementScore(habit: UserHabitMetrics): number {
  *
  * @param surveyParticipation Taxa de participação em pesquisas do time (0-1). Default 0.5 (neutro).
  */
-export function calculatePerformanceScore(
+function calculatePerformanceScore(
   perf: UserPerformanceMetrics,
   surveyParticipation = 0.5,
 ): number {
@@ -249,7 +249,7 @@ export function calculatePerformanceScore(
  * - attention: overall >= 40
  * - critical:  overall <  40
  */
-export function determineHealthStatus(overallScore: number): HealthStatus {
+function determineHealthStatus(overallScore: number): HealthStatus {
   if (overallScore >= 45) return "healthy";
   if (overallScore >= 25) return "attention";
   return "critical";
@@ -265,7 +265,7 @@ export function determineHealthStatus(overallScore: number): HealthStatus {
  * - attention: algum < 60
  * - critical: algum < 40 OU pesquisas pendentes >= 2
  */
-export function determineAlertLevel(
+function determineAlertLevel(
   engagementScore: number,
   performanceScore: number,
   pendingSurveysCount: number,
@@ -280,7 +280,7 @@ export function determineAlertLevel(
 /**
  * Gera lista de alertas acionáveis para o gestor.
  */
-export function buildAlertMessages(
+function buildAlertMessages(
   habit: UserHabitMetrics,
   performance: UserPerformanceMetrics,
 ): string[] {
@@ -323,7 +323,7 @@ export function buildAlertMessages(
  * Determina a tendência da semana atual vs semana anterior de check-ins.
  * Wrapper sobre calculateUserTrend para compatibilidade.
  */
-export function getMemberTrend(
+function getMemberTrend(
   userId: string,
   checkInHistory: Record<string, CheckIn[]>,
 ): TrendDirection {
@@ -333,7 +333,7 @@ export function getMemberTrend(
 /**
  * Calcula a taxa de check-in do time nesta semana (% de membros com check-in).
  */
-export function calculateTeamCheckInRateThisWeek(
+function calculateTeamCheckInRateThisWeek(
   memberIds: string[],
   checkInHistory: Record<string, CheckIn[]>,
 ): number {
@@ -364,7 +364,7 @@ export function calculateTeamCheckInRateThisWeek(
 /**
  * Gera o resumo completo de engajamento de um membro do time.
  */
-export function buildMemberEngagementSummary(
+function buildMemberEngagementSummary(
   teamMember: TeamMember,
   allMissions: Mission[],
   checkInHistory: Record<string, CheckIn[]>,
@@ -425,20 +425,6 @@ export function buildAllMemberEngagements(
 }
 
 // ── Resumo do time ────────────────────────────────────────────────────────────
-
-/**
- * Calcula a tendência de um score entre duas listas de valores (atual vs anterior).
- */
-export function scoreToTrend(
-  currentAvg: number,
-  previousAvg: number,
-  threshold: number = 3,
-): TrendDirection {
-  const diff = currentAvg - previousAvg;
-  if (diff >= threshold) return "up";
-  if (diff <= -threshold) return "down";
-  return "stable";
-}
 
 /**
  * Agrega os dados de todos os membros em um resumo do time.

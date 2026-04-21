@@ -81,20 +81,22 @@ func NewRouter(bootstrapHandler BootstrapHandler, authHandler *auth.Handler, org
 
 		r.Route("/organizations", func(r chi.Router) {
 			r.Use(middleware.AuthMiddleware(middleware.AuthMiddlewareConfig{JWTSecret: cfg.JWTSecret}))
-			r.Use(middleware.TenantMiddleware)
-			r.With(middleware.RequirePermission(cfg.Enforcer, "org", "write")).Post("/", orgHandler.Create)
+			r.With(middleware.RequirePermission(cfg.Enforcer, "org", "create")).Post("/", orgHandler.Create)
 			r.With(middleware.RequirePermission(cfg.Enforcer, "org", "read")).Get("/", orgHandler.List)
 			r.With(middleware.RequirePermission(cfg.Enforcer, "org", "read")).Get("/{id}", orgHandler.Get)
 			r.With(middleware.RequirePermission(cfg.Enforcer, "org", "write")).Put("/{id}", orgHandler.Update)
+			r.With(middleware.RequirePermission(cfg.Enforcer, "org", "delete")).Delete("/{id}", orgHandler.Delete)
 		})
 
 		r.Route("/users", func(r chi.Router) {
 			r.Use(middleware.AuthMiddleware(middleware.AuthMiddlewareConfig{JWTSecret: cfg.JWTSecret}))
 			r.Use(middleware.TenantMiddleware)
+			r.Use(middleware.ActiveOrganizationMiddleware(cfg.Pool))
 			r.With(middleware.RequirePermission(cfg.Enforcer, "users", "write")).Post("/", userHandler.Create)
 			r.With(middleware.RequirePermission(cfg.Enforcer, "users", "read")).Get("/", userHandler.List)
 			r.With(middleware.RequirePermission(cfg.Enforcer, "users", "read")).Get("/{id}", userHandler.Get)
 			r.With(middleware.RequirePermission(cfg.Enforcer, "users", "write")).Put("/{id}", userHandler.Update)
+			r.With(middleware.RequirePermission(cfg.Enforcer, "users", "delete")).Delete("/{id}", userHandler.Delete)
 			r.With(middleware.RequirePermission(cfg.Enforcer, "users", "read")).Get("/{id}/membership", userHandler.GetMembership)
 			r.With(middleware.RequirePermission(cfg.Enforcer, "users", "write")).Put("/{id}/membership", userHandler.UpdateMembership)
 		})

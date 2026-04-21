@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/getbud-co/bud2/backend/internal/api/httputil"
+	apporg "github.com/getbud-co/bud2/backend/internal/app/organization"
 	"github.com/getbud-co/bud2/backend/internal/domain"
 	org "github.com/getbud-co/bud2/backend/internal/domain/organization"
 )
@@ -13,6 +14,8 @@ func handleError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, org.ErrNotFound):
 		httputil.WriteProblem(w, http.StatusNotFound, "Not Found", err.Error())
+	case errors.Is(err, apporg.ErrDeleteRequiresSystemAdmin):
+		httputil.WriteProblem(w, http.StatusForbidden, "Forbidden", err.Error())
 	case errors.Is(err, org.ErrDomainExists), errors.Is(err, org.ErrWorkspaceExists):
 		httputil.WriteProblem(w, http.StatusConflict, "Conflict", err.Error())
 	case errors.Is(err, domain.ErrValidation):

@@ -98,11 +98,13 @@ func main() {
 	getOrg := apporg.NewGetUseCase(orgRepo, logger)
 	listOrg := apporg.NewListUseCase(orgRepo, logger)
 	updateOrg := apporg.NewUpdateUseCase(orgRepo, logger)
+	deleteOrg := apporg.NewDeleteUseCase(txManager, logger)
 
 	createUser := appuser.NewCreateUseCase(userRepo, orgRepo, txManager, passwordHasher, logger)
 	getUser := appuser.NewGetUseCase(userRepo, logger)
 	listUser := appuser.NewListUseCase(userRepo, logger)
 	updateUser := appuser.NewUpdateUseCase(userRepo, txManager, logger)
+	deleteUser := appuser.NewDeleteUseCase(txManager, logger)
 	getUserMembership := appuser.NewGetMembershipUseCase(userRepo, logger)
 	updateUserMembership := appuser.NewUpdateMembershipUseCase(txManager, logger)
 
@@ -115,8 +117,8 @@ func main() {
 	// Handlers + Router
 	bootstrapHandler := apibootstrap.NewHandler(bootstrapUC)
 	authHandler := apiauth.NewHandler(loginUC, getSessionUC, switchOrganizationUC, refreshUC)
-	orgHandler := apiorg.NewHandler(createOrg, getOrg, listOrg, updateOrg)
-	userHandler := apiuser.NewHandler(createUser, getUser, listUser, updateUser, getUserMembership, updateUserMembership)
+	orgHandler := apiorg.NewHandler(createOrg, getOrg, listOrg, updateOrg, deleteOrg)
+	userHandler := apiuser.NewHandler(createUser, getUser, listUser, updateUser, deleteUser, getUserMembership, updateUserMembership)
 	router := api.NewRouter(bootstrapHandler, authHandler, orgHandler, userHandler, api.RouterConfig{
 		Env:            cfg.Env,
 		AllowedOrigins: strings.Split(cfg.AllowedOrigins, ","),

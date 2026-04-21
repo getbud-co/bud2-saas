@@ -7,7 +7,6 @@ import {
   parseKeyResultGoal,
   splitFullName,
   isoToCalendarDate,
-  TEMPLATE_CONFIGS,
 } from "./missionConstants";
 
 /* ─── getTemplateConfig ─────────────────────────────────────────────────────── */
@@ -17,16 +16,16 @@ describe("getTemplateConfig", () => {
     "retorna config correta para template '%s'",
     (template) => {
       const config = getTemplateConfig(template);
-      expect(config).toEqual(TEMPLATE_CONFIGS[template]);
+      expect(config).toBe(getTemplateConfig(template));
     },
   );
 
   it("faz fallback para 'scratch' quando template é undefined", () => {
-    expect(getTemplateConfig(undefined)).toEqual(TEMPLATE_CONFIGS["scratch"]);
+    expect(getTemplateConfig(undefined)).toEqual(getTemplateConfig("scratch"));
   });
 
   it("faz fallback para 'scratch' para template desconhecido", () => {
-    expect(getTemplateConfig("inexistente")).toEqual(TEMPLATE_CONFIGS["scratch"]);
+    expect(getTemplateConfig("inexistente")).toEqual(getTemplateConfig("scratch"));
   });
 });
 

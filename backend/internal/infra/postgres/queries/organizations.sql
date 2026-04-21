@@ -8,6 +8,16 @@ SELECT id, name, domain, workspace, status, created_at, updated_at FROM organiza
 WHERE id = $1
   AND deleted_at IS NULL;
 
+-- name: GetOrganizationByIDForUser :one
+SELECT o.id, o.name, o.domain, o.workspace, o.status, o.created_at, o.updated_at
+FROM organizations o
+JOIN organization_memberships om ON om.organization_id = o.id
+WHERE om.user_id = $1
+  AND o.id = $2
+  AND om.status = 'active'
+  AND om.deleted_at IS NULL
+  AND o.deleted_at IS NULL;
+
 -- name: GetOrganizationByDomain :one
 SELECT id, name, domain, workspace, status, created_at, updated_at FROM organizations
 WHERE LOWER(domain) = LOWER($1)
@@ -25,6 +35,18 @@ ORDER BY name ASC
 LIMIT $1
 OFFSET $2;
 
+-- name: ListOrganizationsByUser :many
+SELECT o.id, o.name, o.domain, o.workspace, o.status, o.created_at, o.updated_at
+FROM organizations o
+JOIN organization_memberships om ON om.organization_id = o.id
+WHERE om.user_id = $1
+  AND om.status = 'active'
+  AND om.deleted_at IS NULL
+  AND o.deleted_at IS NULL
+ORDER BY o.name ASC
+LIMIT $2
+OFFSET $3;
+
 -- name: ListOrganizationsByStatus :many
 SELECT id, name, domain, workspace, status, created_at, updated_at FROM organizations
 WHERE status = $1
@@ -33,14 +55,46 @@ ORDER BY name ASC
 LIMIT $2
 OFFSET $3;
 
+-- name: ListOrganizationsByUserAndStatus :many
+SELECT o.id, o.name, o.domain, o.workspace, o.status, o.created_at, o.updated_at
+FROM organizations o
+JOIN organization_memberships om ON om.organization_id = o.id
+WHERE om.user_id = $1
+  AND o.status = $2
+  AND om.status = 'active'
+  AND om.deleted_at IS NULL
+  AND o.deleted_at IS NULL
+ORDER BY o.name ASC
+LIMIT $3
+OFFSET $4;
+
 -- name: CountOrganizations :one
 SELECT COUNT(*) FROM organizations
 WHERE deleted_at IS NULL;
+
+-- name: CountOrganizationsByUser :one
+SELECT COUNT(*)
+FROM organizations o
+JOIN organization_memberships om ON om.organization_id = o.id
+WHERE om.user_id = $1
+  AND om.status = 'active'
+  AND om.deleted_at IS NULL
+  AND o.deleted_at IS NULL;
 
 -- name: CountOrganizationsByStatus :one
 SELECT COUNT(*) FROM organizations
 WHERE status = $1
   AND deleted_at IS NULL;
+
+-- name: CountOrganizationsByUserAndStatus :one
+SELECT COUNT(*)
+FROM organizations o
+JOIN organization_memberships om ON om.organization_id = o.id
+WHERE om.user_id = $1
+  AND o.status = $2
+  AND om.status = 'active'
+  AND om.deleted_at IS NULL
+  AND o.deleted_at IS NULL;
 
 -- name: UpdateOrganization :one
 UPDATE organizations

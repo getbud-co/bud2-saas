@@ -534,23 +534,3 @@ export function resetPeopleSnapshot(orgId = DEFAULT_ORG_ID): PeopleStoreSnapshot
 export function createTeamIdFromName(name: string): string {
   return `team-${slugify(name) || Date.now().toString()}`;
 }
-
-/**
- * Extracts the role slug from a roleId.
- * Format: "role-{orgId}-{slug}" => returns "slug"
- */
-export function extractRoleSlugFromId(roleId: string | null): string {
-  if (!roleId) return "colaborador";
-  const parts = roleId.split("-");
-  // Format: role-org-1-gestor => ["role", "org", "1", "gestor"]
-  // We want the last part after the orgId
-  if (parts.length < 3) return "colaborador";
-  // Find the slug part (everything after "role-{orgId}-")
-  const prefix = "role-";
-  if (!roleId.startsWith(prefix)) return "colaborador";
-  const withoutPrefix = roleId.slice(prefix.length);
-  // Find the last hyphen-separated segment
-  const lastHyphen = withoutPrefix.lastIndexOf("-");
-  if (lastHyphen === -1) return withoutPrefix || "colaborador";
-  return withoutPrefix.slice(lastHyphen + 1) || "colaborador";
-}

@@ -22,12 +22,13 @@ func TestUpdateUseCase_Execute_Success(t *testing.T) {
 	existing := fixtures.NewOrganization()
 	updated := fixtures.NewOrganization()
 	updated.Name = "Updated Name"
+	userID := uuid.New()
 
-	repo.On("GetByID", mock.Anything, existing.ID).Return(existing, nil)
+	repo.On("GetByIDForUser", mock.Anything, userID, existing.ID).Return(existing, nil)
 	repo.On("Update", mock.Anything, mock.Anything).Return(updated, nil)
 
 	result, err := uc.Execute(context.Background(), UpdateCommand{
-		ID: existing.ID, Name: "Updated Name", Domain: existing.Domain, Workspace: existing.Workspace, Status: string(existing.Status),
+		RequesterUserID: userID, ID: existing.ID, Name: "Updated Name", Domain: existing.Domain, Workspace: existing.Workspace, Status: string(existing.Status),
 	})
 
 	assert.NoError(t, err)
@@ -41,10 +42,11 @@ func TestUpdateUseCase_Execute_NotFound(t *testing.T) {
 	uc := NewUpdateUseCase(repo, testutil.NewDiscardLogger())
 
 	id := uuid.New()
-	repo.On("GetByID", mock.Anything, id).Return(nil, org.ErrNotFound)
+	userID := uuid.New()
+	repo.On("GetByIDForUser", mock.Anything, userID, id).Return(nil, org.ErrNotFound)
 
 	result, err := uc.Execute(context.Background(), UpdateCommand{
-		ID: id, Name: "Test", Domain: "example.com", Workspace: "example", Status: "active",
+		RequesterUserID: userID, ID: id, Name: "Test", Domain: "example.com", Workspace: "example", Status: "active",
 	})
 
 	assert.ErrorIs(t, err, org.ErrNotFound)
@@ -58,12 +60,13 @@ func TestUpdateUseCase_Execute_DomainConflict(t *testing.T) {
 	existing := fixtures.NewOrganization()
 	otherOrg := fixtures.NewOrganization()
 	otherOrg.ID = uuid.New()
+	userID := uuid.New()
 
-	repo.On("GetByID", mock.Anything, existing.ID).Return(existing, nil)
+	repo.On("GetByIDForUser", mock.Anything, userID, existing.ID).Return(existing, nil)
 	repo.On("GetByDomain", mock.Anything, "new-domain.com").Return(otherOrg, nil)
 
 	result, err := uc.Execute(context.Background(), UpdateCommand{
-		ID: existing.ID, Name: existing.Name, Domain: "new-domain.com", Workspace: existing.Workspace, Status: string(existing.Status),
+		RequesterUserID: userID, ID: existing.ID, Name: existing.Name, Domain: "new-domain.com", Workspace: existing.Workspace, Status: string(existing.Status),
 	})
 
 	assert.ErrorIs(t, err, org.ErrDomainExists)
@@ -77,12 +80,13 @@ func TestUpdateUseCase_Execute_WorkspaceConflict(t *testing.T) {
 	existing := fixtures.NewOrganization()
 	otherOrg := fixtures.NewOrganization()
 	otherOrg.ID = uuid.New()
+	userID := uuid.New()
 
-	repo.On("GetByID", mock.Anything, existing.ID).Return(existing, nil)
+	repo.On("GetByIDForUser", mock.Anything, userID, existing.ID).Return(existing, nil)
 	repo.On("GetByWorkspace", mock.Anything, "new-workspace").Return(otherOrg, nil)
 
 	result, err := uc.Execute(context.Background(), UpdateCommand{
-		ID: existing.ID, Name: existing.Name, Domain: existing.Domain, Workspace: "new-workspace", Status: string(existing.Status),
+		RequesterUserID: userID, ID: existing.ID, Name: existing.Name, Domain: existing.Domain, Workspace: "new-workspace", Status: string(existing.Status),
 	})
 
 	assert.ErrorIs(t, err, org.ErrWorkspaceExists)
@@ -94,11 +98,12 @@ func TestUpdateUseCase_Execute_SameDomainNoConflict(t *testing.T) {
 	uc := NewUpdateUseCase(repo, testutil.NewDiscardLogger())
 
 	existing := fixtures.NewOrganization()
-	repo.On("GetByID", mock.Anything, existing.ID).Return(existing, nil)
+	userID := uuid.New()
+	repo.On("GetByIDForUser", mock.Anything, userID, existing.ID).Return(existing, nil)
 	repo.On("Update", mock.Anything, mock.Anything).Return(existing, nil)
 
 	result, err := uc.Execute(context.Background(), UpdateCommand{
-		ID: existing.ID, Name: existing.Name, Domain: existing.Domain, Workspace: existing.Workspace, Status: string(existing.Status),
+		RequesterUserID: userID, ID: existing.ID, Name: existing.Name, Domain: existing.Domain, Workspace: existing.Workspace, Status: string(existing.Status),
 	})
 
 	assert.NoError(t, err)
@@ -112,10 +117,11 @@ func TestUpdateUseCase_Execute_InvalidStatus(t *testing.T) {
 	uc := NewUpdateUseCase(repo, testutil.NewDiscardLogger())
 
 	existing := fixtures.NewOrganization()
-	repo.On("GetByID", mock.Anything, existing.ID).Return(existing, nil)
+	userID := uuid.New()
+	repo.On("GetByIDForUser", mock.Anything, userID, existing.ID).Return(existing, nil)
 
 	result, err := uc.Execute(context.Background(), UpdateCommand{
-		ID: existing.ID, Name: existing.Name, Domain: existing.Domain, Workspace: existing.Workspace, Status: "invalid",
+		RequesterUserID: userID, ID: existing.ID, Name: existing.Name, Domain: existing.Domain, Workspace: existing.Workspace, Status: "invalid",
 	})
 
 	assert.Error(t, err)
@@ -127,11 +133,12 @@ func TestUpdateUseCase_Execute_GetByDomainError(t *testing.T) {
 	uc := NewUpdateUseCase(repo, testutil.NewDiscardLogger())
 
 	existing := fixtures.NewOrganization()
-	repo.On("GetByID", mock.Anything, existing.ID).Return(existing, nil)
+	userID := uuid.New()
+	repo.On("GetByIDForUser", mock.Anything, userID, existing.ID).Return(existing, nil)
 	repo.On("GetByDomain", mock.Anything, "new.com").Return(nil, errors.New("db error"))
 
 	result, err := uc.Execute(context.Background(), UpdateCommand{
-		ID: existing.ID, Name: existing.Name, Domain: "new.com", Workspace: existing.Workspace, Status: string(existing.Status),
+		RequesterUserID: userID, ID: existing.ID, Name: existing.Name, Domain: "new.com", Workspace: existing.Workspace, Status: string(existing.Status),
 	})
 
 	assert.Error(t, err)
@@ -143,13 +150,35 @@ func TestUpdateUseCase_Execute_UpdateError(t *testing.T) {
 	uc := NewUpdateUseCase(repo, testutil.NewDiscardLogger())
 
 	existing := fixtures.NewOrganization()
-	repo.On("GetByID", mock.Anything, existing.ID).Return(existing, nil)
+	userID := uuid.New()
+	repo.On("GetByIDForUser", mock.Anything, userID, existing.ID).Return(existing, nil)
 	repo.On("Update", mock.Anything, mock.Anything).Return(nil, errors.New("db error"))
 
 	result, err := uc.Execute(context.Background(), UpdateCommand{
-		ID: existing.ID, Name: existing.Name, Domain: existing.Domain, Workspace: existing.Workspace, Status: string(existing.Status),
+		RequesterUserID: userID, ID: existing.ID, Name: existing.Name, Domain: existing.Domain, Workspace: existing.Workspace, Status: string(existing.Status),
 	})
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
+}
+
+func TestUpdateUseCase_Execute_SystemAdminUsesGlobalLookup(t *testing.T) {
+	repo := new(mocks.OrganizationRepository)
+	uc := NewUpdateUseCase(repo, testutil.NewDiscardLogger())
+
+	existing := fixtures.NewOrganization()
+	repo.On("GetByID", mock.Anything, existing.ID).Return(existing, nil)
+	repo.On("Update", mock.Anything, mock.Anything).Return(existing, nil)
+
+	result, err := uc.Execute(context.Background(), UpdateCommand{
+		RequesterIsSystemAdmin: true,
+		ID:                     existing.ID,
+		Name:                   existing.Name,
+		Domain:                 existing.Domain,
+		Workspace:              existing.Workspace,
+		Status:                 string(existing.Status),
+	})
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
 }

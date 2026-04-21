@@ -1,4 +1,4 @@
-.PHONY: dev dev-backend dev-frontend build test lint clean sqlc-gen api-types check-node-auth
+.PHONY: dev dev-backend dev-frontend build test test-backend-unit test-backend-integration lint clean sqlc-gen api-types check-node-auth
 
 DOCKER_ENV_FILE ?= .env.docker.local
 
@@ -21,6 +21,12 @@ build:
 test:
 	cd backend && go test ./... -v
 	cd frontend && npm run test:run
+
+test-backend-unit:
+	cd backend && go test ./... -v
+
+test-backend-integration:
+	cd backend && go test -tags=integration ./... -v
 
 lint:
 	cd backend && golangci-lint run

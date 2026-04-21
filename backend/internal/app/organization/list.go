@@ -4,13 +4,17 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/google/uuid"
+
 	org "github.com/getbud-co/bud2/backend/internal/domain/organization"
 )
 
 type ListCommand struct {
-	Status *string
-	Page   int
-	Size   int
+	RequesterUserID        uuid.UUID
+	RequesterIsSystemAdmin bool
+	Status                 *string
+	Page                   int
+	Size                   int
 }
 
 type ListUseCase struct {
@@ -44,7 +48,15 @@ func (uc *ListUseCase) Execute(ctx context.Context, cmd ListCommand) (org.ListRe
 		filter.Status = &s
 	}
 
-	result, err := uc.repo.List(ctx, filter)
+	var (
+		result org.ListResult
+		err    error
+	)
+	if cmd.RequesterIsSystemAdmin {
+		result, err = uc.repo.List(ctx, filter)
+	} else {
+		result, err = uc.repo.ListByUser(ctx, cmd.RequesterUserID, filter)
+	}
 	if err != nil {
 		uc.logger.Error("failed to list organizations", "error", err)
 		return org.ListResult{}, err

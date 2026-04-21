@@ -18,8 +18,3 @@ export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   date: "Data",
   yes_no: "Sim / Não",
 };
-
-/** Get a human-readable label for a question type. */
-export function getQuestionTypeLabel(type: QuestionType): string {
-  return QUESTION_TYPE_LABELS[type] ?? type;
-}

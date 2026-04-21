@@ -83,7 +83,12 @@ func (uc *SwitchOrganizationUseCase) Execute(ctx context.Context, claims domain.
 	if err != nil {
 		return nil, fmt.Errorf("failed to issue token: %w", err)
 	}
-	refreshToken, err := uc.support.issueRefreshToken(ctx, session.User.ID)
+	var activeOrganizationID *uuid.UUID
+	if session.ActiveOrganization != nil {
+		id := session.ActiveOrganization.ID
+		activeOrganizationID = &id
+	}
+	refreshToken, err := uc.support.issueRefreshToken(ctx, session.User.ID, activeOrganizationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to issue refresh token: %w", err)
 	}

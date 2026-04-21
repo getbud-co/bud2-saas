@@ -7,35 +7,16 @@ import {
   addMonths,
   startOfQuarter,
   endOfQuarter,
-  startOfSemester,
-  endOfSemester,
-  startOfYear,
-  endOfYear,
   startOfWeek,
   toIsoDate,
   toIsoDateTime,
   getQuarter,
-  getSemester,
-  periodProgress,
-  expectedProgress,
   // Cycle Generation
   generateRelativeCycles,
-  getCurrentQuarterId,
-  getCurrentYearId,
-  // Check-in Generation
-  generateCheckInDates,
   generateCheckInsForKR,
-  // Survey Generation
-  generateSurveyDates,
-  // Progress Simulation
-  simulateProgress,
-  determineStatus,
   // ID Utilities
-  makeId,
   hashString,
-  pickFromArray,
   // Deterministic Generation
-  deterministicProgress,
   deterministicCreatedAt,
   deterministicUpdatedAt,
   getCurrentCycleInfo,
@@ -179,52 +160,6 @@ describe("Date Utilities", () => {
     });
   });
 
-  describe("startOfSemester()", () => {
-    it("returns Jan 1 for S1 dates", () => {
-      const result = startOfSemester(new Date(2026, 3, 15)); // Apr 15
-      expect(result.getMonth()).toBe(0);
-      expect(result.getDate()).toBe(1);
-    });
-
-    it("returns Jul 1 for S2 dates", () => {
-      const result = startOfSemester(new Date(2026, 9, 15)); // Oct 15
-      expect(result.getMonth()).toBe(6);
-      expect(result.getDate()).toBe(1);
-    });
-  });
-
-  describe("endOfSemester()", () => {
-    it("returns Jun 30 for S1 dates", () => {
-      const result = endOfSemester(new Date(2026, 3, 15)); // Apr 15
-      expect(result.getMonth()).toBe(5);
-      expect(result.getDate()).toBe(30);
-    });
-
-    it("returns Dec 31 for S2 dates", () => {
-      const result = endOfSemester(new Date(2026, 9, 15)); // Oct 15
-      expect(result.getMonth()).toBe(11);
-      expect(result.getDate()).toBe(31);
-    });
-  });
-
-  describe("startOfYear()", () => {
-    it("returns Jan 1 of the same year", () => {
-      const result = startOfYear(new Date(2026, 5, 15));
-      expect(result.getMonth()).toBe(0);
-      expect(result.getDate()).toBe(1);
-      expect(result.getFullYear()).toBe(2026);
-    });
-  });
-
-  describe("endOfYear()", () => {
-    it("returns Dec 31 of the same year", () => {
-      const result = endOfYear(new Date(2026, 5, 15));
-      expect(result.getMonth()).toBe(11);
-      expect(result.getDate()).toBe(31);
-      expect(result.getFullYear()).toBe(2026);
-    });
-  });
-
   describe("startOfWeek()", () => {
     it("returns Monday for a Wednesday", () => {
       const wednesday = new Date(2026, 2, 18); // Wed Mar 18, 2026
@@ -302,72 +237,6 @@ describe("Date Utilities", () => {
     });
   });
 
-  describe("getSemester()", () => {
-    it("returns 1 for Jan-Jun", () => {
-      expect(getSemester(new Date(2026, 0, 15))).toBe(1);
-      expect(getSemester(new Date(2026, 5, 15))).toBe(1);
-    });
-
-    it("returns 2 for Jul-Dec", () => {
-      expect(getSemester(new Date(2026, 6, 15))).toBe(2);
-      expect(getSemester(new Date(2026, 11, 15))).toBe(2);
-    });
-  });
-
-  describe("periodProgress()", () => {
-    it("returns 0 at the start of period", () => {
-      const start = new Date(2026, 0, 1);
-      const end = new Date(2026, 2, 31);
-      const current = new Date(2026, 0, 1);
-      expect(periodProgress(start, end, current)).toBe(0);
-    });
-
-    it("returns 100 at the end of period", () => {
-      const start = new Date(2026, 0, 1);
-      const end = new Date(2026, 2, 31);
-      const current = new Date(2026, 2, 31);
-      expect(periodProgress(start, end, current)).toBe(100);
-    });
-
-    it("returns ~50 at the middle of period", () => {
-      const start = new Date(2026, 0, 1);
-      const end = new Date(2026, 0, 31);
-      const current = new Date(2026, 0, 16);
-      const result = periodProgress(start, end, current);
-      expect(result).toBeGreaterThan(45);
-      expect(result).toBeLessThan(55);
-    });
-
-    it("returns 100 if current is past end", () => {
-      const start = new Date(2026, 0, 1);
-      const end = new Date(2026, 0, 31);
-      const current = new Date(2026, 2, 15);
-      expect(periodProgress(start, end, current)).toBe(100);
-    });
-
-    it("returns 0 if current is before start", () => {
-      const start = new Date(2026, 2, 1);
-      const end = new Date(2026, 2, 31);
-      const current = new Date(2026, 0, 15);
-      expect(periodProgress(start, end, current)).toBe(0);
-    });
-
-    it("returns 100 if start equals end", () => {
-      const date = new Date(2026, 0, 15);
-      expect(periodProgress(date, date, date)).toBe(100);
-    });
-  });
-
-  describe("expectedProgress()", () => {
-    it("is an alias for periodProgress", () => {
-      const start = new Date(2026, 0, 1);
-      const end = new Date(2026, 2, 31);
-      const current = new Date(2026, 1, 15);
-      expect(expectedProgress(start, end, current)).toBe(
-        periodProgress(start, end, current)
-      );
-    });
-  });
 });
 
 // ─── Cycle Generation ───
@@ -428,64 +297,10 @@ describe("Cycle Generation", () => {
     });
   });
 
-  describe("getCurrentQuarterId()", () => {
-    it("returns format qN-YYYY", () => {
-      const result = getCurrentQuarterId();
-      expect(result).toMatch(/^q[1-4]-\d{4}$/);
-    });
-
-    it("matches current quarter and year", () => {
-      const now = new Date();
-      const expectedQuarter = Math.floor(now.getMonth() / 3) + 1;
-      const expectedYear = now.getFullYear();
-      expect(getCurrentQuarterId()).toBe(`q${expectedQuarter}-${expectedYear}`);
-    });
-  });
-
-  describe("getCurrentYearId()", () => {
-    it("returns format ano-YYYY", () => {
-      const result = getCurrentYearId();
-      expect(result).toMatch(/^ano-\d{4}$/);
-    });
-
-    it("matches current year", () => {
-      const expectedYear = new Date().getFullYear();
-      expect(getCurrentYearId()).toBe(`ano-${expectedYear}`);
-    });
-  });
 });
-
 // ─── Check-in Generation ───
 
 describe("Check-in Generation", () => {
-  describe("generateCheckInDates()", () => {
-    it("returns all date slots", () => {
-      const dates = generateCheckInDates();
-      expect(dates.recent).toBeInstanceOf(Date);
-      expect(dates.previous).toBeInstanceOf(Date);
-      expect(dates.older).toBeInstanceOf(Date);
-      expect(dates.oldest).toBeInstanceOf(Date);
-      expect(dates.veryOld).toBeInstanceOf(Date);
-    });
-
-    it("dates are in correct chronological order", () => {
-      const dates = generateCheckInDates();
-      expect(dates.recent.getTime()).toBeGreaterThan(dates.previous.getTime());
-      expect(dates.previous.getTime()).toBeGreaterThan(dates.older.getTime());
-      expect(dates.older.getTime()).toBeGreaterThan(dates.oldest.getTime());
-      expect(dates.oldest.getTime()).toBeGreaterThan(dates.veryOld.getTime());
-    });
-
-    it("all dates are on weekdays (Mon-Fri)", () => {
-      const dates = generateCheckInDates();
-      for (const key of Object.keys(dates) as (keyof typeof dates)[]) {
-        const day = dates[key].getDay();
-        expect(day).toBeGreaterThanOrEqual(1);
-        expect(day).toBeLessThanOrEqual(5);
-      }
-    });
-  });
-
   describe("generateCheckInsForKR()", () => {
     it("generates requested number of check-ins", () => {
       const checkIns = generateCheckInsForKR("kr-test-1", 4);
@@ -535,124 +350,9 @@ describe("Check-in Generation", () => {
   });
 });
 
-// ─── Survey Generation ───
-
-describe("Survey Generation", () => {
-  describe("generateSurveyDates()", () => {
-    it("returns all survey date sets", () => {
-      const dates = generateSurveyDates();
-      expect(dates.endingSoon).toBeDefined();
-      expect(dates.activeMid).toBeDefined();
-      expect(dates.recentlyClosed).toBeDefined();
-      expect(dates.scheduled).toBeDefined();
-      expect(dates.archived).toBeDefined();
-    });
-
-    it("each survey has start before end", () => {
-      const dates = generateSurveyDates();
-
-      for (const key of Object.keys(dates) as (keyof typeof dates)[]) {
-        const survey = dates[key];
-        expect(survey.start.getTime()).toBeLessThan(survey.end.getTime());
-      }
-    });
-
-    it("endingSoon ends this week", () => {
-      const dates = generateSurveyDates();
-      const now = new Date();
-      const endOfWeek = new Date(now);
-      endOfWeek.setDate(endOfWeek.getDate() + 7);
-
-      expect(dates.endingSoon.end.getTime()).toBeLessThan(endOfWeek.getTime());
-    });
-
-    it("scheduled starts in the future", () => {
-      const dates = generateSurveyDates();
-      const now = new Date();
-
-      expect(dates.scheduled.start.getTime()).toBeGreaterThan(now.getTime());
-    });
-
-    it("archived is in the past", () => {
-      const dates = generateSurveyDates();
-      const now = new Date();
-
-      expect(dates.archived.end.getTime()).toBeLessThan(now.getTime());
-    });
-  });
-});
-
-// ─── Progress Simulation ───
-
-describe("Progress Simulation", () => {
-  describe("simulateProgress()", () => {
-    it("returns value between 0 and 100", () => {
-      const start = new Date(2026, 0, 1);
-      const end = new Date(2026, 2, 31);
-      const result = simulateProgress(start, end);
-
-      expect(result).toBeGreaterThanOrEqual(0);
-      expect(result).toBeLessThanOrEqual(100);
-    });
-
-    it("higher performance factor increases progress", () => {
-      const start = new Date(2026, 0, 1);
-      const end = new Date(2026, 11, 31);
-
-      const lowProgress = simulateProgress(start, end, 0.5, 0);
-      const highProgress = simulateProgress(start, end, 1.5, 0);
-
-      expect(highProgress).toBeGreaterThan(lowProgress);
-    });
-  });
-
-  describe("determineStatus()", () => {
-    it("returns completed for 100% progress", () => {
-      expect(determineStatus(100, 50)).toBe("completed");
-      expect(determineStatus(100, 100)).toBe("completed");
-    });
-
-    it("returns on_track when progress >= expected - 5", () => {
-      expect(determineStatus(50, 50)).toBe("on_track");
-      expect(determineStatus(48, 50)).toBe("on_track");
-      expect(determineStatus(45, 50)).toBe("on_track");
-    });
-
-    it("returns attention when progress is 6-20 behind", () => {
-      expect(determineStatus(44, 50)).toBe("attention");
-      expect(determineStatus(35, 50)).toBe("attention");
-      expect(determineStatus(30, 50)).toBe("attention");
-    });
-
-    it("returns off_track when progress is >20 behind", () => {
-      expect(determineStatus(29, 50)).toBe("off_track");
-      expect(determineStatus(10, 50)).toBe("off_track");
-      expect(determineStatus(0, 50)).toBe("off_track");
-    });
-  });
-});
-
 // ─── ID Utilities ───
 
 describe("ID Utilities", () => {
-  describe("makeId()", () => {
-    it("joins parts with hyphen", () => {
-      expect(makeId("a", "b", "c")).toBe("a-b-c");
-    });
-
-    it("converts numbers to strings", () => {
-      expect(makeId("item", 1, "sub", 2)).toBe("item-1-sub-2");
-    });
-
-    it("handles single part", () => {
-      expect(makeId("single")).toBe("single");
-    });
-
-    it("handles empty parts", () => {
-      expect(makeId("a", "", "b")).toBe("a--b");
-    });
-  });
-
   describe("hashString()", () => {
     it("returns positive number", () => {
       expect(hashString("test")).toBeGreaterThanOrEqual(0);
@@ -682,57 +382,11 @@ describe("ID Utilities", () => {
     });
   });
 
-  describe("pickFromArray()", () => {
-    it("returns an item from the array", () => {
-      const array = ["a", "b", "c", "d", "e"];
-      const result = pickFromArray(array, "seed");
-      expect(array).toContain(result);
-    });
-
-    it("returns same item for same seed", () => {
-      const array = [1, 2, 3, 4, 5];
-      const result1 = pickFromArray(array, "same-seed");
-      const result2 = pickFromArray(array, "same-seed");
-      expect(result1).toBe(result2);
-    });
-
-    it("distributes across array with different seeds", () => {
-      const array = ["a", "b", "c", "d", "e"];
-      const results = new Set<string>();
-
-      for (let i = 0; i < 100; i++) {
-        results.add(pickFromArray(array, `seed-${i}`));
-      }
-
-      // Should pick multiple different items
-      expect(results.size).toBeGreaterThan(1);
-    });
-  });
 });
 
 // ─── Deterministic Generation ───
 
 describe("Deterministic Generation", () => {
-  describe("deterministicProgress()", () => {
-    it("returns value within specified range", () => {
-      const result = deterministicProgress("test-seed", 20, 80);
-      expect(result).toBeGreaterThanOrEqual(20);
-      expect(result).toBeLessThan(80);
-    });
-
-    it("returns same value for same seed", () => {
-      const result1 = deterministicProgress("consistent-seed");
-      const result2 = deterministicProgress("consistent-seed");
-      expect(result1).toBe(result2);
-    });
-
-    it("uses default range when not specified", () => {
-      const result = deterministicProgress("test");
-      expect(result).toBeGreaterThanOrEqual(20);
-      expect(result).toBeLessThan(95);
-    });
-  });
-
   describe("deterministicCreatedAt()", () => {
     it("returns ISO datetime string", () => {
       const cycleStart = new Date(2026, 0, 1);
@@ -798,14 +452,16 @@ describe("Deterministic Generation", () => {
       expect(info.yearEnd).toBeInstanceOf(Date);
     });
 
-    it("quarterId matches getCurrentQuarterId", () => {
+    it("quarterId matches current quarter format", () => {
       const info = getCurrentCycleInfo();
-      expect(info.quarterId).toBe(getCurrentQuarterId());
+      const now = new Date();
+      const expectedQuarter = Math.floor(now.getMonth() / 3) + 1;
+      expect(info.quarterId).toBe(`q${expectedQuarter}-${now.getFullYear()}`);
     });
 
-    it("yearId matches getCurrentYearId", () => {
+    it("yearId matches current year format", () => {
       const info = getCurrentCycleInfo();
-      expect(info.yearId).toBe(getCurrentYearId());
+      expect(info.yearId).toBe(`ano-${new Date().getFullYear()}`);
     });
 
     it("quarter dates are within year dates", () => {

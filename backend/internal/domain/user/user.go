@@ -53,13 +53,6 @@ func (u *User) Validate() error {
 	return nil
 }
 
-type ListFilter struct {
-	Status *Status
-	Search *string
-	Page   int
-	Size   int
-}
-
 type ListResult struct {
 	Users []User
 	Total int64
@@ -69,9 +62,9 @@ type Repository interface {
 	Create(ctx context.Context, user *User) (*User, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*User, error)
 	GetByEmail(ctx context.Context, email string) (*User, error)
-	List(ctx context.Context, filter ListFilter) (ListResult, error)
 	ListByOrganization(ctx context.Context, organizationID uuid.UUID, status *Status, page, size int) (ListResult, error)
 	Update(ctx context.Context, user *User) (*User, error)
+	DeleteMembership(ctx context.Context, organizationID, userID uuid.UUID) error
 }
 
 func (u *User) MembershipForOrganization(organizationID uuid.UUID) (*membership.Membership, error) {

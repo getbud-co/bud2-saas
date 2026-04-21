@@ -25,7 +25,7 @@ Repository-specific guidance for AI agents. Keep this file short and durable: on
 - Persistence uses explicit SQL with `sqlc`; do not introduce an ORM.
 
 ## Multi-Tenancy
-- The application is multi-tenant. `Organization` is the active tenant scope.
+- The application is multi-tenant. `Organization` is the tenant boundary and active tenant scope when tenant-scoped behavior applies.
 - Preserve tenant isolation end-to-end in every business operation.
 - Pass `TenantID`/`OrganizationID` explicitly through commands and parameters when tenant-scoped behavior is required.
 - Do not add tenant-bypassing reads, writes, or uniqueness rules unless the behavior is explicitly global.
@@ -47,6 +47,7 @@ Repository-specific guidance for AI agents. Keep this file short and durable: on
 - TDD is the default approach.
 - For behavioral changes, start with a failing automated test, implement the minimum change to make it pass, and then refactor.
 - Every relevant behavior change should be covered by automated tests close to the changed code.
+- Prefer unit tests first. Add integration tests only for behavior that depends on real boundaries such as SQL/migrations/transactions or router/middleware/JWT/Casbin wiring.
 - Aim for engineering excellence: correctness, simplicity, consistency, clear boundaries, and maintainability.
 - Prefer clean solutions aligned with project references over ad hoc fixes or workaround-driven designs.
 
@@ -57,7 +58,9 @@ Repository-specific guidance for AI agents. Keep this file short and durable: on
 - After changing SQL queries or migrations, run `make sqlc-gen`.
 
 ## Verification
-- Prefer `make test`, `make lint`, and `make build`.
+- Prefer `make test-backend-unit` for fast backend feedback and `make test-backend-integration` when changing SQL, migrations, transactions, or HTTP/auth wiring.
+- Backend integration tests use the `integration` build tag.
+- Prefer `make test`, `make lint`, and `make build` before wrapping up broader changes.
 
 ## Additional Context
 - Use `README.md` and `docs/adr/` for deeper context and historical decisions.

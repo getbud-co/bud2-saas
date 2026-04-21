@@ -40,21 +40,27 @@ type updateMembershipUseCase interface {
 	Execute(ctx context.Context, cmd appuser.UpdateMembershipCommand) (*membership.Membership, error)
 }
 
+type deleteUseCase interface {
+	Execute(ctx context.Context, cmd appuser.DeleteCommand) error
+}
+
 type Handler struct {
 	create           createUseCase
 	get              getUseCase
 	list             listUseCase
 	update           updateUseCase
+	delete           deleteUseCase
 	getMembership    getMembershipUseCase
 	updateMembership updateMembershipUseCase
 }
 
-func NewHandler(create createUseCase, get getUseCase, list listUseCase, update updateUseCase, getMembership getMembershipUseCase, updateMembership updateMembershipUseCase) *Handler {
+func NewHandler(create createUseCase, get getUseCase, list listUseCase, update updateUseCase, delete deleteUseCase, getMembership getMembershipUseCase, updateMembership updateMembershipUseCase) *Handler {
 	return &Handler{
 		create:           create,
 		get:              get,
 		list:             list,
 		update:           update,
+		delete:           delete,
 		getMembership:    getMembership,
 		updateMembership: updateMembership,
 	}
@@ -171,6 +177,36 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, toResponse(result))
+}
+
+func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
+	organizationID, err := domain.TenantIDFromContext(r.Context())
+	if err != nil {
+		httputil.WriteProblem(w, http.StatusUnauthorized, "Unauthorized", err.Error())
+		return
+	}
+	claims, err := domain.ClaimsFromContext(r.Context())
+	if err != nil {
+		httputil.WriteProblem(w, http.StatusUnauthorized, "Unauthorized", "authentication required")
+		return
+	}
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httputil.WriteProblem(w, http.StatusBadRequest, "Bad Request", "invalid id format")
+		return
+	}
+
+	err = h.delete.Execute(r.Context(), appuser.DeleteCommand{
+		OrganizationID:  organizationID,
+		RequesterUserID: claims.UserID.UUID(),
+		TargetUserID:    id,
+	})
+	if err != nil {
+		handleError(w, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) GetMembership(w http.ResponseWriter, r *http.Request) {

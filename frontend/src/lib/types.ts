@@ -295,7 +295,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List organizations */
+        /**
+         * List organizations
+         * @description Returns all accessible organizations for the authenticated user. System admins receive all organizations.
+         */
         get: {
             parameters: {
                 query?: {
@@ -318,10 +321,22 @@ export interface paths {
                         "application/json": components["schemas"]["OrganizationListResponse"];
                     };
                 };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
             };
         };
         put?: never;
-        /** Create organization */
+        /**
+         * Create organization
+         * @description Creates a new organization. Restricted to system admins.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -344,6 +359,24 @@ export interface paths {
                         "application/json": components["schemas"]["Organization"];
                     };
                 };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -361,7 +394,10 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Get organization */
+        /**
+         * Get organization
+         * @description Returns the organization only if it is accessible to the authenticated user. Inaccessible organizations return 404. System admins may access any organization.
+         */
         get: {
             parameters: {
                 query?: never;
@@ -382,9 +418,30 @@ export interface paths {
                         "application/json": components["schemas"]["Organization"];
                     };
                 };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Not found or inaccessible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
             };
         };
-        /** Update organization */
+        /**
+         * Update organization
+         * @description Updates the organization only if it is accessible to the authenticated user. Inaccessible organizations return 404. System admins may update any organization.
+         */
         put: {
             parameters: {
                 query?: never;
@@ -400,7 +457,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description OK */
+                /** @description Updated */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -409,10 +466,96 @@ export interface paths {
                         "application/json": components["schemas"]["Organization"];
                     };
                 };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Not found or inaccessible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Domain or workspace conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
             };
         };
         post?: never;
-        delete?: never;
+        /**
+         * Soft delete organization
+         * @description Soft deletes an organization and its memberships. Restricted to system admins.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -542,7 +685,57 @@ export interface paths {
             };
         };
         post?: never;
-        delete?: never;
+        /**
+         * Soft delete membership from active organization
+         * @description Soft deletes the user's membership in the active organization.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Not found or inaccessible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;

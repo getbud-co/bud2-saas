@@ -11,11 +11,13 @@ import (
 )
 
 type UpdateCommand struct {
-	ID        uuid.UUID
-	Name      string
-	Domain    string
-	Workspace string
-	Status    string
+	RequesterUserID        uuid.UUID
+	RequesterIsSystemAdmin bool
+	ID                     uuid.UUID
+	Name                   string
+	Domain                 string
+	Workspace              string
+	Status                 string
 }
 
 type UpdateUseCase struct {
@@ -30,7 +32,15 @@ func NewUpdateUseCase(repo org.Repository, logger *slog.Logger) *UpdateUseCase {
 func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*org.Organization, error) {
 	uc.logger.Debug("updating organization", "organization_id", cmd.ID)
 
-	existing, err := uc.repo.GetByID(ctx, cmd.ID)
+	var (
+		existing *org.Organization
+		err      error
+	)
+	if cmd.RequesterIsSystemAdmin {
+		existing, err = uc.repo.GetByID(ctx, cmd.ID)
+	} else {
+		existing, err = uc.repo.GetByIDForUser(ctx, cmd.RequesterUserID, cmd.ID)
+	}
 	if err != nil {
 		uc.logger.Error("failed to fetch organization for update", "error", err, "organization_id", cmd.ID)
 		return nil, err

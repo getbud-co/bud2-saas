@@ -6,10 +6,7 @@
 
 export {
   numVal,
-  getGoalTypeIcon,
   getGoalLabel,
-  getKRStatusLabel,
-  getKRStatusBadge,
   formatPeriodRange,
   getOwnerName,
   getOwnerInitials,

@@ -1,72 +1,37 @@
-# ADR-009: Contrato de API — OpenAPI Spec-First, RESTful
+# ADR-009: OpenAPI como Fonte da Verdade do Contrato HTTP
 
 **Data**: 2026-03-24
 **Status**: Aceito
 
 ## Contexto
 
-O frontend Next.js consome a API Go via HTTP. Sem um contrato formal, os tipos TypeScript em `src/lib/api.ts` divergem silenciosamente dos endpoints Go. Precisamos de uma fonte da verdade para o contrato de API.
+O frontend depende de um contrato HTTP estável e o backend implementa os handlers manualmente. Sem uma fonte de verdade única, o drift entre contrato e implementação aparece rápido.
 
 ## Decisão
 
-Adotar **OpenAPI 3.1 spec-first** com **REST** como estilo arquitetural.
+`backend/api/openapi.yml` é a fonte da verdade do contrato HTTP.
 
-### Workflow
+- Os handlers Go são implementados manualmente a partir da spec.
+- Os tipos TypeScript são gerados para `frontend/src/lib/types.ts`.
+- Alterações de contrato devem atualizar a spec antes ou junto da implementação.
 
-1. A spec OpenAPI é escrita manualmente em `backend/api/openapi.yml` — é a fonte da verdade.
-2. A partir da spec, tipos TypeScript são gerados para o frontend via `openapi-typescript`.
-3. Os handlers Go são implementados manualmente seguindo a spec — sem geração de código Go server (mantém o controle total sobre o handler).
+## Convenções
 
-```
-backend/api/openapi.yml  (fonte da verdade)
-        ↓                         ↓
-  Implementação Go         Tipos TypeScript gerados
-  (manual, segue spec)     frontend/src/lib/types.ts
-```
-
-### Convenções REST
-
-- Recursos no plural e em kebab-case: `/users`, `/order-items`
-- Verbos HTTP semânticos: `GET` (leitura), `POST` (criação), `PUT` (substituição), `PATCH` (atualização parcial), `DELETE` (remoção)
-- IDs na URL para recursos específicos: `GET /users/{id}`
-- Erros no formato RFC 7807 (Problem Details):
-
-```json
-{
-  "type": "https://bud2.com/errors/validation",
-  "title": "Validation Error",
-  "status": 422,
-  "detail": "Email is invalid",
-  "errors": [{ "field": "email", "message": "must be a valid email" }]
-}
-```
-
-### Makefile
-
-```makefile
-api-types:
-    npx openapi-typescript backend/api/openapi.yml -o frontend/src/lib/types.ts
-```
+- Endpoints seguem convenções REST compatíveis com a implementação atual.
+- Erros usam Problem Details (`application/problem+json`).
+- Regras de autorização e escopo relevantes para o cliente devem estar descritas na spec.
+- A spec deve refletir o comportamento implementado, inclusive `401`, `403`, `404`, `409` e `422` quando aplicável.
 
 ## Consequências
 
 **Positivas:**
-- Frontend e backend compartilham contrato formal — drift detectado pela geração de tipos.
-- OpenAPI é padrão de mercado — suporte nativo em ferramentas de teste (Postman, Bruno), documentação (Swagger UI), e gateways.
-- Spec-first força pensar no contrato antes de implementar — melhora o design da API.
+- Backend e frontend compartilham um contrato verificável.
+- O contrato documenta não só shape, mas também regras visíveis ao cliente.
 
 **Negativas:**
-- Passo adicional de geração (`make api-types`) quando a spec muda.
-- Spec escrita manualmente — pode ficar desatualizada se não houver disciplina de atualizar junto com o handler.
+- A spec precisa ser mantida junto com o código.
 
 ## Alternativas Consideradas
 
-- **Contrato manual**: Tipos TypeScript escritos à mão em `api.ts`. Descartado — drift silencioso inevitável.
-- **gRPC**: Descartado por adicionar complexidade de tooling (protobuf, grpc-web) sem necessidade para um frontend web padrão.
-- **Code-first (geração de spec a partir do código Go)**: Descartado por acoplar o design da API aos detalhes de implementação dos handlers.
-
-## Referências
-
-- OpenAPI 3.1: https://spec.openapis.org/oas/v3.1.0
-- openapi-typescript: https://openapi-ts.dev
-- RFC 7807 Problem Details: https://www.rfc-editor.org/rfc/rfc7807
+- Tipos TypeScript escritos à mão: descartado por drift silencioso.
+- Code-first a partir do Go: descartado para manter controle explícito do contrato.
