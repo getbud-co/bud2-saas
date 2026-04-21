@@ -417,7 +417,7 @@ components:
         [organization_name, organization_domain, organization_workspace, admin_name, admin_email, admin_password]
       properties:
         organization_name: { type: string }
-        organization_domain: { type: string, format: email }
+        organization_domain: { type: string, format: hostname }
         organization_workspace: { type: string }
         admin_name: { type: string }
         admin_email: { type: string, format: email }
@@ -475,7 +475,7 @@ components:
       required: [name, domain, workspace]
       properties:
         name: { type: string }
-        domain: { type: string }
+        domain: { type: string, format: hostname }
         workspace: { type: string }
         status: { type: string, enum: [active, inactive] }
 
@@ -484,7 +484,7 @@ components:
       required: [name, domain, workspace, status]
       properties:
         name: { type: string }
-        domain: { type: string }
+        domain: { type: string, format: hostname }
         workspace: { type: string }
         status: { type: string, enum: [active, inactive] }
 

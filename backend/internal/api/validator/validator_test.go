@@ -125,6 +125,52 @@ func TestValidate_SlugWithRequired(t *testing.T) {
 	}
 }
 
+func TestValidate_FQDN(t *testing.T) {
+	type TestStruct struct {
+		Domain string `validate:"fqdn"`
+	}
+
+	tests := []struct {
+		name    string
+		domain  string
+		wantErr bool
+	}{
+		{"valid domain", "example.com", false},
+		{"valid subdomain", "sub.example.co.uk", false},
+		{"valid with numbers", "test123.example.com", false},
+		{"valid with trailing dot", "example.com.", false},
+		{"empty fails fqdn", "", true},
+		{"invalid with space", "not a domain", true},
+		{"invalid starts with hyphen", "-invalid.com", true},
+		{"invalid single label", "localhost", true},
+		{"invalid with at sign", "admin@example.com", true},
+		{"invalid with protocol", "http://example.com", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := TestStruct{Domain: tt.domain}
+			err := Validate(s)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestFormatValidationErrors_FQDN(t *testing.T) {
+	type TestStruct struct {
+		Domain string `validate:"required,fqdn"`
+	}
+
+	s := TestStruct{Domain: "not valid"}
+	err := Validate(s)
+	got := FormatValidationErrors(err)
+	assert.Contains(t, got, "Domain must be a valid domain name")
+}
+
 func TestFormatValidationErrors(t *testing.T) {
 	type TestStruct struct {
 		Name  string `validate:"required,min=5"`

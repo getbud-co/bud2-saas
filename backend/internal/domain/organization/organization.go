@@ -4,12 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/getbud-co/bud2/backend/internal/domain"
 )
+
+var domainRegex = regexp.MustCompile(`^([a-zA-Z0-9][a-zA-Z0-9-]{0,62})(\.[a-zA-Z0-9][a-zA-Z0-9-]{0,62})*(\.[a-zA-Z][a-zA-Z0-9-]{0,62})\.?$`)
 
 type Status string
 
@@ -38,6 +41,9 @@ func (o *Organization) Validate() error {
 	}
 	if o.Domain == "" {
 		return fmt.Errorf("%w: domain is required", domain.ErrValidation)
+	}
+	if !domainRegex.MatchString(o.Domain) {
+		return fmt.Errorf("%w: domain must be a valid domain name", domain.ErrValidation)
 	}
 	if o.Workspace == "" {
 		return fmt.Errorf("%w: workspace is required", domain.ErrValidation)

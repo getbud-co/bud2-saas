@@ -59,6 +59,8 @@ func formatError(field, tag, param string) string {
 		return fmt.Sprintf("%s is required", field)
 	case "email":
 		return fmt.Sprintf("%s must be a valid email address", field)
+	case "fqdn":
+		return fmt.Sprintf("%s must be a valid domain name", field)
 	case "min":
 		return fmt.Sprintf("%s must be at least %s characters", field, param)
 	case "max":

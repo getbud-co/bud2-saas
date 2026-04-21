@@ -34,7 +34,7 @@ func TestHandler_Create_Success(t *testing.T) {
 	testUser := fixtures.NewUser()
 	uc.On("Execute", mock.Anything, appbootstrap.Command{
 		OrganizationName:      "Test Org",
-		OrganizationDomain:    "admin@example.com",
+		OrganizationDomain:    "example.com",
 		OrganizationWorkspace: "example",
 		AdminName:             "Admin",
 		AdminEmail:            "admin@example.com",
@@ -47,7 +47,7 @@ func TestHandler_Create_Success(t *testing.T) {
 
 	body, _ := json.Marshal(createRequest{
 		OrganizationName:      "Test Org",
-		OrganizationDomain:    "admin@example.com",
+		OrganizationDomain:    "example.com",
 		OrganizationWorkspace: "example",
 		AdminName:             "Admin",
 		AdminEmail:            "admin@example.com",
@@ -88,7 +88,7 @@ func TestHandler_Create_AlreadyBootstrapped(t *testing.T) {
 
 	body, _ := json.Marshal(createRequest{
 		OrganizationName:      "Test Org",
-		OrganizationDomain:    "admin@example.com",
+		OrganizationDomain:    "example.com",
 		OrganizationWorkspace: "example",
 		AdminName:             "Admin",
 		AdminEmail:            "admin@example.com",
@@ -111,7 +111,7 @@ func TestHandler_Create_InternalError(t *testing.T) {
 
 	body, _ := json.Marshal(createRequest{
 		OrganizationName:      "Test Org",
-		OrganizationDomain:    "admin@example.com",
+		OrganizationDomain:    "example.com",
 		OrganizationWorkspace: "example",
 		AdminName:             "Admin",
 		AdminEmail:            "admin@example.com",
@@ -131,7 +131,7 @@ func TestHandler_Create_RequestValidationError(t *testing.T) {
 
 	body, _ := json.Marshal(createRequest{
 		OrganizationName:      "T",
-		OrganizationDomain:    "not-email",
+		OrganizationDomain:    "not a domain",
 		OrganizationWorkspace: "",
 		AdminName:             "",
 		AdminEmail:            "",

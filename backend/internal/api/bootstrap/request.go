@@ -4,7 +4,7 @@ import "github.com/getbud-co/bud2/backend/internal/app/bootstrap"
 
 type createRequest struct {
 	OrganizationName      string `json:"organization_name" validate:"required,min=2,max=100"`
-	OrganizationDomain    string `json:"organization_domain" validate:"required,email"`
+	OrganizationDomain    string `json:"organization_domain" validate:"required,fqdn"`
 	OrganizationWorkspace string `json:"organization_workspace" validate:"required,min=2,max=100,slug"`
 	AdminName             string `json:"admin_name" validate:"required,min=2,max=100"`
 	AdminEmail            string `json:"admin_email" validate:"required,email"`
