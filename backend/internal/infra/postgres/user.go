@@ -54,6 +54,7 @@ func (r *UserRepository) Create(ctx context.Context, u *user.User) (*user.User, 
 		return nil, err
 	}
 	created := createUserRowToDomain(row)
+	created.Memberships = u.Memberships
 	if err := r.syncMemberships(ctx, created); err != nil {
 		return nil, err
 	}
