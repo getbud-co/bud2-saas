@@ -22,6 +22,7 @@ vi.mock("@/contexts/AuthContext", async () => {
   const actual = await vi.importActual<typeof import("@/contexts/AuthContext")>("@/contexts/AuthContext");
   return {
     ...actual,
+    AuthContext: actual.AuthContext,
     useAuth: () => ({
       isAuthenticated: false,
       initializing: false,

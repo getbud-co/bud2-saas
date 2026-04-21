@@ -452,14 +452,16 @@ describe("Deterministic Generation", () => {
       expect(info.yearEnd).toBeInstanceOf(Date);
     });
 
-    it("quarterId matches getCurrentQuarterId", () => {
+    it("quarterId matches current quarter format", () => {
       const info = getCurrentCycleInfo();
-      expect(info.quarterId).toBe(getCurrentQuarterId());
+      const now = new Date();
+      const expectedQuarter = Math.floor(now.getMonth() / 3) + 1;
+      expect(info.quarterId).toBe(`q${expectedQuarter}-${now.getFullYear()}`);
     });
 
-    it("yearId matches getCurrentYearId", () => {
+    it("yearId matches current year format", () => {
       const info = getCurrentCycleInfo();
-      expect(info.yearId).toBe(getCurrentYearId());
+      expect(info.yearId).toBe(`ano-${new Date().getFullYear()}`);
     });
 
     it("quarter dates are within year dates", () => {
