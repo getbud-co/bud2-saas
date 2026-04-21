@@ -116,6 +116,17 @@
   border-radius: var(--radius-2xs);
 }
 
+/* ——— API Error ——— */
+
+.apiError {
+  width: 100%;
+  font-family: var(--font-label);
+  font-size: var(--text-sm);
+  color: var(--color-red-600);
+  margin: 0;
+  text-align: center;
+}
+
 /* ——— Forgot password ——— */
 
 .forgotLink {

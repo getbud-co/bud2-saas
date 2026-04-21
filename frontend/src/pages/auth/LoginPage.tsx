@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Input } from "@getbud-co/buds";
+import { Button, Input, toast } from "@getbud-co/buds";
 import {
   MicrosoftTeamsLogo,
   GoogleLogo,
@@ -9,14 +9,19 @@ import {
   Eye,
 } from "@phosphor-icons/react";
 import { BudLogo } from "@/components/BudLogo";
+import { useAuth } from "@/contexts/AuthContext";
 import styles from "./LoginPage.module.css";
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const { login } = useAuth();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const emailError = !email.trim()
     ? "Email é obrigatório"
@@ -30,15 +35,25 @@ export function LoginPage() {
       ? "Senha deve ter no mínimo 6 caracteres"
       : "";
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitted(true);
     if (emailError || passwordError) return;
-    navigate("/home");
+
+    setLoading(true);
+    setApiError(null);
+    try {
+      await login(email.trim(), password);
+      navigate("/home");
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : "Erro inesperado. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleSocialLogin() {
-    navigate("/home");
+    toast.success("Login social em breve");
   }
 
   const PasswordIcon = showPassword ? Eye : EyeSlash;
@@ -78,7 +93,7 @@ export function LoginPage() {
               label="Email"
               size="lg"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { setEmail(e.target.value); setApiError(null); }}
               placeholder="seu@email.com"
               message={submitted && emailError ? emailError : undefined}
               messageType={submitted && emailError ? "error" : undefined}
@@ -90,7 +105,7 @@ export function LoginPage() {
                 size="lg"
                 type={showPassword ? "text" : "password"}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => { setPassword(e.target.value); setApiError(null); }}
                 placeholder="••••••••••"
                 message={submitted && passwordError ? passwordError : undefined}
                 messageType={submitted && passwordError ? "error" : undefined}
@@ -105,11 +120,15 @@ export function LoginPage() {
               </button>
             </div>
 
-            <Button variant="primary" size="lg" type="submit" style={{ width: "100%" }}>
-              Entrar
+            {apiError && (
+              <p className={styles.apiError}>{apiError}</p>
+            )}
+
+            <Button variant="primary" size="lg" type="submit" style={{ width: "100%" }} disabled={loading}>
+              {loading ? "Entrando..." : "Entrar"}
             </Button>
 
-            <button type="button" className={styles.forgotLink} onClick={() => navigate("/home")}>
+            <button type="button" className={styles.forgotLink} onClick={() => toast.success("Recuperação de senha em breve")}>
               Esqueceu sua senha?
             </button>
           </form>

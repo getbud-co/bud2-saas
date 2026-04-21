@@ -1,10 +1,7 @@
 import { useState, useEffect } from "react";
 import { Toaster, LoadingScreen } from "@getbud-co/buds";
 import { clearStaleLocalStorage } from "@/lib/seed-version";
-import { AppRoutes } from "./routes";
-
-// Clear stale localStorage on app boot when seed data changes
-clearStaleLocalStorage();
+import { AuthProvider } from "@/contexts/AuthContext";
 import { ActivityDataProvider } from "@/contexts/ActivityDataContext";
 import { ConfigDataProvider } from "@/contexts/ConfigDataContext";
 import { IntegrationsDataProvider } from "@/contexts/IntegrationsDataContext";
@@ -13,6 +10,10 @@ import { PeopleDataProvider } from "@/contexts/PeopleDataContext";
 import { SettingsDataProvider } from "@/contexts/SettingsDataContext";
 import { SurveysDataProvider } from "@/contexts/SurveysDataContext";
 import { ConversationsProvider } from "@/contexts/ConversationsContext";
+import { AppRoutes } from "./routes";
+
+// Clear stale localStorage on app boot when seed data changes
+clearStaleLocalStorage();
 
 export function App() {
   const [booting, setBooting] = useState(true);
@@ -25,23 +26,25 @@ export function App() {
   if (booting) return <LoadingScreen />;
 
   return (
-    <ConfigDataProvider>
-      <ActivityDataProvider>
-        <PeopleDataProvider>
-          <MissionsDataProvider>
-            <SurveysDataProvider>
-              <SettingsDataProvider>
-                <IntegrationsDataProvider>
-                  <ConversationsProvider>
-                    <AppRoutes />
-                    <Toaster />
-                  </ConversationsProvider>
-                </IntegrationsDataProvider>
-              </SettingsDataProvider>
-            </SurveysDataProvider>
-          </MissionsDataProvider>
-        </PeopleDataProvider>
-      </ActivityDataProvider>
-    </ConfigDataProvider>
+    <AuthProvider>
+      <ConfigDataProvider>
+        <ActivityDataProvider>
+          <PeopleDataProvider>
+            <MissionsDataProvider>
+              <SurveysDataProvider>
+                <SettingsDataProvider>
+                  <IntegrationsDataProvider>
+                    <ConversationsProvider>
+                      <AppRoutes />
+                      <Toaster />
+                    </ConversationsProvider>
+                  </IntegrationsDataProvider>
+                </SettingsDataProvider>
+              </SurveysDataProvider>
+            </MissionsDataProvider>
+          </PeopleDataProvider>
+        </ActivityDataProvider>
+      </ConfigDataProvider>
+    </AuthProvider>
   );
 }

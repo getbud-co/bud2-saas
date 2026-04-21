@@ -18,6 +18,7 @@ import type { CalendarDate } from "@getbud-co/buds";
 import { Envelope, Key, FloppyDisk, SignOut, Camera, Trash } from "@phosphor-icons/react";
 import type { Gender } from "@/types";
 import { usePeopleData, type PeopleUserView } from "@/contexts/PeopleDataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useConfigData } from "@/contexts/ConfigDataContext";
 import styles from "./AccountPage.module.css";
 
@@ -78,6 +79,7 @@ interface AccountFormProps {
 }
 
 function AccountForm({ user, setUsers }: AccountFormProps) {
+  const { logout } = useAuth();
   const { roleOptions, resolveRoleSlug } = useConfigData();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(user.avatarUrl);
@@ -295,7 +297,7 @@ function AccountForm({ user, setUsers }: AccountFormProps) {
               <span className={styles.securityLabel}>Encerrar sessão</span>
               <span className={styles.securityDesc}>Saia da sua conta neste dispositivo.</span>
             </div>
-            <Button variant="danger" size="md" leftIcon={SignOut} onClick={() => toast.success("Sessão encerrada")}>
+            <Button variant="danger" size="md" leftIcon={SignOut} onClick={logout}>
               Sair
             </Button>
           </div>

@@ -9,6 +9,7 @@ import { MissionsDataProvider } from "@/contexts/MissionsDataContext";
 import { SurveysDataProvider } from "@/contexts/SurveysDataContext";
 import { SettingsDataProvider } from "@/contexts/SettingsDataContext";
 import { IntegrationsDataProvider } from "@/contexts/IntegrationsDataContext";
+import { MockAuthProvider } from "./MockAuthProvider";
 
 /**
  * All application providers wrapped together for testing.
@@ -17,21 +18,23 @@ import { IntegrationsDataProvider } from "@/contexts/IntegrationsDataContext";
 export function AllProviders({ children }: { children: ReactNode }) {
   return (
     <MemoryRouter>
-      <ConfigDataProvider>
-        <ActivityDataProvider>
-          <PeopleDataProvider>
-            <MissionsDataProvider>
-              <SurveysDataProvider>
-                <SettingsDataProvider>
-                  <IntegrationsDataProvider>
-                    {children}
-                  </IntegrationsDataProvider>
-                </SettingsDataProvider>
-              </SurveysDataProvider>
-            </MissionsDataProvider>
-          </PeopleDataProvider>
-        </ActivityDataProvider>
-      </ConfigDataProvider>
+      <MockAuthProvider>
+        <ConfigDataProvider>
+          <ActivityDataProvider>
+            <PeopleDataProvider>
+              <MissionsDataProvider>
+                <SurveysDataProvider>
+                  <SettingsDataProvider>
+                    <IntegrationsDataProvider>
+                      {children}
+                    </IntegrationsDataProvider>
+                  </SettingsDataProvider>
+                </SurveysDataProvider>
+              </MissionsDataProvider>
+            </PeopleDataProvider>
+          </ActivityDataProvider>
+        </ConfigDataProvider>
+      </MockAuthProvider>
     </MemoryRouter>
   );
 }
@@ -41,7 +44,11 @@ export function AllProviders({ children }: { children: ReactNode }) {
  * Use this for simpler components that don't need full context.
  */
 export function MinimalProviders({ children }: { children: ReactNode }) {
-  return <MemoryRouter>{children}</MemoryRouter>;
+  return (
+    <MemoryRouter>
+      <MockAuthProvider>{children}</MockAuthProvider>
+    </MemoryRouter>
+  );
 }
 
 /**
@@ -66,7 +73,7 @@ export function renderWithProviders(
 }
 
 /**
- * Render with minimal providers (just routing).
+ * Render with minimal providers (just routing + auth mock).
  */
 export function renderMinimal(
   ui: ReactElement,
