@@ -3,8 +3,8 @@
 // Extraídos de useTeamHealthReadModel e useEngagementReadModel para evitar
 // duplicação e permitir uso em testes e fora de componentes React.
 
-import type { Mission, CheckIn } from "@/types";
-import { today, addWeeks, startOfWeek, addDays, hashString } from "@/lib/seed-utils";
+import type { CheckIn } from "@/types";
+import { today, addWeeks, startOfWeek, addDays } from "@/lib/seed-utils";
 
 // ── Missões ───────────────────────────────────────────────────────────────────
 

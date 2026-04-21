@@ -61,30 +61,6 @@ export function getGoalLabel(kr: KeyResult): string {
   }
 }
 
-/* ——— Status helpers ——— */
-
-const STATUS_LABELS: Record<KRStatus, string> = {
-  on_track: "No ritmo",
-  attention: "Atenção",
-  off_track: "Atrasado",
-  completed: "Concluído",
-};
-
-function getKRStatusLabel(status: KRStatus): string {
-  return STATUS_LABELS[status] ?? status;
-}
-
-/** Map KRStatus to DS Badge color */
-function getKRStatusBadge(status: KRStatus): "success" | "warning" | "error" | "neutral" {
-  switch (status) {
-    case "on_track": return "success";
-    case "attention": return "warning";
-    case "off_track": return "error";
-    case "completed": return "success";
-    default: return "neutral";
-  }
-}
-
 /* ——— Period helpers ——— */
 
 export function formatPeriodRange(start: string | null, end: string | null): string {

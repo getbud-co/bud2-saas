@@ -5,36 +5,10 @@ import {
   calculateCheckInStreakForUser,
   calculateUserTrend,
 } from "./engagement-utils";
-import type { Mission, CheckIn } from "@/types";
+import type { CheckIn } from "@/types";
 import { today, addDays, toIsoDateTime } from "@/lib/seed-utils";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function makeMission(overrides: Partial<Mission> = {}): Mission {
-  return {
-    id: "m1",
-    orgId: "org-1",
-    cycleId: null,
-    parentId: null,
-    depth: 0,
-    path: ["m1"],
-    title: "Missão Teste",
-    description: null,
-    ownerId: "user-1",
-    teamId: "team-1",
-    status: "active",
-    visibility: "public",
-    progress: 50,
-    kanbanStatus: "doing",
-    sortOrder: 0,
-    dueDate: null,
-    completedAt: null,
-    createdAt: "2025-01-01T00:00:00Z",
-    updatedAt: "2025-01-01T00:00:00Z",
-    deletedAt: null,
-    ...overrides,
-  };
-}
 
 function makeCheckIn(userId: string, daysAgo: number, overrides: Partial<CheckIn> = {}): CheckIn {
   const date = addDays(today(), -daysAgo);

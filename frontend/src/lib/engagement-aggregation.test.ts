@@ -2,11 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   aggregateTeamEngagement,
 } from "./engagement-aggregation";
-import type { CheckIn } from "@/types";
-import type { UserActivity } from "@/types/activity";
-import type { TeamMember } from "@/types/team";
 import type { UserEngagementSummary } from "@/types/engagement";
-import { today, addDays, toIsoDateTime } from "@/lib/seed-utils";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -18,56 +14,6 @@ const HABIT_DEFAULTS = {
   lastPulseWorkload: "normal" as "low" | "normal" | "high" | "overload" | null,
   pulseSentimentTrend: "stable" as "improving" | "stable" | "declining" | null,
 };
-
-function makeCheckIn(userId: string, daysAgo: number, confidence: CheckIn["confidence"] = "medium"): CheckIn {
-  return {
-    id: `ci-${userId}-${daysAgo}`,
-    keyResultId: "kr-1",
-    authorId: userId,
-    value: "50",
-    previousValue: null,
-    confidence,
-    note: null,
-    mentions: null,
-    createdAt: toIsoDateTime(addDays(today(), -daysAgo)),
-  };
-}
-
-function makeActivity(
-  userId: string,
-  type: UserActivity["type"],
-  daysAgo: number,
-  overrides: Partial<UserActivity> = {},
-): UserActivity {
-  return {
-    id: `act-${userId}-${type}-${daysAgo}`,
-    userId,
-    type,
-    entityId: null,
-    entityType: null,
-    metadata: null,
-    createdAt: toIsoDateTime(addDays(today(), -daysAgo)),
-    ...overrides,
-  };
-}
-
-function makeTeamMember(overrides: Partial<TeamMember> = {}): TeamMember {
-  return {
-    teamId: "team-1",
-    userId: "u1",
-    roleInTeam: "member",
-    joinedAt: "2025-01-01T00:00:00Z",
-    user: {
-      id: "u1",
-      firstName: "Ana",
-      lastName: "Silva",
-      initials: "AS",
-      jobTitle: "Dev",
-      avatarUrl: null,
-    },
-    ...overrides,
-  };
-}
 
 function makeMemberEngagement(overrides: Partial<UserEngagementSummary> = {}): UserEngagementSummary {
   return {

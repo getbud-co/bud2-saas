@@ -144,13 +144,6 @@ function periodProgress(start: Date, end: Date, current: Date = today()): number
   return Math.round((elapsedMs / totalMs) * 100);
 }
 
-/**
- * Get expected progress percentage based on time elapsed in period
- */
-function expectedProgress(start: Date, end: Date, current: Date = today()): number {
-  return periodProgress(start, end, current);
-}
-
 // ─── Cycle Generation ───
 
 export interface CycleDefinition {
