@@ -1,50 +1,47 @@
-# ADR-005: Autenticação com JWT Stateless
+# ADR-005: Autenticação com JWT e Refresh Token Persistido
 
 **Data**: 2026-03-24
 **Status**: Aceito
 
 ## Contexto
 
-O sistema precisa de autenticação. As opções principais são JWT stateless ou sessão server-side (ex: Redis). A escolha impacta o middleware do chi, a posição da verificação de identidade nas camadas, e a escalabilidade horizontal.
+O backend precisa autenticar chamadas HTTP sem introduzir sessão server-side compartilhada. Também precisa permitir renovação controlada do access token.
 
 ## Decisão
 
-Adotar **JWT stateless**:
+Adotar autenticação com:
 
-- Token gerado no login, assinado com chave secreta (HMAC-SHA256 ou RS256).
-- Validação feita via middleware chi sem consulta ao banco.
-- Claims do token (user ID, roles) disponíveis no `context.Context` para as camadas internas.
-- Refresh token armazenado em cookie HttpOnly para renovação segura.
+- access token JWT assinado com HMAC
+- validação do JWT no middleware HTTP
+- refresh token opaco persistido no banco
+- renovação de sessão via payload JSON, não cookie
 
-### Posição nas camadas
+Os claims relevantes do access token são:
 
-- **Middleware chi** (handler/): valida assinatura e expiração do JWT, injeta claims no contexto.
-- **Handler**: extrai claims do contexto para montar o Command do use case.
-- **Use case**: recebe user ID como parte do Command — nunca acessa token diretamente.
-- **Domain**: agnóstico a autenticação.
+- `user_id`
+- `active_organization_id` opcional
+- `membership_role`
+- `is_system_admin`
 
-```go
-// Middleware injeta no contexto
-ctx = context.WithValue(ctx, ctxKeyUserID, claims.UserID)
+## Posição nas camadas
 
-// Handler extrai do contexto
-userID := r.Context().Value(ctxKeyUserID).(string)
-```
+- `api/middleware/auth.go` valida o token e injeta `domain.UserClaims` no contexto.
+- Quando o token possui `active_organization_id`, o middleware também injeta `domain.TenantID` no contexto.
+- Handlers extraem claims e tenant quando necessário e os convertem em comandos explícitos.
+- Use cases e domínio permanecem agnósticos a JWT.
 
 ## Consequências
 
 **Positivas:**
-- Stateless — escala horizontalmente sem sessão compartilhada.
-- Sem consulta ao banco na validação — latência mínima.
-- Middleware chi reutilizável por route group.
+- Validação rápida no boundary HTTP.
+- Claims suficientes para RBAC e escopo de organização sem consulta imediata ao banco.
+- Refresh token pode ser revogado e rotacionado com persistência real.
 
 **Negativas:**
-- Revogação de token requer blacklist (Redis) ou tokens de curta duração — aceito por ora com expiração curta (15min access + refresh token).
+- O contrato entre emissor e middleware precisa permanecer alinhado.
+- Sessão e escopo ativo dependem da consistência entre memberships, organização ativa e refresh flow.
 
 ## Alternativas Consideradas
 
-- **Sessão com Redis**: Descartado — adiciona dependência de infraestrutura e estado compartilhado sem benefício proporcional para o estágio atual.
-
-## Referências
-
-- github.com/golang-jwt/jwt (biblioteca padrão do ecossistema Go para JWT)
+- Sessão server-side com Redis: descartada pelo custo operacional adicional.
+- Refresh token em cookie HttpOnly: não adotado na implementação atual.

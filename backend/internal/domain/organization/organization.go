@@ -68,10 +68,13 @@ type ListResult struct {
 type Repository interface {
 	Create(ctx context.Context, org *Organization) (*Organization, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*Organization, error)
+	GetByIDForUser(ctx context.Context, userID uuid.UUID, id uuid.UUID) (*Organization, error)
 	GetByDomain(ctx context.Context, domain string) (*Organization, error)
 	GetByWorkspace(ctx context.Context, workspace string) (*Organization, error)
 	List(ctx context.Context, filter ListFilter) (ListResult, error)
+	ListByUser(ctx context.Context, userID uuid.UUID, filter ListFilter) (ListResult, error)
 	Update(ctx context.Context, org *Organization) (*Organization, error)
+	Delete(ctx context.Context, id uuid.UUID) error
 	CountAll(ctx context.Context) (int64, error)
 }
 

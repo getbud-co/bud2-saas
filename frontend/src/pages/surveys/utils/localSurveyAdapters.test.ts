@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import {
-  estimateParticipantsFromWizard,
   wizardStateToSurveyListItem,
   createWizardStateFromListItem,
   wizardStateToRendererData,
@@ -52,43 +51,6 @@ function makeRecord(overrides: Partial<SurveyLocalRecord> = {}): SurveyLocalReco
 /* ——— Tests ——— */
 
 describe("localSurveyAdapters", () => {
-  describe("estimateParticipantsFromWizard", () => {
-    it("returns 150 for company scope", () => {
-      const state = makeState({ scope: { scopeType: "company", teamIds: [], userIds: [] } });
-      expect(estimateParticipantsFromWizard(state)).toBe(150);
-    });
-
-    it("returns teamIds.length * 12 for team scope", () => {
-      const state = makeState({
-        scope: { scopeType: "team", teamIds: ["t1", "t2", "t3"], userIds: [] },
-      });
-      expect(estimateParticipantsFromWizard(state)).toBe(36);
-    });
-
-    it("returns userIds.length for individual scope", () => {
-      const state = makeState({
-        scope: { scopeType: "individual", teamIds: [], userIds: ["u1", "u2"] },
-      });
-      expect(estimateParticipantsFromWizard(state)).toBe(2);
-    });
-
-    it("subtracts excluded users", () => {
-      const state = makeState({
-        scope: { scopeType: "company", teamIds: [], userIds: [] },
-        excludedUserIds: ["ex1", "ex2", "ex3"],
-      });
-      expect(estimateParticipantsFromWizard(state)).toBe(147);
-    });
-
-    it("never returns negative values", () => {
-      const state = makeState({
-        scope: { scopeType: "individual", teamIds: [], userIds: ["u1"] },
-        excludedUserIds: ["ex1", "ex2", "ex3", "ex4", "ex5"],
-      });
-      expect(estimateParticipantsFromWizard(state)).toBe(0);
-    });
-  });
-
   describe("wizardStateToSurveyListItem", () => {
     it("returns a valid SurveyListItemData object", () => {
       const state = makeState({

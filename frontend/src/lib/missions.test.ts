@@ -7,13 +7,10 @@
 import { describe, it, expect } from "vitest";
 import {
   numVal,
-  getKRStatusLabel,
-  getKRStatusBadge,
   formatPeriodRange,
   getOwnerName,
   getOwnerInitials,
   getGoalLabel,
-  getGoalTypeIcon,
   getIndicatorIcon,
   formatCheckinDate,
 } from "./missions";
@@ -73,42 +70,6 @@ describe("numVal", () => {
 
   it("returns 0 for non-numeric string", () => {
     expect(numVal("abc")).toBe(0);
-  });
-});
-
-describe("getKRStatusLabel", () => {
-  it("returns 'No ritmo' for on_track", () => {
-    expect(getKRStatusLabel("on_track")).toBe("No ritmo");
-  });
-
-  it("returns 'Atenção' for attention", () => {
-    expect(getKRStatusLabel("attention")).toBe("Atenção");
-  });
-
-  it("returns 'Atrasado' for off_track", () => {
-    expect(getKRStatusLabel("off_track")).toBe("Atrasado");
-  });
-
-  it("returns 'Concluído' for completed", () => {
-    expect(getKRStatusLabel("completed")).toBe("Concluído");
-  });
-});
-
-describe("getKRStatusBadge", () => {
-  it("returns 'success' for on_track", () => {
-    expect(getKRStatusBadge("on_track")).toBe("success");
-  });
-
-  it("returns 'warning' for attention", () => {
-    expect(getKRStatusBadge("attention")).toBe("warning");
-  });
-
-  it("returns 'error' for off_track", () => {
-    expect(getKRStatusBadge("off_track")).toBe("error");
-  });
-
-  it("returns 'success' for completed", () => {
-    expect(getKRStatusBadge("completed")).toBe("success");
   });
 });
 
@@ -176,51 +137,6 @@ describe("getGoalLabel", () => {
   });
 });
 
-describe("getGoalTypeIcon", () => {
-  it("retorna Crosshair para 'reach'", () => {
-    const Icon = getGoalTypeIcon("reach");
-    expect(Icon).toBeDefined();
-    expect(Icon.displayName ?? Icon.name).toMatch(/crosshair/i);
-  });
-
-  it("retorna ChartLineUp para 'above'", () => {
-    const Icon = getGoalTypeIcon("above");
-    expect(Icon).toBeDefined();
-    expect(Icon.displayName ?? Icon.name).toMatch(/chartlineup/i);
-  });
-
-  it("retorna TrendDown para 'below'", () => {
-    const Icon = getGoalTypeIcon("below");
-    expect(Icon).toBeDefined();
-    expect(Icon.displayName ?? Icon.name).toMatch(/trenddown/i);
-  });
-
-  it("retorna ArrowsInLineHorizontal para 'between'", () => {
-    const Icon = getGoalTypeIcon("between");
-    expect(Icon).toBeDefined();
-    expect(Icon.displayName ?? Icon.name).toMatch(/arrowsinlinehorizontal/i);
-  });
-
-  it("retorna TrendDown para 'reduce'", () => {
-    const Icon = getGoalTypeIcon("reduce");
-    expect(Icon).toBeDefined();
-    expect(Icon.displayName ?? Icon.name).toMatch(/trenddown/i);
-  });
-
-  it("retorna ChartBar para 'survey'", () => {
-    const Icon = getGoalTypeIcon("survey");
-    expect(Icon).toBeDefined();
-    expect(Icon.displayName ?? Icon.name).toMatch(/chartbar/i);
-  });
-
-  it("retorna Trophy (fallback) para goalType desconhecido", () => {
-    // @ts-expect-error testando fallback com valor inválido
-    const Icon = getGoalTypeIcon("desconhecido");
-    expect(Icon).toBeDefined();
-    expect(Icon.displayName ?? Icon.name).toMatch(/trophy/i);
-  });
-});
-
 describe("getIndicatorIcon", () => {
   it("retorna ArrowsInLineVertical para goalType 'between'", () => {
     const Icon = getIndicatorIcon(makeKR({ goalType: "between" }));
@@ -249,8 +165,7 @@ describe("getIndicatorIcon", () => {
 
   it("faz fallback para getGoalTypeIcon para outros casos", () => {
     const Icon = getIndicatorIcon(makeKR({ goalType: "reach", measurementMode: "manual" }));
-    const FallbackIcon = getGoalTypeIcon("reach");
-    expect(Icon).toBe(FallbackIcon);
+    expect(Icon.displayName ?? Icon.name).toMatch(/crosshair/i);
   });
 });
 

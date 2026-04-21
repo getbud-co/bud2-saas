@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import {
-  getInitialActivitySnapshot,
   getActivitiesForUser,
   countActiveDaysForUser,
   getLastActiveAt,
@@ -31,43 +30,6 @@ function makeActivity(
     ...overrides,
   };
 }
-
-// ── getInitialActivitySnapshot ────────────────────────────────────────────────
-
-describe("getInitialActivitySnapshot", () => {
-  it("retorna snapshot com versão 5", () => {
-    const snapshot = getInitialActivitySnapshot();
-    expect(snapshot.version).toBe(5);
-  });
-
-  it("retorna atividades para os membros do time Produto", () => {
-    const snapshot = getInitialActivitySnapshot();
-    const userIds = new Set(snapshot.activities.map((a) => a.userId));
-    expect(userIds.has("bs")).toBe(true);
-    expect(userIds.has("cr")).toBe(true);
-    expect(userIds.has("gf")).toBe(true);
-    expect(userIds.has("jm")).toBe(true);
-    expect(userIds.has("br")).toBe(true);
-  });
-
-  it("inclui atividades de login", () => {
-    const snapshot = getInitialActivitySnapshot();
-    const logins = snapshot.activities.filter((a) => a.type === "login");
-    expect(logins.length).toBeGreaterThan(0);
-  });
-
-  it("inclui atividades de check-in", () => {
-    const snapshot = getInitialActivitySnapshot();
-    const checkIns = snapshot.activities.filter((a) => a.type === "checkin_create");
-    expect(checkIns.length).toBeGreaterThan(0);
-  });
-
-  it("inclui atividades de survey", () => {
-    const snapshot = getInitialActivitySnapshot();
-    const surveys = snapshot.activities.filter((a) => a.type === "survey_complete");
-    expect(surveys.length).toBeGreaterThan(0);
-  });
-});
 
 // ── getActivitiesForUser ──────────────────────────────────────────────────────
 

@@ -97,7 +97,7 @@ export const MISSION_TEMPLATES = [
   { value: "scratch", title: "Criar do zero", description: "Monte sua estrutura com campos livres" },
 ];
 
-export const TEMPLATE_CONFIGS: Record<string, TemplateConfig> = {
+const TEMPLATE_CONFIGS: Record<string, TemplateConfig> = {
   okr: {
     stepTitle: "Definir objetivo",
     namePlaceholder: "Nome do objetivo",
@@ -367,4 +367,3 @@ export const CONFIDENCE_OPTIONS: { id: ConfidenceLevel; label: string; descripti
   { id: "barrier", label: "Com barreira", description: "Existe um fator externo impedindo o progresso desse resultado-chave", color: "var(--color-wine-500)" },
   { id: "deprioritized", label: "Despriorizado", description: "Este resultado-chave foi despriorizado e deixado de lado por enquanto", color: "var(--color-neutral-400)" },
 ];
-

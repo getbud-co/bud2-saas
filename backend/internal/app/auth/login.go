@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
+
 	domainauth "github.com/getbud-co/bud2/backend/internal/domain/auth"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	"github.com/getbud-co/bud2/backend/internal/domain/user"
@@ -86,7 +88,12 @@ func (uc *LoginUseCase) Execute(ctx context.Context, cmd LoginCommand) (*LoginRe
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
 
-	refreshToken, err := uc.support.issueRefreshToken(ctx, session.User.ID)
+	var activeOrganizationID *uuid.UUID
+	if session.ActiveOrganization != nil {
+		id := session.ActiveOrganization.ID
+		activeOrganizationID = &id
+	}
+	refreshToken, err := uc.support.issueRefreshToken(ctx, session.User.ID, activeOrganizationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
 	}

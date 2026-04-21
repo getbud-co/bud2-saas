@@ -62,7 +62,7 @@ export function endOfQuarter(date: Date): Date {
 /**
  * Get the start of the current semester
  */
-export function startOfSemester(date: Date): Date {
+function startOfSemester(date: Date): Date {
   const semester = Math.floor(date.getMonth() / 6);
   return new Date(date.getFullYear(), semester * 6, 1);
 }
@@ -70,7 +70,7 @@ export function startOfSemester(date: Date): Date {
 /**
  * Get the end of the current semester
  */
-export function endOfSemester(date: Date): Date {
+function endOfSemester(date: Date): Date {
   const semester = Math.floor(date.getMonth() / 6);
   const endMonth = (semester + 1) * 6;
   return new Date(date.getFullYear(), endMonth, 0);
@@ -79,14 +79,14 @@ export function endOfSemester(date: Date): Date {
 /**
  * Get the start of the current year
  */
-export function startOfYear(date: Date): Date {
+function startOfYear(date: Date): Date {
   return new Date(date.getFullYear(), 0, 1);
 }
 
 /**
  * Get the end of the current year
  */
-export function endOfYear(date: Date): Date {
+function endOfYear(date: Date): Date {
   return new Date(date.getFullYear(), 11, 31);
 }
 
@@ -126,14 +126,14 @@ export function getQuarter(date: Date): number {
 /**
  * Get the current semester number (1-2)
  */
-export function getSemester(date: Date): number {
+function getSemester(date: Date): number {
   return Math.floor(date.getMonth() / 6) + 1;
 }
 
 /**
  * Calculate progress through a period (0-100)
  */
-export function periodProgress(start: Date, end: Date, current: Date = today()): number {
+function periodProgress(start: Date, end: Date, current: Date = today()): number {
   const totalMs = end.getTime() - start.getTime();
   const elapsedMs = current.getTime() - start.getTime();
   
@@ -147,7 +147,7 @@ export function periodProgress(start: Date, end: Date, current: Date = today()):
 /**
  * Get expected progress percentage based on time elapsed in period
  */
-export function expectedProgress(start: Date, end: Date, current: Date = today()): number {
+function expectedProgress(start: Date, end: Date, current: Date = today()): number {
   return periodProgress(start, end, current);
 }
 
@@ -270,7 +270,7 @@ export function generateRelativeCycles(): CycleDefinition[] {
 /**
  * Get the current active quarter cycle ID
  */
-export function getCurrentQuarterId(): string {
+function getCurrentQuarterId(): string {
   const now = today();
   return `q${getQuarter(now)}-${now.getFullYear()}`;
 }
@@ -278,137 +278,15 @@ export function getCurrentQuarterId(): string {
 /**
  * Get the current year cycle ID
  */
-export function getCurrentYearId(): string {
+function getCurrentYearId(): string {
   return `ano-${today().getFullYear()}`;
 }
 
 // ─── Check-in Date Generation ───
 
-export interface CheckInDateSet {
-  /** Most recent check-in (this week) */
-  recent: Date;
-  /** Previous check-in (last week) */
-  previous: Date;
-  /** Older check-in (2 weeks ago) */
-  older: Date;
-  /** Oldest check-in (3 weeks ago) */
-  oldest: Date;
-  /** Very old check-in (4 weeks ago) */
-  veryOld: Date;
-}
-
-/**
- * Generate check-in dates relative to current date
- * All check-ins fall on weekdays (Mon-Fri)
- */
-export function generateCheckInDates(): CheckInDateSet {
-  const now = today();
-  const weekStart = startOfWeek(now);
-  
-  // Helper to get a random weekday (Mon-Fri) in a given week
-  const weekdayInWeek = (weekMonday: Date, preferredDay: number = 3): Date => {
-    // preferredDay: 0=Mon, 1=Tue, ..., 4=Fri
-    const day = Math.min(Math.max(preferredDay, 0), 4);
-    return addDays(weekMonday, day);
-  };
-
-  return {
-    recent: weekdayInWeek(weekStart, 2), // Wednesday this week
-    previous: weekdayInWeek(addWeeks(weekStart, -1), 3), // Thursday last week
-    older: weekdayInWeek(addWeeks(weekStart, -2), 2), // Wednesday 2 weeks ago
-    oldest: weekdayInWeek(addWeeks(weekStart, -3), 4), // Friday 3 weeks ago
-    veryOld: weekdayInWeek(addWeeks(weekStart, -4), 1), // Tuesday 4 weeks ago
-  };
-}
-
 // ─── Survey Date Generation ───
-
-export interface SurveyDateSet {
-  /** Active survey ending soon (this week) */
-  endingSoon: { start: Date; end: Date };
-  /** Active survey mid-cycle */
-  activeMid: { start: Date; end: Date };
-  /** Recently closed survey */
-  recentlyClosed: { start: Date; end: Date };
-  /** Scheduled survey (starts next week) */
-  scheduled: { start: Date; end: Date };
-  /** Archived survey (last month) */
-  archived: { start: Date; end: Date };
-}
-
-/**
- * Generate survey dates relative to current date
- */
-export function generateSurveyDates(): SurveyDateSet {
-  const now = today();
-  const weekStart = startOfWeek(now);
-
-  return {
-    endingSoon: {
-      start: addWeeks(weekStart, -2),
-      end: addDays(weekStart, 4), // Friday this week
-    },
-    activeMid: {
-      start: addWeeks(weekStart, -1),
-      end: addWeeks(weekStart, 2),
-    },
-    recentlyClosed: {
-      start: addWeeks(weekStart, -4),
-      end: addWeeks(weekStart, -2),
-    },
-    scheduled: {
-      start: addWeeks(weekStart, 1),
-      end: addWeeks(weekStart, 3),
-    },
-    archived: {
-      start: addMonths(now, -2),
-      end: addMonths(now, -1),
-    },
-  };
-}
-
 // ─── Progress Simulation ───
-
-/**
- * Calculate simulated progress based on time and a "performance factor"
- * @param startDate Start of the period
- * @param endDate End of the period
- * @param performanceFactor 0.5 = behind, 1.0 = on track, 1.2 = ahead
- * @param variance Random variance to add (0-1)
- */
-export function simulateProgress(
-  startDate: Date,
-  endDate: Date,
-  performanceFactor: number = 1.0,
-  variance: number = 0.1,
-): number {
-  const expected = expectedProgress(startDate, endDate);
-  const factor = performanceFactor + (variance * 2 - variance); // Simple deterministic adjustment
-  const progress = Math.round(expected * factor);
-  return Math.max(0, Math.min(100, progress));
-}
-
-/**
- * Determine status based on progress vs expected
- */
-export function determineStatus(
-  progress: number,
-  expected: number,
-): "on_track" | "attention" | "off_track" | "completed" {
-  if (progress >= 100) return "completed";
-  if (progress >= expected - 5) return "on_track";
-  if (progress >= expected - 20) return "attention";
-  return "off_track";
-}
-
 // ─── ID Utilities ───
-
-/**
- * Generate a deterministic ID from components
- */
-export function makeId(...parts: (string | number)[]): string {
-  return parts.map(String).join("-");
-}
 
 /**
  * Hash a string to a number (for deterministic "random" selection)
@@ -421,14 +299,6 @@ export function hashString(str: string): number {
     hash = hash & hash;
   }
   return Math.abs(hash);
-}
-
-/**
- * Pick an item from array using deterministic "random" based on seed
- */
-export function pickFromArray<T>(array: T[], seed: string): T {
-  const index = hashString(seed) % array.length;
-  return array[index]!;
 }
 
 // ─── Deterministic Check-in Generation ───
@@ -483,16 +353,6 @@ export function generateCheckInsForKR(
   checkIns.sort((a, b) => b.date.getTime() - a.date.getTime());
   
   return checkIns;
-}
-
-/**
- * Generate a deterministic progress value based on seed
- * Ensures consistent values across page loads
- */
-export function deterministicProgress(seed: string, min: number = 20, max: number = 95): number {
-  const hash = hashString(seed);
-  const range = max - min;
-  return min + (hash % range);
 }
 
 /**

@@ -5,7 +5,6 @@ import {
   resetPeopleSnapshot,
   createRoleIdForOrg,
   createTeamIdFromName,
-  extractRoleSlugFromId,
   type PeopleStoreSnapshot,
   type PeopleUserRecord,
 } from "./people-store";
@@ -40,25 +39,6 @@ describe("Utility Functions", () => {
     it("handles empty string with timestamp fallback", () => {
       const result = createTeamIdFromName("");
       expect(result).toMatch(/^team-\d+$/);
-    });
-  });
-
-  describe("extractRoleSlugFromId()", () => {
-    it("extracts slug from standard role id", () => {
-      expect(extractRoleSlugFromId("role-org-1-gestor")).toBe("gestor");
-    });
-
-    it("extracts slug with hyphenated role names", () => {
-      expect(extractRoleSlugFromId("role-org-1-admin-rh")).toBe("rh");
-    });
-
-    it("returns colaborador for null", () => {
-      expect(extractRoleSlugFromId(null)).toBe("colaborador");
-    });
-
-    it("returns colaborador for invalid format", () => {
-      expect(extractRoleSlugFromId("invalid")).toBe("colaborador");
-      expect(extractRoleSlugFromId("")).toBe("colaborador");
     });
   });
 });

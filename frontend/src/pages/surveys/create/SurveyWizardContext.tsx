@@ -28,7 +28,7 @@ export { STEP_SLUGS, SLUG_TO_STEP };
 
 const STORAGE_KEY = "bud_survey_wizard_state";
 
-export function saveWizardState(state: SurveyWizardState) {
+function saveWizardState(state: SurveyWizardState) {
   try {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {

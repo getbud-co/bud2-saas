@@ -227,5 +227,3 @@ export function PopoverSelect(props: PopoverSelectProps) {
     </FilterDropdown>
   );
 }
-
-export default PopoverSelect;

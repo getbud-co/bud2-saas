@@ -32,15 +32,12 @@ Este documento é o ponto de entrada para novos desenvolvedores. O objetivo é c
 # 1. Copie as variáveis de ambiente
 cp backend/.env.example backend/.env
 
-# 2. Suba o banco e rode backend + frontend
-make dev            # hot-reload local (Go + npm run dev)
+# 2. Suba o backend e frontend localmente
+make dev            # go run no backend + npm run dev no frontend
 # ou
 make compose-up     # tudo via Docker Compose
 
-# 3. Rode as migrations
-make migrate-up
-
-# 4. Verifique saúde
+# 3. Verifique saúde
 curl http://localhost:8080/health/ready
 ```
 
@@ -443,46 +440,34 @@ Cliente HTTP
 
 ## Multi-tenancy
 
-O bud2 implementa **row-level isolation**: um único banco compartilhado, com `tenant_id` em todas as tabelas de negócio. Cada tenant é uma organização.
+O bud2 é multi-tenant com `Organization` como tenant ativo. O isolamento atual é baseado em `organization_memberships` e no claim `active_organization_id` do JWT.
 
-### Como o tenant_id flui
+### Como o escopo flui
 
 ```
 JWT (active_organization_id claim)
     │
-    │ middleware/tenant.go
+    │ middleware/auth.go
     ▼
-context.Context  ←  TenantID (value object tipado, não string raw)
+context.Context  ←  UserClaims + TenantID opcional
     │
-    │ handler extrai com domain.TenantIDFromContext(ctx)
+    │ handler extrai claims/tenant conforme o caso de uso
     ▼
-CreateCommand.OrganizationID = tenantID
+Command.OrganizationID = tenantID
     │
-    │ use case passa para repositório
+    │ use case passa organization_id explicitamente
     ▼
-sqlc query:  WHERE organization_id = $1
+repo/query filtra por membership ou organization_id
 ```
 
-### Por que TenantID é um value object?
+### Regras atuais
 
-```go
-// domain/tenant.go
-type TenantID struct { id uuid.UUID }
-
-func TenantIDFromContext(ctx context.Context) (TenantID, error) { ... }
-func (t TenantID) UUID() uuid.UUID                              { return t.id }
-```
-
-Usar `TenantID` no lugar de `uuid.UUID` puro garante que o compilador detecte se você esqueceu de passar o tenant. Um `uuid.UUID` genérico pode ser qualquer coisa; um `TenantID` só pode vir do contexto autenticado.
-
-### Defesas em camadas
-
-| Camada | Mecanismo |
-|--------|-----------|
-| Middleware | Extrai `organization_id` do JWT validado |
-| Domínio | `EnsureAccessibleInOrganization()` valida pertencimento |
-| Repositório | `WHERE tenant_id = $1` em todas as queries |
-| Banco | RLS (Row Level Security) como segunda linha de defesa |
+| Área | Regra |
+|------|-------|
+| `/users` | sempre escopado à organização ativa |
+| `/organizations` | lista/get/update por membership; `system admin` vê todas |
+| `POST /organizations` | somente `system admin` |
+| Sessão | retorna organizações acessíveis ao usuário |
 
 ---
 
@@ -623,11 +608,12 @@ O fluxo natural ao adicionar algo novo:
 
 | Comando | O que faz |
 |---------|-----------|
-| `make dev` | Inicia backend + frontend com hot-reload |
+| `make dev` | Inicia backend (`go run`) + frontend (`npm run dev`) |
 | `make compose-up` | Sobe tudo via Docker Compose |
-| `make test` | Roda testes do backend e lint do frontend |
+| `make test` | Roda testes do backend e testes do frontend |
+| `make test-backend-unit` | Roda a suíte unitária do backend |
+| `make test-backend-integration` | Roda integrações do backend com `-tags=integration` |
 | `make lint` | golangci-lint + npm run lint |
-| `make migrate-up` | Aplica migrations pendentes |
 | `make sqlc-gen` | Gera código Go a partir das queries SQL |
 | `make api-types` | Gera tipos TypeScript a partir do OpenAPI spec |
 
@@ -637,7 +623,7 @@ O fluxo natural ao adicionar algo novo:
 # Formato: NNNNNN_descricao.up.sql e NNNNNN_descricao.down.sql
 touch backend/migrations/000013_add_column_x.up.sql
 touch backend/migrations/000013_add_column_x.down.sql
-make migrate-up
+make dev          # ou make compose-up para subir o backend
 make sqlc-gen   # se adicionou/alterou queries
 ```
 

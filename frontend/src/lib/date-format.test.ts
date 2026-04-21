@@ -2,14 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   formatDateBR,
   formatDateShort,
-  formatDateTimeBR,
   formatRelativeTime,
-  formatMonthYear,
-  formatMonthYearCapitalized,
-  formatDateRange,
   formatWeekdayDate,
   todayIso,
-  nowIso,
 } from "./date-format";
 
 // ─── formatDateBR ───
@@ -61,20 +56,6 @@ describe("formatDateShort()", () => {
 
   it("returns empty string for invalid date", () => {
     expect(formatDateShort("invalid")).toBe("");
-  });
-});
-
-// ─── formatDateTimeBR ───
-
-describe("formatDateTimeBR()", () => {
-  it("formats datetime to Brazilian format with time", () => {
-    // Note: The output depends on timezone, so we test the pattern
-    const result = formatDateTimeBR("2026-03-15T10:30:00.000Z");
-    expect(result).toMatch(/\d{2}\/\d{2}\/\d{4},?\s+\d{2}:\d{2}/);
-  });
-
-  it("returns empty string for invalid datetime", () => {
-    expect(formatDateTimeBR("invalid")).toBe("");
   });
 });
 
@@ -143,70 +124,6 @@ describe("formatRelativeTime()", () => {
   });
 });
 
-// ─── formatMonthYear ───
-
-describe("formatMonthYear()", () => {
-  it("formats date to month and year in Portuguese", () => {
-    const result = formatMonthYear("2026-03-15");
-    expect(result).toMatch(/março.*2026/i);
-  });
-
-  it("accepts Date object", () => {
-    const result = formatMonthYear(new Date(2026, 2, 15));
-    expect(result).toMatch(/março.*2026/i);
-  });
-
-  it("returns empty string for invalid date", () => {
-    expect(formatMonthYear("invalid")).toBe("");
-  });
-});
-
-// ─── formatMonthYearCapitalized ───
-
-describe("formatMonthYearCapitalized()", () => {
-  it("capitalizes first letter of month", () => {
-    const result = formatMonthYearCapitalized("2026-03-15");
-    expect(result.charAt(0)).toBe(result.charAt(0).toUpperCase());
-    expect(result).toMatch(/Março/i);
-  });
-
-  it("accepts Date object", () => {
-    const result = formatMonthYearCapitalized(new Date(2026, 0, 15));
-    expect(result).toMatch(/Janeiro/i);
-  });
-
-  it("returns empty string for invalid date", () => {
-    expect(formatMonthYearCapitalized("invalid")).toBe("");
-  });
-});
-
-// ─── formatDateRange ───
-
-describe("formatDateRange()", () => {
-  it("formats date range with both dates", () => {
-    // Use noon UTC to avoid timezone edge cases
-    const result = formatDateRange(
-      "2026-01-01T12:00:00.000Z",
-      "2026-03-31T12:00:00.000Z"
-    );
-    expect(result).toBe("01/01/2026 — 31/03/2026");
-  });
-
-  it("formats range with only start date", () => {
-    const result = formatDateRange("2026-01-01T12:00:00.000Z", null);
-    expect(result).toBe("A partir de 01/01/2026");
-  });
-
-  it("formats range with only end date", () => {
-    const result = formatDateRange(null, "2026-03-31T12:00:00.000Z");
-    expect(result).toBe("Até 31/03/2026");
-  });
-
-  it("returns empty string when both dates are null", () => {
-    expect(formatDateRange(null, null)).toBe("");
-  });
-});
-
 // ─── formatWeekdayDate ───
 
 describe("formatWeekdayDate()", () => {
@@ -240,24 +157,5 @@ describe("todayIso()", () => {
     const now = new Date();
     const expected = now.toISOString().split("T")[0];
     expect(result).toBe(expected);
-  });
-});
-
-// ─── nowIso ───
-
-describe("nowIso()", () => {
-  it("returns full ISO datetime format", () => {
-    const result = nowIso();
-    expect(result).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
-  });
-
-  it("returns current timestamp", () => {
-    const before = new Date().getTime();
-    const result = nowIso();
-    const after = new Date().getTime();
-
-    const resultTime = new Date(result).getTime();
-    expect(resultTime).toBeGreaterThanOrEqual(before);
-    expect(resultTime).toBeLessThanOrEqual(after);
   });
 });

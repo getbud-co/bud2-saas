@@ -350,7 +350,7 @@ export function saveActivitySnapshot(snapshot: ActivityStoreSnapshot): void {
   }
 }
 
-export function getInitialActivitySnapshot(): ActivityStoreSnapshot {
+function getInitialActivitySnapshot(): ActivityStoreSnapshot {
   return {
     version: STORE_SCHEMA_VERSION,
     activities: generateSeedActivities(),

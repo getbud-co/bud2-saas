@@ -11,6 +11,7 @@ import (
 	"github.com/getbud-co/bud2/backend/internal/api/httputil"
 	"github.com/getbud-co/bud2/backend/internal/api/validator"
 	apporg "github.com/getbud-co/bud2/backend/internal/app/organization"
+	"github.com/getbud-co/bud2/backend/internal/domain"
 	org "github.com/getbud-co/bud2/backend/internal/domain/organization"
 )
 
@@ -19,7 +20,7 @@ type createUseCase interface {
 }
 
 type getUseCase interface {
-	Execute(ctx context.Context, id uuid.UUID) (*org.Organization, error)
+	Execute(ctx context.Context, cmd apporg.GetCommand) (*org.Organization, error)
 }
 
 type listUseCase interface {
@@ -30,11 +31,16 @@ type updateUseCase interface {
 	Execute(ctx context.Context, cmd apporg.UpdateCommand) (*org.Organization, error)
 }
 
+type deleteUseCase interface {
+	Execute(ctx context.Context, cmd apporg.DeleteCommand) error
+}
+
 type Handler struct {
 	create createUseCase
 	get    getUseCase
 	list   listUseCase
 	update updateUseCase
+	delete deleteUseCase
 }
 
 func NewHandler(
@@ -42,8 +48,9 @@ func NewHandler(
 	get getUseCase,
 	list listUseCase,
 	update updateUseCase,
+	delete deleteUseCase,
 ) *Handler {
-	return &Handler{create: create, get: get, list: list, update: update}
+	return &Handler{create: create, get: get, list: list, update: update, delete: delete}
 }
 
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
@@ -67,13 +74,23 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
+	claims, err := domain.ClaimsFromContext(r.Context())
+	if err != nil {
+		httputil.WriteProblem(w, http.StatusUnauthorized, "Unauthorized", "authentication required")
+		return
+	}
+
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		httputil.WriteProblem(w, http.StatusBadRequest, "Bad Request", "invalid id format")
 		return
 	}
 
-	result, err := h.get.Execute(r.Context(), id)
+	result, err := h.get.Execute(r.Context(), apporg.GetCommand{
+		RequesterUserID:        claims.UserID.UUID(),
+		RequesterIsSystemAdmin: claims.IsSystemAdmin,
+		ID:                     id,
+	})
 	if err != nil {
 		handleError(w, err)
 		return
@@ -85,6 +102,12 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 const maxPageSize = 100
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
+	claims, err := domain.ClaimsFromContext(r.Context())
+	if err != nil {
+		httputil.WriteProblem(w, http.StatusUnauthorized, "Unauthorized", "authentication required")
+		return
+	}
+
 	q := r.URL.Query()
 
 	page, _ := strconv.Atoi(q.Get("page"))
@@ -100,7 +123,12 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		size = maxPageSize
 	}
 
-	cmd := apporg.ListCommand{Page: page, Size: size}
+	cmd := apporg.ListCommand{
+		RequesterUserID:        claims.UserID.UUID(),
+		RequesterIsSystemAdmin: claims.IsSystemAdmin,
+		Page:                   page,
+		Size:                   size,
+	}
 	if s := q.Get("status"); s != "" {
 		cmd.Status = &s
 	}
@@ -120,6 +148,12 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
+	claims, err := domain.ClaimsFromContext(r.Context())
+	if err != nil {
+		httputil.WriteProblem(w, http.StatusUnauthorized, "Unauthorized", "authentication required")
+		return
+	}
+
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		httputil.WriteProblem(w, http.StatusBadRequest, "Bad Request", "invalid id format")
@@ -136,11 +170,40 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.update.Execute(r.Context(), req.toCommand(id))
+	cmd := req.toCommand(id)
+	cmd.RequesterUserID = claims.UserID.UUID()
+	cmd.RequesterIsSystemAdmin = claims.IsSystemAdmin
+
+	result, err := h.update.Execute(r.Context(), cmd)
 	if err != nil {
 		handleError(w, err)
 		return
 	}
 
 	httputil.WriteJSON(w, http.StatusOK, toResponse(result))
+}
+
+func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
+	claims, err := domain.ClaimsFromContext(r.Context())
+	if err != nil {
+		httputil.WriteProblem(w, http.StatusUnauthorized, "Unauthorized", "authentication required")
+		return
+	}
+
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httputil.WriteProblem(w, http.StatusBadRequest, "Bad Request", "invalid id format")
+		return
+	}
+
+	err = h.delete.Execute(r.Context(), apporg.DeleteCommand{
+		RequesterIsSystemAdmin: claims.IsSystemAdmin,
+		ID:                     id,
+	})
+	if err != nil {
+		handleError(w, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }

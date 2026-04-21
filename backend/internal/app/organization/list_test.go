@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -19,9 +20,10 @@ func TestListUseCase_Execute_Success(t *testing.T) {
 
 	orgs := fixtures.NewOrganizationList(2)
 	expected := org.ListResult{Organizations: orgs, Total: 2}
-	repo.On("List", mock.Anything, org.ListFilter{Page: 1, Size: 20}).Return(expected, nil)
+	userID := uuid.New()
+	repo.On("ListByUser", mock.Anything, userID, org.ListFilter{Page: 1, Size: 20}).Return(expected, nil)
 
-	result, err := uc.Execute(context.Background(), ListCommand{Page: 1, Size: 20})
+	result, err := uc.Execute(context.Background(), ListCommand{RequesterUserID: userID, Page: 1, Size: 20})
 
 	assert.NoError(t, err)
 	assert.Equal(t, expected, result)
@@ -33,9 +35,10 @@ func TestListUseCase_Execute_WithStatusFilter(t *testing.T) {
 
 	status := "active"
 	s := org.StatusActive
-	repo.On("List", mock.Anything, org.ListFilter{Status: &s, Page: 1, Size: 20}).Return(org.ListResult{}, nil)
+	userID := uuid.New()
+	repo.On("ListByUser", mock.Anything, userID, org.ListFilter{Status: &s, Page: 1, Size: 20}).Return(org.ListResult{}, nil)
 
-	_, err := uc.Execute(context.Background(), ListCommand{Status: &status, Page: 1, Size: 20})
+	_, err := uc.Execute(context.Background(), ListCommand{RequesterUserID: userID, Status: &status, Page: 1, Size: 20})
 
 	assert.NoError(t, err)
 	repo.AssertExpectations(t)
@@ -45,9 +48,10 @@ func TestListUseCase_Execute_DefaultPagination(t *testing.T) {
 	repo := new(mocks.OrganizationRepository)
 	uc := NewListUseCase(repo, testutil.NewDiscardLogger())
 
-	repo.On("List", mock.Anything, org.ListFilter{Page: 1, Size: 20}).Return(org.ListResult{}, nil)
+	userID := uuid.New()
+	repo.On("ListByUser", mock.Anything, userID, org.ListFilter{Page: 1, Size: 20}).Return(org.ListResult{}, nil)
 
-	_, err := uc.Execute(context.Background(), ListCommand{})
+	_, err := uc.Execute(context.Background(), ListCommand{RequesterUserID: userID})
 
 	assert.NoError(t, err)
 	repo.AssertExpectations(t)
@@ -57,9 +61,22 @@ func TestListUseCase_Execute_MaxSizeLimit(t *testing.T) {
 	repo := new(mocks.OrganizationRepository)
 	uc := NewListUseCase(repo, testutil.NewDiscardLogger())
 
-	repo.On("List", mock.Anything, org.ListFilter{Page: 1, Size: 100}).Return(org.ListResult{}, nil)
+	userID := uuid.New()
+	repo.On("ListByUser", mock.Anything, userID, org.ListFilter{Page: 1, Size: 100}).Return(org.ListResult{}, nil)
 
-	_, err := uc.Execute(context.Background(), ListCommand{Page: 1, Size: 500})
+	_, err := uc.Execute(context.Background(), ListCommand{RequesterUserID: userID, Page: 1, Size: 500})
+
+	assert.NoError(t, err)
+	repo.AssertExpectations(t)
+}
+
+func TestListUseCase_Execute_SystemAdminUsesGlobalList(t *testing.T) {
+	repo := new(mocks.OrganizationRepository)
+	uc := NewListUseCase(repo, testutil.NewDiscardLogger())
+
+	repo.On("List", mock.Anything, org.ListFilter{Page: 1, Size: 20}).Return(org.ListResult{}, nil)
+
+	_, err := uc.Execute(context.Background(), ListCommand{RequesterIsSystemAdmin: true, Page: 1, Size: 20})
 
 	assert.NoError(t, err)
 	repo.AssertExpectations(t)

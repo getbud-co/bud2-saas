@@ -32,7 +32,7 @@ const GOAL_TYPE_ICONS: Record<GoalType, ComponentType<IconProps>> = {
   survey: ChartBar,
 };
 
-export function getGoalTypeIcon(goalType: GoalType): ComponentType<IconProps> {
+function getGoalTypeIcon(goalType: GoalType): ComponentType<IconProps> {
   return GOAL_TYPE_ICONS[goalType] ?? Trophy;
 }
 
@@ -70,12 +70,12 @@ const STATUS_LABELS: Record<KRStatus, string> = {
   completed: "Concluído",
 };
 
-export function getKRStatusLabel(status: KRStatus): string {
+function getKRStatusLabel(status: KRStatus): string {
   return STATUS_LABELS[status] ?? status;
 }
 
 /** Map KRStatus to DS Badge color */
-export function getKRStatusBadge(status: KRStatus): "success" | "warning" | "error" | "neutral" {
+function getKRStatusBadge(status: KRStatus): "success" | "warning" | "error" | "neutral" {
   switch (status) {
     case "on_track": return "success";
     case "attention": return "warning";

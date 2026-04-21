@@ -19,17 +19,12 @@ type userQuerier interface {
 	CreateUser(ctx context.Context, arg sqlc.CreateUserParams) (sqlc.CreateUserRow, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (sqlc.GetUserByIDRow, error)
 	GetUserByEmail(ctx context.Context, lower string) (sqlc.GetUserByEmailRow, error)
-	ListUsers(ctx context.Context, arg sqlc.ListUsersParams) ([]sqlc.ListUsersRow, error)
-	ListUsersByStatus(ctx context.Context, arg sqlc.ListUsersByStatusParams) ([]sqlc.ListUsersByStatusRow, error)
-	SearchUsers(ctx context.Context, arg sqlc.SearchUsersParams) ([]sqlc.SearchUsersRow, error)
-	CountUsers(ctx context.Context) (int64, error)
-	CountUsersByStatus(ctx context.Context, status string) (int64, error)
-	CountSearchUsers(ctx context.Context, name string) (int64, error)
 	UpdateUser(ctx context.Context, arg sqlc.UpdateUserParams) (sqlc.UpdateUserRow, error)
 	CreateOrganizationMembership(ctx context.Context, arg sqlc.CreateOrganizationMembershipParams) (sqlc.CreateOrganizationMembershipRow, error)
 	ListOrganizationMemberships(ctx context.Context, arg sqlc.ListOrganizationMembershipsParams) ([]sqlc.ListOrganizationMembershipsRow, error)
 	CountOrganizationMemberships(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	ListUserMemberships(ctx context.Context, arg sqlc.ListUserMembershipsParams) ([]sqlc.ListUserMembershipsRow, error)
+	SoftDeleteOrganizationMembership(ctx context.Context, arg sqlc.SoftDeleteOrganizationMembershipParams) error
 	UpdateOrganizationMembership(ctx context.Context, arg sqlc.UpdateOrganizationMembershipParams) (sqlc.UpdateOrganizationMembershipRow, error)
 }
 
@@ -89,65 +84,6 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*user.Us
 		return nil, err
 	}
 	return result, nil
-}
-
-func (r *UserRepository) List(ctx context.Context, filter user.ListFilter) (user.ListResult, error) {
-	limit := int32(filter.Size)
-	offset := int32((filter.Page - 1) * filter.Size)
-	var usersOut []user.User
-	var total int64
-	var err error
-
-	switch {
-	case filter.Search != nil:
-		pattern := "%" + *filter.Search + "%"
-		rows, listErr := r.q.SearchUsers(ctx, sqlc.SearchUsersParams{
-			Name:   pattern,
-			Limit:  limit,
-			Offset: offset,
-		})
-		if listErr != nil {
-			return user.ListResult{}, listErr
-		}
-		usersOut = make([]user.User, len(rows))
-		for i, row := range rows {
-			usersOut[i] = *searchUsersRowToDomain(row)
-		}
-		total, err = r.q.CountSearchUsers(ctx, pattern)
-	case filter.Status != nil:
-		rows, listErr := r.q.ListUsersByStatus(ctx, sqlc.ListUsersByStatusParams{
-			Status: string(*filter.Status),
-			Limit:  limit,
-			Offset: offset,
-		})
-		if listErr != nil {
-			return user.ListResult{}, listErr
-		}
-		usersOut = make([]user.User, len(rows))
-		for i, row := range rows {
-			usersOut[i] = *listUsersByStatusRowToDomain(row)
-		}
-		total, err = r.q.CountUsersByStatus(ctx, string(*filter.Status))
-	default:
-		rows, listErr := r.q.ListUsers(ctx, sqlc.ListUsersParams{
-			Limit:  limit,
-			Offset: offset,
-		})
-		if listErr != nil {
-			return user.ListResult{}, listErr
-		}
-		usersOut = make([]user.User, len(rows))
-		for i, row := range rows {
-			usersOut[i] = *listUsersRowToDomain(row)
-		}
-		total, err = r.q.CountUsers(ctx)
-	}
-
-	if err != nil {
-		return user.ListResult{}, err
-	}
-
-	return user.ListResult{Users: usersOut, Total: total}, nil
 }
 
 func (r *UserRepository) ListByOrganization(ctx context.Context, organizationID uuid.UUID, status *user.Status, page, size int) (user.ListResult, error) {
@@ -250,6 +186,13 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) (*user.User, 
 	return r.GetByID(ctx, updated.ID)
 }
 
+func (r *UserRepository) DeleteMembership(ctx context.Context, organizationID, userID uuid.UUID) error {
+	return r.q.SoftDeleteOrganizationMembership(ctx, sqlc.SoftDeleteOrganizationMembershipParams{
+		OrganizationID: organizationID,
+		UserID:         userID,
+	})
+}
+
 func createUserRowToDomain(row sqlc.CreateUserRow) *user.User {
 	return &user.User{
 		ID:            row.ID,
@@ -268,18 +211,6 @@ func getUserByIDRowToDomain(row sqlc.GetUserByIDRow) *user.User {
 }
 
 func getUserByEmailRowToDomain(row sqlc.GetUserByEmailRow) *user.User {
-	return &user.User{ID: row.ID, Name: row.Name, Email: row.Email, PasswordHash: row.PasswordHash, Status: user.Status(row.Status), IsSystemAdmin: row.IsSystemAdmin, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
-}
-
-func listUsersRowToDomain(row sqlc.ListUsersRow) *user.User {
-	return &user.User{ID: row.ID, Name: row.Name, Email: row.Email, PasswordHash: row.PasswordHash, Status: user.Status(row.Status), IsSystemAdmin: row.IsSystemAdmin, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
-}
-
-func listUsersByStatusRowToDomain(row sqlc.ListUsersByStatusRow) *user.User {
-	return &user.User{ID: row.ID, Name: row.Name, Email: row.Email, PasswordHash: row.PasswordHash, Status: user.Status(row.Status), IsSystemAdmin: row.IsSystemAdmin, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
-}
-
-func searchUsersRowToDomain(row sqlc.SearchUsersRow) *user.User {
 	return &user.User{ID: row.ID, Name: row.Name, Email: row.Email, PasswordHash: row.PasswordHash, Status: user.Status(row.Status), IsSystemAdmin: row.IsSystemAdmin, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
 }
 

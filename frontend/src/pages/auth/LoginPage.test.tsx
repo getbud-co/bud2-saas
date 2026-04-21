@@ -9,10 +9,31 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderMinimal } from "../../../tests/setup/test-utils";
-import { AuthContext } from "@/contexts/AuthContext";
+import type { Mock } from "vitest";
 import { LoginPage } from "./LoginPage";
 import { MemoryRouter } from "react-router-dom";
 import { render as renderRaw } from "@testing-library/react";
+
+const authState = vi.hoisted(() => ({
+  login: vi.fn<(email: string, password: string) => Promise<void>>(),
+}));
+
+vi.mock("@/contexts/AuthContext", async () => {
+  const actual = await vi.importActual<typeof import("@/contexts/AuthContext")>("@/contexts/AuthContext");
+  return {
+    ...actual,
+    useAuth: () => ({
+      isAuthenticated: false,
+      initializing: false,
+      user: null,
+      activeOrganization: null,
+      organizations: [],
+      login: authState.login,
+      logout: vi.fn(),
+      getToken: () => null,
+    }),
+  };
+});
 
 // ─── Test Helpers ───
 
@@ -24,22 +45,10 @@ function setup() {
 
 function setupWithMockAuth(loginImpl: (email: string, password: string) => Promise<void>) {
   const user = userEvent.setup();
+  authState.login.mockImplementation(loginImpl as Mock);
   const result = renderRaw(
     <MemoryRouter>
-      <AuthContext.Provider
-        value={{
-          isAuthenticated: false,
-          initializing: false,
-          user: null,
-          activeOrganization: null,
-          organizations: [],
-          login: loginImpl,
-          logout: vi.fn(),
-          getToken: () => null,
-        }}
-      >
-        <LoginPage />
-      </AuthContext.Provider>
+      <LoginPage />
     </MemoryRouter>,
   );
   return { user, ...result };
@@ -50,6 +59,7 @@ function setupWithMockAuth(loginImpl: (email: string, password: string) => Promi
 describe("LoginPage", () => {
   beforeEach(() => {
     localStorage.clear();
+    authState.login.mockReset();
   });
 
   describe("rendering", () => {

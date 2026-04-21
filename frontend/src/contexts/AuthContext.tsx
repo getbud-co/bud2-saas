@@ -104,7 +104,7 @@ function toUserMessage(err: unknown): string {
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 
-export const AuthContext = createContext<AuthContextValue | null>(null);
+const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();

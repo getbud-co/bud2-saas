@@ -60,7 +60,7 @@ func newAuthSupport(
 
 // issueRefreshToken generates a cryptographically random opaque token,
 // hashes it, persists the hash, and returns the raw token to send to the client.
-func (s authSupport) issueRefreshToken(ctx context.Context, userID uuid.UUID) (string, error) {
+func (s authSupport) issueRefreshToken(ctx context.Context, userID uuid.UUID, activeOrganizationID *uuid.UUID) (string, error) {
 	raw := make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
 		return "", fmt.Errorf("failed to generate refresh token: %w", err)
@@ -69,10 +69,11 @@ func (s authSupport) issueRefreshToken(ctx context.Context, userID uuid.UUID) (s
 	tokenHash := s.tokenHasher.Hash(rawToken)
 
 	_, err := s.refreshTokenRepo.Create(ctx, &domainauth.RefreshToken{
-		ID:        uuid.New(),
-		UserID:    userID,
-		TokenHash: tokenHash,
-		ExpiresAt: time.Now().Add(s.refreshTokenTTL),
+		ID:                   uuid.New(),
+		UserID:               userID,
+		ActiveOrganizationID: activeOrganizationID,
+		TokenHash:            tokenHash,
+		ExpiresAt:            time.Now().Add(s.refreshTokenTTL),
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to store refresh token: %w", err)

@@ -29,6 +29,14 @@ func (m *OrganizationRepository) GetByID(ctx context.Context, id uuid.UUID) (*or
 	return args.Get(0).(*organization.Organization), args.Error(1)
 }
 
+func (m *OrganizationRepository) GetByIDForUser(ctx context.Context, userID uuid.UUID, id uuid.UUID) (*organization.Organization, error) {
+	args := m.Called(ctx, userID, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*organization.Organization), args.Error(1)
+}
+
 func (m *OrganizationRepository) GetByDomain(ctx context.Context, domain string) (*organization.Organization, error) {
 	args := m.Called(ctx, domain)
 	if args.Get(0) == nil {
@@ -50,12 +58,22 @@ func (m *OrganizationRepository) List(ctx context.Context, filter organization.L
 	return args.Get(0).(organization.ListResult), args.Error(1)
 }
 
+func (m *OrganizationRepository) ListByUser(ctx context.Context, userID uuid.UUID, filter organization.ListFilter) (organization.ListResult, error) {
+	args := m.Called(ctx, userID, filter)
+	return args.Get(0).(organization.ListResult), args.Error(1)
+}
+
 func (m *OrganizationRepository) Update(ctx context.Context, org *organization.Organization) (*organization.Organization, error) {
 	args := m.Called(ctx, org)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*organization.Organization), args.Error(1)
+}
+
+func (m *OrganizationRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
 }
 
 func (m *OrganizationRepository) CountAll(ctx context.Context) (int64, error) {

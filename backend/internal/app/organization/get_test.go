@@ -19,9 +19,10 @@ func TestGetUseCase_Execute_Success(t *testing.T) {
 	uc := NewGetUseCase(repo, testutil.NewDiscardLogger())
 
 	expected := fixtures.NewOrganization()
-	repo.On("GetByID", mock.Anything, expected.ID).Return(expected, nil)
+	userID := uuid.New()
+	repo.On("GetByIDForUser", mock.Anything, userID, expected.ID).Return(expected, nil)
 
-	result, err := uc.Execute(context.Background(), expected.ID)
+	result, err := uc.Execute(context.Background(), GetCommand{RequesterUserID: userID, ID: expected.ID})
 
 	assert.NoError(t, err)
 	assert.Equal(t, expected, result)
@@ -32,10 +33,24 @@ func TestGetUseCase_Execute_NotFound(t *testing.T) {
 	uc := NewGetUseCase(repo, testutil.NewDiscardLogger())
 
 	id := uuid.New()
-	repo.On("GetByID", mock.Anything, id).Return(nil, org.ErrNotFound)
+	userID := uuid.New()
+	repo.On("GetByIDForUser", mock.Anything, userID, id).Return(nil, org.ErrNotFound)
 
-	result, err := uc.Execute(context.Background(), id)
+	result, err := uc.Execute(context.Background(), GetCommand{RequesterUserID: userID, ID: id})
 
 	assert.ErrorIs(t, err, org.ErrNotFound)
 	assert.Nil(t, result)
+}
+
+func TestGetUseCase_Execute_SystemAdminUsesGlobalLookup(t *testing.T) {
+	repo := new(mocks.OrganizationRepository)
+	uc := NewGetUseCase(repo, testutil.NewDiscardLogger())
+
+	expected := fixtures.NewOrganization()
+	repo.On("GetByID", mock.Anything, expected.ID).Return(expected, nil)
+
+	result, err := uc.Execute(context.Background(), GetCommand{RequesterIsSystemAdmin: true, ID: expected.ID})
+
+	assert.NoError(t, err)
+	assert.Equal(t, expected, result)
 }

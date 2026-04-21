@@ -146,7 +146,7 @@ function questionIdsFromTemplate(
   };
 }
 
-export function estimateParticipantsFromWizard(state: SurveyWizardState): number {
+function estimateParticipantsFromWizard(state: SurveyWizardState): number {
   let total = 0;
   if (state.scope.scopeType === "company") total = 150;
   else if (state.scope.scopeType === "team") total = state.scope.teamIds.length * 12;

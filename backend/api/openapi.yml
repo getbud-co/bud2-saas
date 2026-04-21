@@ -139,6 +139,7 @@ paths:
     get:
       summary: List organizations
       tags: [Organizations]
+      description: Returns all accessible organizations for the authenticated user. System admins receive all organizations.
       security:
         - bearerAuth: []
       parameters:
@@ -158,9 +159,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OrganizationListResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
     post:
       summary: Create organization
       tags: [Organizations]
+      description: Creates a new organization. Restricted to system admins.
       security:
         - bearerAuth: []
       requestBody:
@@ -176,6 +184,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Organization"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
 
   /organizations/{id}:
     parameters:
@@ -186,6 +206,7 @@ paths:
     get:
       summary: Get organization
       tags: [Organizations]
+      description: Returns the organization only if it is accessible to the authenticated user. Inaccessible organizations return 404. System admins may access any organization.
       security:
         - bearerAuth: []
       responses:
@@ -195,9 +216,22 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Organization"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Not found or inaccessible
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
     put:
       summary: Update organization
       tags: [Organizations]
+      description: Updates the organization only if it is accessible to the authenticated user. Inaccessible organizations return 404. System admins may update any organization.
       security:
         - bearerAuth: []
       requestBody:
@@ -208,11 +242,62 @@ paths:
               $ref: "#/components/schemas/UpdateOrganizationRequest"
       responses:
         "200":
-          description: OK
+          description: Updated
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Organization"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Not found or inaccessible
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: Domain or workspace conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: Validation error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    delete:
+      summary: Soft delete organization
+      tags: [Organizations]
+      description: Soft deletes an organization and its memberships. Restricted to system admins.
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
 
   /users:
     get:
@@ -292,6 +377,33 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/User"
+    delete:
+      summary: Soft delete membership from active organization
+      tags: [Users]
+      description: Soft deletes the user's membership in the active organization.
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Not found or inaccessible
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
 
   /users/{id}/membership:
     parameters:

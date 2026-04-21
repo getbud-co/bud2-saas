@@ -58,6 +58,13 @@ func (m *mockUpdateUseCase) Execute(ctx context.Context, cmd appuser.UpdateComma
 	return args.Get(0).(*usr.User), args.Error(1)
 }
 
+type mockDeleteUseCase struct{ mock.Mock }
+
+func (m *mockDeleteUseCase) Execute(ctx context.Context, cmd appuser.DeleteCommand) error {
+	args := m.Called(ctx, cmd)
+	return args.Error(0)
+}
+
 type mockGetMembershipUseCase struct{ mock.Mock }
 
 func (m *mockGetMembershipUseCase) Execute(ctx context.Context, organizationID domain.TenantID, id uuid.UUID) (*membership.Membership, error) {
@@ -83,12 +90,13 @@ func routeRequest(req *http.Request, tenantID domain.TenantID, id string) *http.
 	if id != "" {
 		rctx.URLParams.Add("id", id)
 	}
-	return req.WithContext(context.WithValue(fixtures.NewContextWithTenant(tenantID), chi.RouteCtxKey, rctx))
+	ctx := domain.TenantIDToContext(req.Context(), tenantID)
+	return req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, rctx))
 }
 
 func TestHandler_Create_Success(t *testing.T) {
 	createUC := new(mockCreateUseCase)
-	handler := NewHandler(createUC, nil, nil, nil, nil, nil)
+	handler := NewHandler(createUC, nil, nil, nil, nil, nil, nil)
 
 	tenantID := fixtures.NewTestTenantID()
 	u := fixtures.NewUser()
@@ -117,7 +125,7 @@ func TestHandler_Create_Success(t *testing.T) {
 
 func TestHandler_Get_Success(t *testing.T) {
 	getUC := new(mockGetUseCase)
-	handler := NewHandler(nil, getUC, nil, nil, nil, nil)
+	handler := NewHandler(nil, getUC, nil, nil, nil, nil, nil)
 
 	tenantID := fixtures.NewTestTenantID()
 	u := fixtures.NewUser()
@@ -138,7 +146,7 @@ func TestHandler_Get_Success(t *testing.T) {
 
 func TestHandler_List_Success(t *testing.T) {
 	listUC := new(mockListUseCase)
-	handler := NewHandler(nil, nil, listUC, nil, nil, nil)
+	handler := NewHandler(nil, nil, listUC, nil, nil, nil, nil)
 
 	tenantID := fixtures.NewTestTenantID()
 	u := fixtures.NewUser()
@@ -163,7 +171,7 @@ func TestHandler_List_Success(t *testing.T) {
 
 func TestHandler_Update_Success(t *testing.T) {
 	updateUC := new(mockUpdateUseCase)
-	handler := NewHandler(nil, nil, nil, updateUC, nil, nil)
+	handler := NewHandler(nil, nil, nil, updateUC, nil, nil, nil)
 
 	tenantID := fixtures.NewTestTenantID()
 	u := fixtures.NewUser()
@@ -186,9 +194,37 @@ func TestHandler_Update_Success(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 }
 
+func TestHandler_Delete_Success(t *testing.T) {
+	deleteUC := new(mockDeleteUseCase)
+	handler := NewHandler(nil, nil, nil, nil, deleteUC, nil, nil)
+
+	tenantID := fixtures.NewTestTenantID()
+	requesterID := uuid.New()
+	targetID := uuid.New()
+	claims := domain.UserClaims{
+		UserID:                domain.UserID(requesterID),
+		ActiveOrganizationID:  tenantID,
+		HasActiveOrganization: true,
+	}
+	deleteUC.On("Execute", mock.Anything, appuser.DeleteCommand{
+		OrganizationID:  tenantID,
+		RequesterUserID: requesterID,
+		TargetUserID:    targetID,
+	}).Return(nil)
+
+	req := httptest.NewRequest(http.MethodDelete, "/users/"+targetID.String(), nil)
+	req = req.WithContext(fixtures.NewContextWithUserClaims(claims))
+	req = routeRequest(req, tenantID, targetID.String())
+	rr := httptest.NewRecorder()
+
+	handler.Delete(rr, req)
+
+	assert.Equal(t, http.StatusNoContent, rr.Code)
+}
+
 func TestHandler_GetMembership_Success(t *testing.T) {
 	getMembershipUC := new(mockGetMembershipUseCase)
-	handler := NewHandler(nil, nil, nil, nil, getMembershipUC, nil)
+	handler := NewHandler(nil, nil, nil, nil, nil, getMembershipUC, nil)
 
 	tenantID := fixtures.NewTestTenantID()
 	m := fixtures.NewMembership()
@@ -208,7 +244,7 @@ func TestHandler_GetMembership_Success(t *testing.T) {
 
 func TestHandler_UpdateMembership_Success(t *testing.T) {
 	updateMembershipUC := new(mockUpdateMembershipUseCase)
-	handler := NewHandler(nil, nil, nil, nil, nil, updateMembershipUC)
+	handler := NewHandler(nil, nil, nil, nil, nil, nil, updateMembershipUC)
 
 	tenantID := fixtures.NewTestTenantID()
 	m := fixtures.NewMembership()
@@ -232,7 +268,7 @@ func TestHandler_UpdateMembership_Success(t *testing.T) {
 
 func TestHandler_Get_NotFound(t *testing.T) {
 	getUC := new(mockGetUseCase)
-	handler := NewHandler(nil, getUC, nil, nil, nil, nil)
+	handler := NewHandler(nil, getUC, nil, nil, nil, nil, nil)
 
 	tenantID := fixtures.NewTestTenantID()
 	id := uuid.New()
@@ -249,7 +285,7 @@ func TestHandler_Get_NotFound(t *testing.T) {
 
 func TestHandler_Create_MembershipConflict(t *testing.T) {
 	createUC := new(mockCreateUseCase)
-	handler := NewHandler(createUC, nil, nil, nil, nil, nil)
+	handler := NewHandler(createUC, nil, nil, nil, nil, nil, nil)
 
 	tenantID := fixtures.NewTestTenantID()
 	createUC.On("Execute", mock.Anything, mock.Anything).Return(nil, membership.ErrAlreadyExists)
@@ -267,7 +303,7 @@ func TestHandler_Create_MembershipConflict(t *testing.T) {
 
 func TestHandler_Create_InternalError(t *testing.T) {
 	createUC := new(mockCreateUseCase)
-	handler := NewHandler(createUC, nil, nil, nil, nil, nil)
+	handler := NewHandler(createUC, nil, nil, nil, nil, nil, nil)
 
 	tenantID := fixtures.NewTestTenantID()
 	createUC.On("Execute", mock.Anything, mock.Anything).Return(nil, errors.New("internal error"))

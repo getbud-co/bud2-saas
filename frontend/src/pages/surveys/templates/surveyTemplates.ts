@@ -422,10 +422,6 @@ export function getTemplateByType(type: SurveyType): SurveyTemplate | undefined 
   return SURVEY_TEMPLATES.find((t) => t.type === type);
 }
 
-export function getCategoryLabel(category: SurveyCategory): string {
-  return category === "pesquisa" ? "Pesquisa" : "Ciclo";
-}
-
 export function getTypeLabel(type: SurveyType): string {
   const template = getTemplateByType(type);
   return template?.name ?? type;

@@ -1,4 +1,4 @@
-.PHONY: build run test clean
+.PHONY: build run test test-unit test-integration clean
 
 APP_NAME := api
 BUILD_DIR := bin
@@ -11,6 +11,12 @@ run:
 
 test:
 	go test ./... -v
+
+test-unit:
+	go test ./... -v
+
+test-integration:
+	go test -tags=integration ./... -v
 
 clean:
 	rm -rf $(BUILD_DIR)

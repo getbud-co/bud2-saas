@@ -10,12 +10,13 @@ import (
 
 // RefreshToken represents a stored refresh token record.
 type RefreshToken struct {
-	ID        uuid.UUID
-	UserID    uuid.UUID
-	TokenHash string
-	ExpiresAt time.Time
-	RevokedAt *time.Time
-	CreatedAt time.Time
+	ID                   uuid.UUID
+	UserID               uuid.UUID
+	ActiveOrganizationID *uuid.UUID
+	TokenHash            string
+	ExpiresAt            time.Time
+	RevokedAt            *time.Time
+	CreatedAt            time.Time
 }
 
 // RefreshTokenRepository defines persistence operations for refresh tokens.
