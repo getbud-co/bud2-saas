@@ -74,6 +74,16 @@ func TestOrganization_Validate(t *testing.T) {
 			expectedErr: domain.ErrValidation,
 		},
 		{
+			name: "invalid domain format",
+			org: Organization{
+				Name:      "Test Org",
+				Domain:    "not a domain",
+				Workspace: "test-org",
+				Status:    StatusActive,
+			},
+			expectedErr: domain.ErrValidation,
+		},
+		{
 			name: "invalid status",
 			org: Organization{
 				Name:      "Test Org",

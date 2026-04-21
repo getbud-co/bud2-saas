@@ -63,10 +63,10 @@ func TestHandler_Create_Success(t *testing.T) {
 
 	expected := fixtures.NewOrganization()
 	createUC.On("Execute", mock.Anything, apporg.CreateCommand{
-		Name: "Test Org", Domain: "admin@example.com", Workspace: "example",
+		Name: "Test Org", Domain: "example.com", Workspace: "example",
 	}).Return(expected, nil)
 
-	body, _ := json.Marshal(createRequest{Name: "Test Org", Domain: "admin@example.com", Workspace: "example"})
+	body, _ := json.Marshal(createRequest{Name: "Test Org", Domain: "example.com", Workspace: "example"})
 	req := httptest.NewRequest(http.MethodPost, "/organizations", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
@@ -94,7 +94,7 @@ func TestHandler_Create_InvalidJSON(t *testing.T) {
 func TestHandler_Create_ValidationError(t *testing.T) {
 	handler := NewHandler(new(mockCreateUseCase), nil, nil, nil)
 
-	body, _ := json.Marshal(createRequest{Name: "T", Domain: "not-email", Workspace: ""})
+	body, _ := json.Marshal(createRequest{Name: "T", Domain: "not a domain", Workspace: ""})
 	req := httptest.NewRequest(http.MethodPost, "/organizations", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
@@ -110,7 +110,7 @@ func TestHandler_Create_DomainConflict(t *testing.T) {
 
 	createUC.On("Execute", mock.Anything, mock.Anything).Return(nil, org.ErrDomainExists)
 
-	body, _ := json.Marshal(createRequest{Name: "Test Org", Domain: "admin@example.com", Workspace: "example"})
+	body, _ := json.Marshal(createRequest{Name: "Test Org", Domain: "example.com", Workspace: "example"})
 	req := httptest.NewRequest(http.MethodPost, "/organizations", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
@@ -126,7 +126,7 @@ func TestHandler_Create_WorkspaceConflict(t *testing.T) {
 
 	createUC.On("Execute", mock.Anything, mock.Anything).Return(nil, org.ErrWorkspaceExists)
 
-	body, _ := json.Marshal(createRequest{Name: "Test Org", Domain: "admin@example.com", Workspace: "example"})
+	body, _ := json.Marshal(createRequest{Name: "Test Org", Domain: "example.com", Workspace: "example"})
 	req := httptest.NewRequest(http.MethodPost, "/organizations", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
@@ -142,7 +142,7 @@ func TestHandler_Create_DomainValidationError(t *testing.T) {
 
 	createUC.On("Execute", mock.Anything, mock.Anything).Return(nil, domain.ErrValidation)
 
-	body, _ := json.Marshal(createRequest{Name: "Test Org", Domain: "admin@example.com", Workspace: "example"})
+	body, _ := json.Marshal(createRequest{Name: "Test Org", Domain: "example.com", Workspace: "example"})
 	req := httptest.NewRequest(http.MethodPost, "/organizations", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
@@ -158,7 +158,7 @@ func TestHandler_Create_InternalError(t *testing.T) {
 
 	createUC.On("Execute", mock.Anything, mock.Anything).Return(nil, errors.New("internal error"))
 
-	body, _ := json.Marshal(createRequest{Name: "Test Org", Domain: "admin@example.com", Workspace: "example"})
+	body, _ := json.Marshal(createRequest{Name: "Test Org", Domain: "example.com", Workspace: "example"})
 	req := httptest.NewRequest(http.MethodPost, "/organizations", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
@@ -279,10 +279,10 @@ func TestHandler_Update_Success(t *testing.T) {
 
 	expected := fixtures.NewOrganization()
 	updateUC.On("Execute", mock.Anything, apporg.UpdateCommand{
-		ID: expected.ID, Name: "Updated", Domain: "admin@example.com", Workspace: "updated", Status: "active",
+		ID: expected.ID, Name: "Updated", Domain: "example.com", Workspace: "updated", Status: "active",
 	}).Return(expected, nil)
 
-	body, _ := json.Marshal(updateRequest{Name: "Updated", Domain: "admin@example.com", Workspace: "updated", Status: "active"})
+	body, _ := json.Marshal(updateRequest{Name: "Updated", Domain: "example.com", Workspace: "updated", Status: "active"})
 	req := httptest.NewRequest(http.MethodPut, "/organizations/"+expected.ID.String(), bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rctx := chi.NewRouteContext()
@@ -298,7 +298,7 @@ func TestHandler_Update_Success(t *testing.T) {
 func TestHandler_Update_InvalidID(t *testing.T) {
 	handler := NewHandler(nil, nil, nil, new(mockUpdateUseCase))
 
-	body, _ := json.Marshal(updateRequest{Name: "Updated", Domain: "admin@example.com", Workspace: "updated", Status: "active"})
+	body, _ := json.Marshal(updateRequest{Name: "Updated", Domain: "example.com", Workspace: "updated", Status: "active"})
 	req := httptest.NewRequest(http.MethodPut, "/organizations/invalid", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rctx := chi.NewRouteContext()
@@ -318,7 +318,7 @@ func TestHandler_Update_NotFound(t *testing.T) {
 	id := uuid.New()
 	updateUC.On("Execute", mock.Anything, mock.Anything).Return(nil, org.ErrNotFound)
 
-	body, _ := json.Marshal(updateRequest{Name: "Updated", Domain: "admin@example.com", Workspace: "updated", Status: "active"})
+	body, _ := json.Marshal(updateRequest{Name: "Updated", Domain: "example.com", Workspace: "updated", Status: "active"})
 	req := httptest.NewRequest(http.MethodPut, "/organizations/"+id.String(), bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rctx := chi.NewRouteContext()

@@ -11,7 +11,7 @@ import (
 func TestCreateRequestToCommand(t *testing.T) {
 	req := createRequest{
 		OrganizationName:      "Test Org",
-		OrganizationDomain:    "admin@example.com",
+		OrganizationDomain:    "example.com",
 		OrganizationWorkspace: "example",
 		AdminName:             "Admin",
 		AdminEmail:            "admin@example.com",
@@ -22,7 +22,7 @@ func TestCreateRequestToCommand(t *testing.T) {
 
 	assert.Equal(t, appbootstrap.Command{
 		OrganizationName:      "Test Org",
-		OrganizationDomain:    "admin@example.com",
+		OrganizationDomain:    "example.com",
 		OrganizationWorkspace: "example",
 		AdminName:             "Admin",
 		AdminEmail:            "admin@example.com",
