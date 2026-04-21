@@ -8,14 +8,14 @@ import (
 
 type createRequest struct {
 	Name      string `json:"name" validate:"required,min=2,max=100"`
-	Domain    string `json:"domain" validate:"required,email"`
+	Domain    string `json:"domain" validate:"required,fqdn"`
 	Workspace string `json:"workspace" validate:"required,min=2,max=100,slug"`
 	Status    string `json:"status" validate:"omitempty,oneof=active inactive"`
 }
 
 type updateRequest struct {
 	Name      string `json:"name" validate:"required,min=2,max=100"`
-	Domain    string `json:"domain" validate:"required,email"`
+	Domain    string `json:"domain" validate:"required,fqdn"`
 	Workspace string `json:"workspace" validate:"required,min=2,max=100,slug"`
 	Status    string `json:"status" validate:"required,oneof=active inactive"`
 }
