@@ -130,20 +130,6 @@ function getSemester(date: Date): number {
   return Math.floor(date.getMonth() / 6) + 1;
 }
 
-/**
- * Calculate progress through a period (0-100)
- */
-function periodProgress(start: Date, end: Date, current: Date = today()): number {
-  const totalMs = end.getTime() - start.getTime();
-  const elapsedMs = current.getTime() - start.getTime();
-  
-  if (totalMs <= 0) return 100;
-  if (elapsedMs <= 0) return 0;
-  if (elapsedMs >= totalMs) return 100;
-  
-  return Math.round((elapsedMs / totalMs) * 100);
-}
-
 // ─── Cycle Generation ───
 
 export interface CycleDefinition {

@@ -11,7 +11,7 @@ import {
   ArrowsInLineHorizontal,
   ChartBar,
 } from "@phosphor-icons/react";
-import type { KeyResult, GoalType, KRStatus } from "@/types";
+import type { KeyResult, GoalType } from "@/types";
 
 /* ——— Numeric helpers ——— */
 
