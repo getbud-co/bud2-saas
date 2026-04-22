@@ -14,7 +14,8 @@ import { ApiError, apiRequest } from "@/lib/api-client";
 
 interface AuthUser {
   id: string;
-  name: string;
+  first_name: string;
+  last_name: string;
   email: string;
   status: string;
   is_system_admin: boolean;

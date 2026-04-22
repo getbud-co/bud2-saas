@@ -829,7 +829,8 @@ export interface components {
         SessionUser: {
             /** Format: uuid */
             id: string;
-            name: string;
+            first_name: string;
+            last_name: string;
             /** Format: email */
             email: string;
             /** @enum {string} */
@@ -845,7 +846,7 @@ export interface components {
             /** @enum {string} */
             status: "active" | "inactive";
             /** @enum {string} */
-            membership_role?: "admin" | "manager" | "collaborator";
+            membership_role?: "super-admin" | "admin-rh" | "gestor" | "colaborador" | "visualizador";
             /** @enum {string} */
             membership_status?: "invited" | "active" | "inactive";
         };
@@ -868,7 +869,8 @@ export interface components {
             /** Format: hostname */
             organization_domain: string;
             organization_workspace: string;
-            admin_name: string;
+            admin_first_name: string;
+            admin_last_name: string;
             /** Format: email */
             admin_email: string;
             admin_password: string;
@@ -886,7 +888,8 @@ export interface components {
             admin: {
                 /** Format: uuid */
                 id: string;
-                name: string;
+                first_name: string;
+                last_name: string;
                 /** Format: email */
                 email: string;
                 is_system_admin: boolean;
@@ -930,12 +933,25 @@ export interface components {
         User: {
             /** Format: uuid */
             id: string;
-            name: string;
+            first_name: string;
+            last_name: string;
             /** Format: email */
             email: string;
             /** @enum {string} */
             status: "active" | "inactive";
             is_system_admin: boolean;
+            nickname?: string;
+            job_title?: string;
+            /** Format: date */
+            birth_date?: string;
+            language: string;
+            /** @enum {string} */
+            gender?: "feminino" | "masculino" | "nao-binario" | "prefiro-nao-dizer";
+            phone?: string;
+            /** @enum {string} */
+            role?: "super-admin" | "admin-rh" | "gestor" | "colaborador" | "visualizador";
+            /** @enum {string} */
+            membership_status?: "invited" | "active" | "inactive";
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -949,7 +965,7 @@ export interface components {
             /** Format: uuid */
             user_id: string;
             /** @enum {string} */
-            role: "admin" | "manager" | "collaborator";
+            role: "super-admin" | "admin-rh" | "gestor" | "colaborador" | "visualizador";
             /** @enum {string} */
             status: "invited" | "active" | "inactive";
             /** Format: uuid */
@@ -968,23 +984,41 @@ export interface components {
             size: number;
         };
         CreateUserRequest: {
-            name: string;
+            first_name: string;
+            last_name: string;
             /** Format: email */
             email: string;
             password: string;
             /** @enum {string} */
-            role: "admin" | "manager" | "collaborator";
+            role: "super-admin" | "admin-rh" | "gestor" | "colaborador" | "visualizador";
+            nickname?: string;
+            job_title?: string;
+            /** Format: date */
+            birth_date?: string;
+            language?: string;
+            /** @enum {string} */
+            gender?: "feminino" | "masculino" | "nao-binario" | "prefiro-nao-dizer";
+            phone?: string;
         };
         UpdateUserRequest: {
-            name: string;
+            first_name: string;
+            last_name: string;
             /** Format: email */
             email: string;
             /** @enum {string} */
             status: "active" | "inactive";
+            nickname?: string;
+            job_title?: string;
+            /** Format: date */
+            birth_date?: string;
+            language?: string;
+            /** @enum {string} */
+            gender?: "feminino" | "masculino" | "nao-binario" | "prefiro-nao-dizer";
+            phone?: string;
         };
         UpdateMembershipRequest: {
             /** @enum {string} */
-            role: "admin" | "manager" | "collaborator";
+            role: "super-admin" | "admin-rh" | "gestor" | "colaborador" | "visualizador";
             /** @enum {string} */
             status: "invited" | "active" | "inactive";
         };
