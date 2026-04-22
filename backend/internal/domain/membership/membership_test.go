@@ -15,9 +15,11 @@ func TestRole_IsValid(t *testing.T) {
 		role     Role
 		expected bool
 	}{
-		{"admin is valid", RoleAdmin, true},
-		{"manager is valid", RoleManager, true},
-		{"collaborator is valid", RoleCollaborator, true},
+		{"super-admin is valid", RoleSuperAdmin, true},
+		{"admin-rh is valid", RoleAdminRH, true},
+		{"gestor is valid", RoleGestor, true},
+		{"colaborador is valid", RoleColaborador, true},
+		{"visualizador is valid", RoleVisualizador, true},
 		{"invalid role", Role("invalid"), false},
 	}
 
@@ -58,7 +60,7 @@ func TestMembership_Validate(t *testing.T) {
 			membership: Membership{
 				OrganizationID: uuid.New(),
 				UserID:         uuid.New(),
-				Role:           RoleAdmin,
+				Role:           RoleSuperAdmin,
 				Status:         StatusActive,
 			},
 		},
@@ -66,7 +68,7 @@ func TestMembership_Validate(t *testing.T) {
 			name: "missing organization",
 			membership: Membership{
 				UserID: uuid.New(),
-				Role:   RoleAdmin,
+				Role:   RoleSuperAdmin,
 				Status: StatusActive,
 			},
 			expectedErr: domain.ErrValidation,
@@ -75,7 +77,7 @@ func TestMembership_Validate(t *testing.T) {
 			name: "missing user",
 			membership: Membership{
 				OrganizationID: uuid.New(),
-				Role:           RoleAdmin,
+				Role:           RoleSuperAdmin,
 				Status:         StatusActive,
 			},
 			expectedErr: domain.ErrValidation,
@@ -95,7 +97,7 @@ func TestMembership_Validate(t *testing.T) {
 			membership: Membership{
 				OrganizationID: uuid.New(),
 				UserID:         uuid.New(),
-				Role:           RoleAdmin,
+				Role:           RoleSuperAdmin,
 				Status:         Status("invalid"),
 			},
 			expectedErr: domain.ErrValidation,

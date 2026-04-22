@@ -2,6 +2,7 @@ package user
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -27,6 +28,9 @@ func TestStatus_IsValid(t *testing.T) {
 	}
 }
 
+func ptr(s string) *string           { return &s }
+func ptrTime(t time.Time) *time.Time { return &t }
+
 func TestUser_Validate(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -36,38 +40,128 @@ func TestUser_Validate(t *testing.T) {
 		{
 			name: "valid user",
 			user: User{
-				Name:   "Test User",
-				Email:  "test@example.com",
-				Status: StatusActive,
+				FirstName: "Test",
+				LastName:  "User",
+				Email:     "test@example.com",
+				Language:  "pt-br",
+				Status:    StatusActive,
 			},
 			expectedErr: nil,
 		},
 		{
-			name: "missing name",
+			name: "missing first name",
 			user: User{
-				Name:   "",
-				Email:  "test@example.com",
-				Status: StatusActive,
+				FirstName: "",
+				LastName:  "User",
+				Email:     "test@example.com",
+				Language:  "pt-br",
+				Status:    StatusActive,
+			},
+			expectedErr: domain.ErrValidation,
+		},
+		{
+			name: "missing last name",
+			user: User{
+				FirstName: "Test",
+				LastName:  "",
+				Email:     "test@example.com",
+				Language:  "pt-br",
+				Status:    StatusActive,
 			},
 			expectedErr: domain.ErrValidation,
 		},
 		{
 			name: "missing email",
 			user: User{
-				Name:   "Test User",
-				Email:  "",
-				Status: StatusActive,
+				FirstName: "Test",
+				LastName:  "User",
+				Email:     "",
+				Language:  "pt-br",
+				Status:    StatusActive,
+			},
+			expectedErr: domain.ErrValidation,
+		},
+		{
+			name: "missing language",
+			user: User{
+				FirstName: "Test",
+				LastName:  "User",
+				Email:     "test@example.com",
+				Language:  "",
+				Status:    StatusActive,
 			},
 			expectedErr: domain.ErrValidation,
 		},
 		{
 			name: "invalid status",
 			user: User{
-				Name:   "Test User",
-				Email:  "test@example.com",
-				Status: Status("invalid"),
+				FirstName: "Test",
+				LastName:  "User",
+				Email:     "test@example.com",
+				Language:  "pt-br",
+				Status:    Status("invalid"),
 			},
 			expectedErr: domain.ErrValidation,
+		},
+		{
+			name: "invalid gender",
+			user: User{
+				FirstName: "Test",
+				LastName:  "User",
+				Email:     "test@example.com",
+				Language:  "pt-br",
+				Status:    StatusActive,
+				Gender:    ptr("outro"),
+			},
+			expectedErr: domain.ErrValidation,
+		},
+		{
+			name: "valid gender",
+			user: User{
+				FirstName: "Test",
+				LastName:  "User",
+				Email:     "test@example.com",
+				Language:  "pt-br",
+				Status:    StatusActive,
+				Gender:    ptr("feminino"),
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "birth_date in the future",
+			user: User{
+				FirstName: "Test",
+				LastName:  "User",
+				Email:     "test@example.com",
+				Language:  "pt-br",
+				Status:    StatusActive,
+				BirthDate: ptrTime(time.Now().AddDate(1, 0, 0)),
+			},
+			expectedErr: domain.ErrValidation,
+		},
+		{
+			name: "birth_date before 1900",
+			user: User{
+				FirstName: "Test",
+				LastName:  "User",
+				Email:     "test@example.com",
+				Language:  "pt-br",
+				Status:    StatusActive,
+				BirthDate: ptrTime(time.Date(1899, 12, 31, 0, 0, 0, 0, time.UTC)),
+			},
+			expectedErr: domain.ErrValidation,
+		},
+		{
+			name: "valid birth_date",
+			user: User{
+				FirstName: "Test",
+				LastName:  "User",
+				Email:     "test@example.com",
+				Language:  "pt-br",
+				Status:    StatusActive,
+				BirthDate: ptrTime(time.Date(1990, 6, 15, 0, 0, 0, 0, time.UTC)),
+			},
+			expectedErr: nil,
 		},
 	}
 

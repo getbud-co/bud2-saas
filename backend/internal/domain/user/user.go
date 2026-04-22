@@ -25,25 +25,49 @@ func (s Status) IsValid() bool {
 
 type User struct {
 	ID            uuid.UUID
-	Name          string
+	FirstName     string
+	LastName      string
 	Email         string
 	PasswordHash  string
 	Status        Status
 	IsSystemAdmin bool
+	Nickname      *string
+	JobTitle      *string
+	BirthDate     *time.Time
+	Language      string
+	Gender        *string
+	Phone         *string
 	Memberships   []membership.Membership
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
 
+var validGenders = map[string]bool{
+	"feminino": true, "masculino": true, "nao-binario": true, "prefiro-nao-dizer": true,
+}
+
 func (u *User) Validate() error {
-	if u.Name == "" {
-		return fmt.Errorf("%w: name is required", domain.ErrValidation)
+	if u.FirstName == "" {
+		return fmt.Errorf("%w: first_name is required", domain.ErrValidation)
+	}
+	if u.LastName == "" {
+		return fmt.Errorf("%w: last_name is required", domain.ErrValidation)
 	}
 	if u.Email == "" {
 		return fmt.Errorf("%w: email is required", domain.ErrValidation)
 	}
+	if u.Language == "" {
+		return fmt.Errorf("%w: language is required", domain.ErrValidation)
+	}
 	if !u.Status.IsValid() {
 		return fmt.Errorf("%w: status must be active or inactive", domain.ErrValidation)
+	}
+	if u.Gender != nil && !validGenders[*u.Gender] {
+		return fmt.Errorf("%w: gender must be one of: feminino, masculino, nao-binario, prefiro-nao-dizer", domain.ErrValidation)
+	}
+	minBirth := time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC)
+	if u.BirthDate != nil && (u.BirthDate.Before(minBirth) || !u.BirthDate.Before(time.Now())) {
+		return fmt.Errorf("%w: birth_date must be a past date after 1900-01-01", domain.ErrValidation)
 	}
 	for i := range u.Memberships {
 		if err := u.Memberships[i].Validate(); err != nil {
@@ -65,6 +89,7 @@ type Repository interface {
 	ListByOrganization(ctx context.Context, organizationID uuid.UUID, status *Status, page, size int) (ListResult, error)
 	Update(ctx context.Context, user *User) (*User, error)
 	DeleteMembership(ctx context.Context, organizationID, userID uuid.UUID) error
+	ActivateInvitedMemberships(ctx context.Context, userID uuid.UUID) error
 }
 
 func (u *User) MembershipForOrganization(organizationID uuid.UUID) (*membership.Membership, error) {
