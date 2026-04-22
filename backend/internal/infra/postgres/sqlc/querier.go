@@ -11,7 +11,9 @@ import (
 )
 
 type Querier interface {
+	ActivateInvitedMemberships(ctx context.Context, userID uuid.UUID) error
 	CountOrganizationMemberships(ctx context.Context, organizationID uuid.UUID) (int64, error)
+	CountOrganizationUsersByStatus(ctx context.Context, arg CountOrganizationUsersByStatusParams) (int64, error)
 	CountOrganizations(ctx context.Context) (int64, error)
 	CountOrganizationsByStatus(ctx context.Context, status string) (int64, error)
 	CountOrganizationsByUser(ctx context.Context, userID uuid.UUID) (int64, error)
@@ -29,6 +31,7 @@ type Querier interface {
 	GetUserByEmail(ctx context.Context, lower string) (GetUserByEmailRow, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)
 	ListOrganizationMemberships(ctx context.Context, arg ListOrganizationMembershipsParams) ([]ListOrganizationMembershipsRow, error)
+	ListOrganizationUsersByStatus(ctx context.Context, arg ListOrganizationUsersByStatusParams) ([]ListOrganizationUsersByStatusRow, error)
 	ListOrganizations(ctx context.Context, arg ListOrganizationsParams) ([]ListOrganizationsRow, error)
 	ListOrganizationsByStatus(ctx context.Context, arg ListOrganizationsByStatusParams) ([]ListOrganizationsByStatusRow, error)
 	ListOrganizationsByUser(ctx context.Context, arg ListOrganizationsByUserParams) ([]ListOrganizationsByUserRow, error)

@@ -47,7 +47,6 @@ type RefreshToken struct {
 
 type User struct {
 	ID            uuid.UUID
-	Name          string
 	Email         string
 	PasswordHash  string
 	Status        string
@@ -55,4 +54,12 @@ type User struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	DeletedAt     pgtype.Timestamptz
+	FirstName     string
+	LastName      string
+	Nickname      pgtype.Text
+	JobTitle      pgtype.Text
+	BirthDate     pgtype.Date
+	Language      string
+	Gender        pgtype.Text
+	Phone         pgtype.Text
 }

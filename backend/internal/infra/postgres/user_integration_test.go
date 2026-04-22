@@ -31,13 +31,15 @@ func TestUserRepository_ListByOrganization_ReturnsOnlyUsersInOrganization(t *tes
 
 	_, err = userRepo.Create(ctx, &user.User{
 		ID:           uuid.New(),
-		Name:         "Alpha User",
+		FirstName:    "Alpha",
+		LastName:     "User",
 		Email:        "alpha-user@example.com",
 		PasswordHash: "hashed",
 		Status:       user.StatusActive,
+		Language:     "pt-br",
 		Memberships: []membership.Membership{{
 			OrganizationID: orgA.ID,
-			Role:           membership.RoleAdmin,
+			Role:           membership.RoleSuperAdmin,
 			Status:         membership.StatusActive,
 		}},
 	})
@@ -45,13 +47,15 @@ func TestUserRepository_ListByOrganization_ReturnsOnlyUsersInOrganization(t *tes
 
 	_, err = userRepo.Create(ctx, &user.User{
 		ID:           uuid.New(),
-		Name:         "Beta User",
+		FirstName:    "Beta",
+		LastName:     "User",
 		Email:        "beta-user@example.com",
 		PasswordHash: "hashed",
 		Status:       user.StatusActive,
+		Language:     "pt-br",
 		Memberships: []membership.Membership{{
 			OrganizationID: orgB.ID,
-			Role:           membership.RoleAdmin,
+			Role:           membership.RoleSuperAdmin,
 			Status:         membership.StatusActive,
 		}},
 	})
@@ -60,6 +64,6 @@ func TestUserRepository_ListByOrganization_ReturnsOnlyUsersInOrganization(t *tes
 	result, err := userRepo.ListByOrganization(ctx, orgA.ID, nil, 1, 20)
 	require.NoError(t, err)
 	require.Len(t, result.Users, 1)
-	assert.Equal(t, "Alpha User", result.Users[0].Name)
+	assert.Equal(t, "Alpha", result.Users[0].FirstName)
 	assert.Equal(t, int64(1), result.Total)
 }

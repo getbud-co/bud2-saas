@@ -13,6 +13,21 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const activateInvitedMemberships = `-- name: ActivateInvitedMemberships :exec
+UPDATE organization_memberships
+SET status     = 'active',
+    joined_at  = NOW(),
+    updated_at = NOW()
+WHERE user_id = $1
+  AND status = 'invited'
+  AND deleted_at IS NULL
+`
+
+func (q *Queries) ActivateInvitedMemberships(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, activateInvitedMemberships, userID)
+	return err
+}
+
 const countOrganizationMemberships = `-- name: CountOrganizationMemberships :one
 SELECT COUNT(*) FROM organization_memberships
 WHERE organization_id = $1

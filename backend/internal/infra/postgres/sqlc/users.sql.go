@@ -10,30 +10,69 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countOrganizationUsersByStatus = `-- name: CountOrganizationUsersByStatus :one
+SELECT COUNT(*)
+FROM users u
+INNER JOIN organization_memberships om ON om.user_id = u.id
+WHERE om.organization_id = $1
+  AND u.status = $2
+  AND om.deleted_at IS NULL
+  AND u.deleted_at IS NULL
+`
+
+type CountOrganizationUsersByStatusParams struct {
+	OrganizationID uuid.UUID
+	Status         string
+}
+
+func (q *Queries) CountOrganizationUsersByStatus(ctx context.Context, arg CountOrganizationUsersByStatusParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countOrganizationUsersByStatus, arg.OrganizationID, arg.Status)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (id, name, email, password_hash, status, is_system_admin)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, name, email, password_hash, status, is_system_admin, created_at, updated_at
+INSERT INTO users (id, first_name, last_name, email, password_hash, status, is_system_admin,
+                   nickname, job_title, birth_date, language, gender, phone)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+RETURNING id, first_name, last_name, email, password_hash, status, is_system_admin,
+          nickname, job_title, birth_date, language, gender, phone, created_at, updated_at
 `
 
 type CreateUserParams struct {
 	ID            uuid.UUID
-	Name          string
+	FirstName     string
+	LastName      string
 	Email         string
 	PasswordHash  string
 	Status        string
 	IsSystemAdmin bool
+	Nickname      pgtype.Text
+	JobTitle      pgtype.Text
+	BirthDate     pgtype.Date
+	Language      string
+	Gender        pgtype.Text
+	Phone         pgtype.Text
 }
 
 type CreateUserRow struct {
 	ID            uuid.UUID
-	Name          string
+	FirstName     string
+	LastName      string
 	Email         string
 	PasswordHash  string
 	Status        string
 	IsSystemAdmin bool
+	Nickname      pgtype.Text
+	JobTitle      pgtype.Text
+	BirthDate     pgtype.Date
+	Language      string
+	Gender        pgtype.Text
+	Phone         pgtype.Text
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
@@ -41,20 +80,34 @@ type CreateUserRow struct {
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
 	row := q.db.QueryRow(ctx, createUser,
 		arg.ID,
-		arg.Name,
+		arg.FirstName,
+		arg.LastName,
 		arg.Email,
 		arg.PasswordHash,
 		arg.Status,
 		arg.IsSystemAdmin,
+		arg.Nickname,
+		arg.JobTitle,
+		arg.BirthDate,
+		arg.Language,
+		arg.Gender,
+		arg.Phone,
 	)
 	var i CreateUserRow
 	err := row.Scan(
 		&i.ID,
-		&i.Name,
+		&i.FirstName,
+		&i.LastName,
 		&i.Email,
 		&i.PasswordHash,
 		&i.Status,
 		&i.IsSystemAdmin,
+		&i.Nickname,
+		&i.JobTitle,
+		&i.BirthDate,
+		&i.Language,
+		&i.Gender,
+		&i.Phone,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -62,18 +115,27 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, name, email, password_hash, status, is_system_admin, created_at, updated_at FROM users
+SELECT id, first_name, last_name, email, password_hash, status, is_system_admin,
+       nickname, job_title, birth_date, language, gender, phone, created_at, updated_at
+FROM users
 WHERE LOWER(email) = LOWER($1)
   AND deleted_at IS NULL
 `
 
 type GetUserByEmailRow struct {
 	ID            uuid.UUID
-	Name          string
+	FirstName     string
+	LastName      string
 	Email         string
 	PasswordHash  string
 	Status        string
 	IsSystemAdmin bool
+	Nickname      pgtype.Text
+	JobTitle      pgtype.Text
+	BirthDate     pgtype.Date
+	Language      string
+	Gender        pgtype.Text
+	Phone         pgtype.Text
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
@@ -83,11 +145,18 @@ func (q *Queries) GetUserByEmail(ctx context.Context, lower string) (GetUserByEm
 	var i GetUserByEmailRow
 	err := row.Scan(
 		&i.ID,
-		&i.Name,
+		&i.FirstName,
+		&i.LastName,
 		&i.Email,
 		&i.PasswordHash,
 		&i.Status,
 		&i.IsSystemAdmin,
+		&i.Nickname,
+		&i.JobTitle,
+		&i.BirthDate,
+		&i.Language,
+		&i.Gender,
+		&i.Phone,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -95,18 +164,27 @@ func (q *Queries) GetUserByEmail(ctx context.Context, lower string) (GetUserByEm
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, name, email, password_hash, status, is_system_admin, created_at, updated_at FROM users
+SELECT id, first_name, last_name, email, password_hash, status, is_system_admin,
+       nickname, job_title, birth_date, language, gender, phone, created_at, updated_at
+FROM users
 WHERE id = $1
   AND deleted_at IS NULL
 `
 
 type GetUserByIDRow struct {
 	ID            uuid.UUID
-	Name          string
+	FirstName     string
+	LastName      string
 	Email         string
 	PasswordHash  string
 	Status        string
 	IsSystemAdmin bool
+	Nickname      pgtype.Text
+	JobTitle      pgtype.Text
+	BirthDate     pgtype.Date
+	Language      string
+	Gender        pgtype.Text
+	Phone         pgtype.Text
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
@@ -116,46 +194,154 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow
 	var i GetUserByIDRow
 	err := row.Scan(
 		&i.ID,
-		&i.Name,
+		&i.FirstName,
+		&i.LastName,
 		&i.Email,
 		&i.PasswordHash,
 		&i.Status,
 		&i.IsSystemAdmin,
+		&i.Nickname,
+		&i.JobTitle,
+		&i.BirthDate,
+		&i.Language,
+		&i.Gender,
+		&i.Phone,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
+const listOrganizationUsersByStatus = `-- name: ListOrganizationUsersByStatus :many
+SELECT u.id, u.first_name, u.last_name, u.email, u.password_hash, u.status, u.is_system_admin,
+       u.nickname, u.job_title, u.birth_date, u.language, u.gender, u.phone, u.created_at, u.updated_at
+FROM users u
+INNER JOIN organization_memberships om ON om.user_id = u.id
+WHERE om.organization_id = $1
+  AND u.status = $2
+  AND om.deleted_at IS NULL
+  AND u.deleted_at IS NULL
+ORDER BY u.created_at ASC
+LIMIT $3 OFFSET $4
+`
+
+type ListOrganizationUsersByStatusParams struct {
+	OrganizationID uuid.UUID
+	Status         string
+	Limit          int32
+	Offset         int32
+}
+
+type ListOrganizationUsersByStatusRow struct {
+	ID            uuid.UUID
+	FirstName     string
+	LastName      string
+	Email         string
+	PasswordHash  string
+	Status        string
+	IsSystemAdmin bool
+	Nickname      pgtype.Text
+	JobTitle      pgtype.Text
+	BirthDate     pgtype.Date
+	Language      string
+	Gender        pgtype.Text
+	Phone         pgtype.Text
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+func (q *Queries) ListOrganizationUsersByStatus(ctx context.Context, arg ListOrganizationUsersByStatusParams) ([]ListOrganizationUsersByStatusRow, error) {
+	rows, err := q.db.Query(ctx, listOrganizationUsersByStatus,
+		arg.OrganizationID,
+		arg.Status,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListOrganizationUsersByStatusRow
+	for rows.Next() {
+		var i ListOrganizationUsersByStatusRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.FirstName,
+			&i.LastName,
+			&i.Email,
+			&i.PasswordHash,
+			&i.Status,
+			&i.IsSystemAdmin,
+			&i.Nickname,
+			&i.JobTitle,
+			&i.BirthDate,
+			&i.Language,
+			&i.Gender,
+			&i.Phone,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateUser = `-- name: UpdateUser :one
 UPDATE users
-SET name       = $2,
-    email      = $3,
-    password_hash = $4,
-    status     = $5,
-    is_system_admin = $6,
-    updated_at = NOW()
+SET first_name     = $2,
+    last_name      = $3,
+    email          = $4,
+    password_hash  = $5,
+    status         = $6,
+    is_system_admin = $7,
+    nickname       = $8,
+    job_title      = $9,
+    birth_date     = $10,
+    language       = $11,
+    gender         = $12,
+    phone          = $13,
+    updated_at     = NOW()
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, name, email, password_hash, status, is_system_admin, created_at, updated_at
+RETURNING id, first_name, last_name, email, password_hash, status, is_system_admin,
+          nickname, job_title, birth_date, language, gender, phone, created_at, updated_at
 `
 
 type UpdateUserParams struct {
 	ID            uuid.UUID
-	Name          string
+	FirstName     string
+	LastName      string
 	Email         string
 	PasswordHash  string
 	Status        string
 	IsSystemAdmin bool
+	Nickname      pgtype.Text
+	JobTitle      pgtype.Text
+	BirthDate     pgtype.Date
+	Language      string
+	Gender        pgtype.Text
+	Phone         pgtype.Text
 }
 
 type UpdateUserRow struct {
 	ID            uuid.UUID
-	Name          string
+	FirstName     string
+	LastName      string
 	Email         string
 	PasswordHash  string
 	Status        string
 	IsSystemAdmin bool
+	Nickname      pgtype.Text
+	JobTitle      pgtype.Text
+	BirthDate     pgtype.Date
+	Language      string
+	Gender        pgtype.Text
+	Phone         pgtype.Text
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
@@ -163,20 +349,34 @@ type UpdateUserRow struct {
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (UpdateUserRow, error) {
 	row := q.db.QueryRow(ctx, updateUser,
 		arg.ID,
-		arg.Name,
+		arg.FirstName,
+		arg.LastName,
 		arg.Email,
 		arg.PasswordHash,
 		arg.Status,
 		arg.IsSystemAdmin,
+		arg.Nickname,
+		arg.JobTitle,
+		arg.BirthDate,
+		arg.Language,
+		arg.Gender,
+		arg.Phone,
 	)
 	var i UpdateUserRow
 	err := row.Scan(
 		&i.ID,
-		&i.Name,
+		&i.FirstName,
+		&i.LastName,
 		&i.Email,
 		&i.PasswordHash,
 		&i.Status,
 		&i.IsSystemAdmin,
+		&i.Nickname,
+		&i.JobTitle,
+		&i.BirthDate,
+		&i.Language,
+		&i.Gender,
+		&i.Phone,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

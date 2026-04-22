@@ -54,3 +54,8 @@ func (m *UserRepository) DeleteMembership(ctx context.Context, organizationID, u
 	args := m.Called(ctx, organizationID, userID)
 	return args.Error(0)
 }
+
+func (m *UserRepository) ActivateInvitedMemberships(ctx context.Context, userID uuid.UUID) error {
+	args := m.Called(ctx, userID)
+	return args.Error(0)
+}
