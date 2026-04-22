@@ -22,12 +22,12 @@ func TestAccessibleOrganizationFromOrganization_DoesNotIncludeMembershipFields(t
 
 func TestAccessibleOrganizationFromMembership_IncludesMembershipFields(t *testing.T) {
 	org := fixtures.NewOrganization()
-	m := fixtures.NewMembershipWithRole(membership.RoleManager)
+	m := fixtures.NewMembershipWithRole(membership.RoleGestor)
 	m.Status = membership.StatusInactive
 
 	result := accessibleOrganizationFromMembership(org, m)
 
 	assert.Equal(t, org.ID, result.ID)
-	assert.Equal(t, "manager", result.MembershipRole)
+	assert.Equal(t, "gestor", result.MembershipRole)
 	assert.Equal(t, "inactive", result.MembershipStatus)
 }

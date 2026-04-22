@@ -65,6 +65,7 @@ func TestLoginUseCase_Execute_Success(t *testing.T) {
 	uc := newLoginUC(users, organizations, rtRepo, tokenHasher)
 
 	users.On("GetByEmail", mock.Anything, testUser.Email).Return(testUser, nil)
+	users.On("ActivateInvitedMemberships", mock.Anything, testUser.ID).Return(nil)
 	organizations.On("GetByID", mock.Anything, testOrg.ID).Return(testOrg, nil)
 	setupRefreshTokenMocks(rtRepo, tokenHasher, testUser.ID)
 
@@ -92,10 +93,11 @@ func TestLoginUseCase_Execute_NoOrganizations(t *testing.T) {
 	users := new(mocks.UserRepository)
 	passwordHasher := infraauth.NewDefaultBcryptPasswordHasher()
 	hash, _ := passwordHasher.Hash("password123")
-	testUser := &user.User{ID: uuid.New(), Name: "Admin", Email: "admin@example.com", PasswordHash: hash, Status: user.StatusActive}
+	testUser := &user.User{ID: uuid.New(), FirstName: "Admin", LastName: "User", Email: "admin@example.com", PasswordHash: hash, Status: user.StatusActive}
 
 	uc := newLoginUC(users, new(mocks.OrganizationRepository), new(mocks.RefreshTokenRepository), new(mocks.TokenHasher))
 	users.On("GetByEmail", mock.Anything, testUser.Email).Return(testUser, nil)
+	users.On("ActivateInvitedMemberships", mock.Anything, testUser.ID).Return(nil)
 
 	result, err := uc.Execute(context.Background(), LoginCommand{Email: testUser.Email, Password: "password123"})
 	assert.ErrorIs(t, err, ErrNoOrganizations)

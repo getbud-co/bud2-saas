@@ -474,10 +474,11 @@ components:
 
     SessionUser:
       type: object
-      required: [id, name, email, status, is_system_admin]
+      required: [id, first_name, last_name, email, status, is_system_admin]
       properties:
         id: { type: string, format: uuid }
-        name: { type: string }
+        first_name: { type: string }
+        last_name: { type: string }
         email: { type: string, format: email }
         status: { type: string, enum: [active, inactive] }
         is_system_admin: { type: boolean }
@@ -491,7 +492,7 @@ components:
         domain: { type: string }
         workspace: { type: string }
         status: { type: string, enum: [active, inactive] }
-        membership_role: { type: string, enum: [admin, manager, collaborator] }
+        membership_role: { type: string, enum: [super-admin, admin-rh, gestor, colaborador, visualizador] }
         membership_status: { type: string, enum: [invited, active, inactive] }
 
     SessionResponse:
@@ -526,12 +527,13 @@ components:
     BootstrapRequest:
       type: object
       required:
-        [organization_name, organization_domain, organization_workspace, admin_name, admin_email, admin_password]
+        [organization_name, organization_domain, organization_workspace, admin_first_name, admin_last_name, admin_email, admin_password]
       properties:
         organization_name: { type: string }
         organization_domain: { type: string, format: hostname }
         organization_workspace: { type: string }
-        admin_name: { type: string }
+        admin_first_name: { type: string }
+        admin_last_name: { type: string }
         admin_email: { type: string, format: email }
         admin_password: { type: string, minLength: 8 }
 
@@ -551,10 +553,11 @@ components:
             workspace: { type: string }
         admin:
           type: object
-          required: [id, name, email, is_system_admin]
+          required: [id, first_name, last_name, email, is_system_admin]
           properties:
             id: { type: string, format: uuid }
-            name: { type: string }
+            first_name: { type: string }
+            last_name: { type: string }
             email: { type: string, format: email }
             is_system_admin: { type: boolean }
 
@@ -602,13 +605,22 @@ components:
 
     User:
       type: object
-      required: [id, name, email, status, is_system_admin, created_at, updated_at]
+      required: [id, first_name, last_name, email, status, is_system_admin, language, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
-        name: { type: string }
+        first_name: { type: string }
+        last_name: { type: string }
         email: { type: string, format: email }
         status: { type: string, enum: [active, inactive] }
         is_system_admin: { type: boolean }
+        nickname: { type: string }
+        job_title: { type: string }
+        birth_date: { type: string, format: date }
+        language: { type: string }
+        gender: { type: string, enum: [feminino, masculino, nao-binario, prefiro-nao-dizer] }
+        phone: { type: string }
+        role: { type: string, enum: [super-admin, admin-rh, gestor, colaborador, visualizador] }
+        membership_status: { type: string, enum: [invited, active, inactive] }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
 
@@ -619,7 +631,7 @@ components:
         id: { type: string, format: uuid }
         organization_id: { type: string, format: uuid }
         user_id: { type: string, format: uuid }
-        role: { type: string, enum: [admin, manager, collaborator] }
+        role: { type: string, enum: [super-admin, admin-rh, gestor, colaborador, visualizador] }
         status: { type: string, enum: [invited, active, inactive] }
         invited_by_user_id: { type: string, format: uuid }
         joined_at: { type: string, format: date-time }
@@ -640,24 +652,38 @@ components:
 
     CreateUserRequest:
       type: object
-      required: [name, email, password, role]
+      required: [first_name, last_name, email, password, role]
       properties:
-        name: { type: string }
+        first_name: { type: string, minLength: 1, maxLength: 100 }
+        last_name: { type: string, maxLength: 100 }
         email: { type: string, format: email }
         password: { type: string, minLength: 8 }
-        role: { type: string, enum: [admin, manager, collaborator] }
+        role: { type: string, enum: [super-admin, admin-rh, gestor, colaborador, visualizador] }
+        nickname: { type: string }
+        job_title: { type: string }
+        birth_date: { type: string, format: date }
+        language: { type: string }
+        gender: { type: string, enum: [feminino, masculino, nao-binario, prefiro-nao-dizer] }
+        phone: { type: string }
 
     UpdateUserRequest:
       type: object
-      required: [name, email, status]
+      required: [first_name, last_name, email, status]
       properties:
-        name: { type: string }
+        first_name: { type: string, minLength: 1, maxLength: 100 }
+        last_name: { type: string, maxLength: 100 }
         email: { type: string, format: email }
         status: { type: string, enum: [active, inactive] }
+        nickname: { type: string }
+        job_title: { type: string }
+        birth_date: { type: string, format: date }
+        language: { type: string }
+        gender: { type: string, enum: [feminino, masculino, nao-binario, prefiro-nao-dizer] }
+        phone: { type: string }
 
     UpdateMembershipRequest:
       type: object
       required: [role, status]
       properties:
-        role: { type: string, enum: [admin, manager, collaborator] }
+        role: { type: string, enum: [super-admin, admin-rh, gestor, colaborador, visualizador] }
         status: { type: string, enum: [invited, active, inactive] }

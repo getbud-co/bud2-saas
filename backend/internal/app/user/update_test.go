@@ -48,19 +48,20 @@ func TestUpdateUseCase_Execute_Success(t *testing.T) {
 	testUser := fixtures.NewUserWithMembership()
 	testUser.Memberships[0].OrganizationID = tenantID.UUID()
 	updatedUser := fixtures.NewUserWithMembership()
-	updatedUser.Name = "Updated Name"
+	updatedUser.FirstName = "Updated"
+	updatedUser.LastName = "Name"
 	updatedUser.Memberships[0].OrganizationID = tenantID.UUID()
-	updatedUser.Memberships[0].Role = membership.RoleManager
+	updatedUser.Memberships[0].Role = membership.RoleGestor
 
 	txUsers.On("GetByID", mock.Anything, testUser.ID).Return(testUser, nil)
 	txUsers.On("Update", mock.Anything, mock.Anything).Return(updatedUser, nil)
 
 	result, err := uc.Execute(context.Background(), UpdateCommand{
-		OrganizationID: tenantID, ID: testUser.ID, Name: "Updated Name", Email: testUser.Email, Status: "active",
+		OrganizationID: tenantID, ID: testUser.ID, FirstName: "Updated", LastName: "Name", Email: testUser.Email, Status: "active",
 	})
 
 	assert.NoError(t, err)
-	assert.Equal(t, "Updated Name", result.Name)
+	assert.Equal(t, "Updated", result.FirstName)
 	assert.True(t, txm.called)
 }
 
@@ -71,7 +72,7 @@ func TestUpdateUseCase_Execute_UserNotFound(t *testing.T) {
 	userID := uuid.New()
 
 	result, err := uc.Execute(context.Background(), UpdateCommand{
-		OrganizationID: fixtures.NewTestTenantID(), ID: userID, Name: "Test", Email: "test@example.com", Status: "active",
+		OrganizationID: fixtures.NewTestTenantID(), ID: userID, FirstName: "Test", LastName: "User", Email: "test@example.com", Status: "active",
 	})
 
 	assert.ErrorIs(t, err, usr.ErrNotFound)
@@ -89,7 +90,7 @@ func TestUpdateUseCase_Execute_MembershipNotFound(t *testing.T) {
 	txUsers.On("GetByID", mock.Anything, testUser.ID).Return(testUser, nil)
 
 	result, err := uc.Execute(context.Background(), UpdateCommand{
-		OrganizationID: tenantID, ID: testUser.ID, Name: "Test", Email: testUser.Email, Status: "active",
+		OrganizationID: tenantID, ID: testUser.ID, FirstName: "Test", LastName: "User", Email: testUser.Email, Status: "active",
 	})
 
 	assert.ErrorIs(t, err, membership.ErrNotFound)
@@ -112,7 +113,7 @@ func TestUpdateUseCase_Execute_EmailConflict(t *testing.T) {
 	txUsers.On("GetByEmail", mock.Anything, "other@example.com").Return(otherUser, nil)
 
 	result, err := uc.Execute(context.Background(), UpdateCommand{
-		OrganizationID: tenantID, ID: testUser.ID, Name: testUser.Name, Email: "other@example.com", Status: "active",
+		OrganizationID: tenantID, ID: testUser.ID, FirstName: testUser.FirstName, LastName: testUser.LastName, Email: "other@example.com", Status: "active",
 	})
 
 	assert.ErrorIs(t, err, usr.ErrEmailExists)
@@ -132,7 +133,7 @@ func TestUpdateUseCase_Execute_SameEmailNoConflict(t *testing.T) {
 	txUsers.On("Update", mock.Anything, mock.Anything).Return(testUser, nil)
 
 	result, err := uc.Execute(context.Background(), UpdateCommand{
-		OrganizationID: tenantID, ID: testUser.ID, Name: testUser.Name, Email: testUser.Email, Status: "active",
+		OrganizationID: tenantID, ID: testUser.ID, FirstName: testUser.FirstName, LastName: testUser.LastName, Email: testUser.Email, Status: "active",
 	})
 
 	assert.NoError(t, err)
@@ -152,7 +153,7 @@ func TestUpdateUseCase_Execute_InvalidMembershipStatus(t *testing.T) {
 	txUsers.On("GetByID", mock.Anything, testUser.ID).Return(testUser, nil)
 
 	result, err := uc.Execute(context.Background(), UpdateCommand{
-		OrganizationID: tenantID, ID: testUser.ID, Name: testUser.Name, Email: testUser.Email, Status: "invalid",
+		OrganizationID: tenantID, ID: testUser.ID, FirstName: testUser.FirstName, LastName: testUser.LastName, Email: testUser.Email, Status: "invalid",
 	})
 
 	assert.Error(t, err)
@@ -172,7 +173,7 @@ func TestUpdateUseCase_Execute_GetByEmailError(t *testing.T) {
 	txUsers.On("GetByEmail", mock.Anything, "new@example.com").Return(nil, errors.New("db error"))
 
 	result, err := uc.Execute(context.Background(), UpdateCommand{
-		OrganizationID: tenantID, ID: testUser.ID, Name: testUser.Name, Email: "new@example.com", Status: "active",
+		OrganizationID: tenantID, ID: testUser.ID, FirstName: testUser.FirstName, LastName: testUser.LastName, Email: "new@example.com", Status: "active",
 	})
 
 	assert.Error(t, err)
@@ -192,7 +193,7 @@ func TestUpdateUseCase_Execute_UserUpdateError(t *testing.T) {
 	txUsers.On("Update", mock.Anything, mock.Anything).Return(nil, errors.New("db error"))
 
 	result, err := uc.Execute(context.Background(), UpdateCommand{
-		OrganizationID: tenantID, ID: testUser.ID, Name: testUser.Name, Email: testUser.Email, Status: "active",
+		OrganizationID: tenantID, ID: testUser.ID, FirstName: testUser.FirstName, LastName: testUser.LastName, Email: testUser.Email, Status: "active",
 	})
 
 	assert.Error(t, err)
@@ -204,7 +205,7 @@ func TestUpdateUseCase_Execute_TransactionError(t *testing.T) {
 	uc := NewUpdateUseCase(new(mocks.UserRepository), txm, testutil.NewDiscardLogger())
 
 	result, err := uc.Execute(context.Background(), UpdateCommand{
-		OrganizationID: fixtures.NewTestTenantID(), ID: uuid.New(), Name: "Test", Email: "test@example.com", Status: "active",
+		OrganizationID: fixtures.NewTestTenantID(), ID: uuid.New(), FirstName: "Test", LastName: "User", Email: "test@example.com", Status: "active",
 	})
 
 	assert.Error(t, err)

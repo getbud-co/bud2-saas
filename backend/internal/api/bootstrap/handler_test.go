@@ -36,7 +36,8 @@ func TestHandler_Create_Success(t *testing.T) {
 		OrganizationName:      "Test Org",
 		OrganizationDomain:    "example.com",
 		OrganizationWorkspace: "example",
-		AdminName:             "Admin",
+		AdminFirstName:        "Admin",
+		AdminLastName:         "User",
 		AdminEmail:            "admin@example.com",
 		AdminPassword:         "password123",
 	}).Return(&appbootstrap.Result{
@@ -49,7 +50,8 @@ func TestHandler_Create_Success(t *testing.T) {
 		OrganizationName:      "Test Org",
 		OrganizationDomain:    "example.com",
 		OrganizationWorkspace: "example",
-		AdminName:             "Admin",
+		AdminFirstName:        "Admin",
+		AdminLastName:         "User",
 		AdminEmail:            "admin@example.com",
 		AdminPassword:         "password123",
 	})
@@ -90,7 +92,8 @@ func TestHandler_Create_AlreadyBootstrapped(t *testing.T) {
 		OrganizationName:      "Test Org",
 		OrganizationDomain:    "example.com",
 		OrganizationWorkspace: "example",
-		AdminName:             "Admin",
+		AdminFirstName:        "Admin",
+		AdminLastName:         "User",
 		AdminEmail:            "admin@example.com",
 		AdminPassword:         "password123",
 	})
@@ -113,7 +116,8 @@ func TestHandler_Create_InternalError(t *testing.T) {
 		OrganizationName:      "Test Org",
 		OrganizationDomain:    "example.com",
 		OrganizationWorkspace: "example",
-		AdminName:             "Admin",
+		AdminFirstName:        "Admin",
+		AdminLastName:         "User",
 		AdminEmail:            "admin@example.com",
 		AdminPassword:         "password123",
 	})
@@ -133,7 +137,8 @@ func TestHandler_Create_RequestValidationError(t *testing.T) {
 		OrganizationName:      "T",
 		OrganizationDomain:    "not a domain",
 		OrganizationWorkspace: "",
-		AdminName:             "",
+		AdminFirstName:        "",
+		AdminLastName:         "",
 		AdminEmail:            "",
 		AdminPassword:         "",
 	})

@@ -40,7 +40,8 @@ func newTestCommand() Command {
 		OrganizationName:      "Test Org",
 		OrganizationDomain:    "example.com",
 		OrganizationWorkspace: "example",
-		AdminName:             "Admin",
+		AdminFirstName:        "Admin",
+		AdminLastName:         "User",
 		AdminEmail:            "admin@example.com",
 		AdminPassword:         "password123",
 	}
@@ -171,7 +172,7 @@ func TestUseCase_Execute_DataCorrectness(t *testing.T) {
 	})).Return(fixtures.NewOrganization(), nil)
 
 	txUserRepo.On("Create", mock.Anything, mock.MatchedBy(func(u *user.User) bool {
-		return u.Name == "Admin" && u.Email == "admin@example.com" && u.PasswordHash == "hashed" && u.Status == user.StatusActive && len(u.Memberships) == 1
+		return u.FirstName == "Admin" && u.LastName == "User" && u.Email == "admin@example.com" && u.PasswordHash == "hashed" && u.Status == user.StatusActive && len(u.Memberships) == 1
 	})).Return(fixtures.NewUserWithMembership(), nil)
 
 	issuer.On("IssueToken", mock.Anything, mock.Anything).Return("test-token", nil)

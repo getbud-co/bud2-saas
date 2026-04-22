@@ -39,7 +39,7 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: bud2
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user -d bud2"]
       interval: 5s

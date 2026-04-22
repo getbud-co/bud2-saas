@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -18,10 +19,17 @@ import (
 
 type CreateCommand struct {
 	OrganizationID domain.TenantID
-	Name           string
+	FirstName      string
+	LastName       string
 	Email          string
 	Password       string
 	Role           string
+	Nickname       *string
+	JobTitle       *string
+	BirthDate      *time.Time
+	Language       string
+	Gender         *string
+	Phone          *string
 }
 
 type CreateUseCase struct {
@@ -60,33 +68,37 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*usr.U
 		}
 	}
 
+	lang := cmd.Language
+	if lang == "" {
+		lang = "pt-br"
+	}
+
 	err = uc.txm.WithTx(ctx, func(repos apptx.Repositories) error {
 		var txErr error
 		if targetUser == nil {
 			targetUser = &usr.User{
 				ID:            uuid.New(),
-				Name:          cmd.Name,
+				FirstName:     cmd.FirstName,
+				LastName:      cmd.LastName,
 				Email:         cmd.Email,
 				PasswordHash:  passwordHash,
 				Status:        usr.StatusActive,
 				IsSystemAdmin: false,
+				Nickname:      cmd.Nickname,
+				JobTitle:      cmd.JobTitle,
+				BirthDate:     cmd.BirthDate,
+				Language:      lang,
+				Gender:        cmd.Gender,
+				Phone:         cmd.Phone,
 			}
 			if txErr = targetUser.AddMembership(membership.Membership{
 				OrganizationID: cmd.OrganizationID.UUID(),
 				Role:           role,
-				Status:         membership.StatusActive,
+				Status:         membership.StatusInvited,
 			}); txErr != nil {
 				return txErr
 			}
-			targetUser, txErr = repos.Users().Create(ctx, &usr.User{
-				ID:            targetUser.ID,
-				Name:          targetUser.Name,
-				Email:         targetUser.Email,
-				PasswordHash:  targetUser.PasswordHash,
-				Status:        targetUser.Status,
-				IsSystemAdmin: targetUser.IsSystemAdmin,
-				Memberships:   targetUser.Memberships,
-			})
+			targetUser, txErr = repos.Users().Create(ctx, targetUser)
 			if txErr != nil {
 				return txErr
 			}
@@ -99,7 +111,7 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*usr.U
 			if txErr = targetUser.AddMembership(membership.Membership{
 				OrganizationID: cmd.OrganizationID.UUID(),
 				Role:           role,
-				Status:         membership.StatusActive,
+				Status:         membership.StatusInvited,
 			}); txErr != nil {
 				return txErr
 			}

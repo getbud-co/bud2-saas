@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -15,9 +16,16 @@ import (
 type UpdateCommand struct {
 	OrganizationID domain.TenantID
 	ID             uuid.UUID
-	Name           string
+	FirstName      string
+	LastName       string
 	Email          string
 	Status         string
+	Nickname       *string
+	JobTitle       *string
+	BirthDate      *time.Time
+	Language       string
+	Gender         *string
+	Phone          *string
 }
 
 type UpdateUseCase struct {
@@ -51,9 +59,18 @@ func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*usr.U
 			}
 		}
 
-		u.Name = cmd.Name
+		u.FirstName = cmd.FirstName
+		u.LastName = cmd.LastName
 		u.Email = cmd.Email
 		u.Status = usr.Status(cmd.Status)
+		u.Nickname = cmd.Nickname
+		u.JobTitle = cmd.JobTitle
+		u.BirthDate = cmd.BirthDate
+		if cmd.Language != "" {
+			u.Language = cmd.Language
+		}
+		u.Gender = cmd.Gender
+		u.Phone = cmd.Phone
 
 		if txErr = u.Validate(); txErr != nil {
 			return txErr

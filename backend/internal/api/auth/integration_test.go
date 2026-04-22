@@ -108,13 +108,15 @@ func TestAuthIntegration_LoginSessionSwitchRefresh(t *testing.T) {
 	require.NoError(t, err)
 	createdUser, err := userRepo.Create(ctx, &user.User{
 		ID:           uuid.New(),
-		Name:         "Regular User",
+		FirstName:    "Regular",
+		LastName:     "User",
 		Email:        "member@alpha.example.com",
 		PasswordHash: hash,
 		Status:       user.StatusActive,
+		Language:     "pt-br",
 		Memberships: []membership.Membership{
-			{OrganizationID: orgAlpha.ID, Role: membership.RoleAdmin, Status: membership.StatusActive},
-			{OrganizationID: orgBeta.ID, Role: membership.RoleManager, Status: membership.StatusActive},
+			{OrganizationID: orgAlpha.ID, Role: membership.RoleSuperAdmin, Status: membership.StatusActive},
+			{OrganizationID: orgBeta.ID, Role: membership.RoleGestor, Status: membership.StatusActive},
 		},
 	})
 	require.NoError(t, err)
@@ -185,6 +187,87 @@ func TestAuthIntegration_LoginSessionSwitchRefresh(t *testing.T) {
 	var problem problemResponse
 	require.NoError(t, json.NewDecoder(reuseResp.Body).Decode(&problem))
 	assert.Contains(t, problem.Detail, "refresh token")
+}
+
+// TestAuthIntegration_InvitedUser_LoginActivatesMemberships verifies that a user
+// with membership status='invited' can log in successfully and that the membership
+// is automatically promoted to status='active' on first login.
+func TestAuthIntegration_InvitedUser_LoginActivatesMemberships(t *testing.T) {
+	env := testutil.NewPostgresIntegrationEnv(t)
+	ctx := context.Background()
+	queries := sqlc.New(env.Pool)
+	orgRepo := postgres.NewOrgRepository(queries)
+	userRepo := postgres.NewUserRepository(queries)
+	refreshRepo := postgres.NewRefreshTokenRepository(queries)
+	logger := testutil.NewDiscardLogger()
+	issuer := infraauth.NewTokenIssuer("test-secret")
+	passwordHasher := infraauth.NewDefaultBcryptPasswordHasher()
+	tokenHasher := infraauth.NewSHA256TokenHasher()
+
+	authHandler := apiauth.NewHandler(
+		appauth.NewLoginUseCase(userRepo, orgRepo, issuer, passwordHasher, refreshRepo, tokenHasher, logger),
+		appauth.NewGetSessionUseCase(userRepo, orgRepo, issuer, passwordHasher, logger),
+		appauth.NewSwitchOrganizationUseCase(userRepo, orgRepo, issuer, passwordHasher, refreshRepo, tokenHasher, logger),
+		appauth.NewRefreshUseCase(userRepo, orgRepo, issuer, passwordHasher, refreshRepo, tokenHasher, logger),
+	)
+
+	require.NoError(t, rbac.InitEnforcer(filepath.Join(env.BackendRoot, "policies", "model.conf"), filepath.Join(env.BackendRoot, "policies", "policy.csv")))
+	router := rootapi.NewRouter(noopBootstrapHandler{}, authHandler, &apiorg.Handler{}, &apiuser.Handler{}, rootapi.RouterConfig{
+		Env:            "test",
+		AllowedOrigins: []string{"http://localhost:3000"},
+		OpenAPISpec:    apispec.Spec,
+		JWTSecret:      "test-secret",
+		Enforcer:       rbac.Enforcer(),
+		Pool:           env.Pool,
+		MaxBodySize:    1024 * 1024,
+		RequestTimeout: 30 * time.Second,
+	})
+	server := httptest.NewServer(router)
+	t.Cleanup(server.Close)
+
+	org, err := orgRepo.Create(ctx, &organization.Organization{Name: "Invited Org", Domain: "invited.example.com", Workspace: "invited", Status: organization.StatusActive})
+	require.NoError(t, err)
+
+	hash, err := passwordHasher.Hash("invite123")
+	require.NoError(t, err)
+	invitedUser, err := userRepo.Create(ctx, &user.User{
+		ID:           uuid.New(),
+		FirstName:    "Invited",
+		LastName:     "Member",
+		Email:        "invited@invited.example.com",
+		PasswordHash: hash,
+		Status:       user.StatusActive,
+		Language:     "pt-br",
+		Memberships: []membership.Membership{
+			{OrganizationID: org.ID, Role: membership.RoleColaborador, Status: membership.StatusInvited},
+		},
+	})
+	require.NoError(t, err)
+
+	// Verify membership starts as 'invited'
+	reloaded, err := userRepo.GetByID(ctx, invitedUser.ID)
+	require.NoError(t, err)
+	require.Len(t, reloaded.Memberships, 1)
+	assert.Equal(t, membership.StatusInvited, reloaded.Memberships[0].Status)
+
+	// First login should succeed and activate the membership
+	loginBody, err := json.Marshal(map[string]string{"email": invitedUser.Email, "password": "invite123"})
+	require.NoError(t, err)
+	loginResp := doJSONRequest(t, server.URL, http.MethodPost, "/auth/login", "", bytes.NewReader(loginBody))
+	defer loginResp.Body.Close()
+	require.Equal(t, http.StatusOK, loginResp.StatusCode)
+
+	var login authResponse
+	require.NoError(t, json.NewDecoder(loginResp.Body).Decode(&login))
+	require.NotEmpty(t, login.AccessToken)
+	require.NotNil(t, login.ActiveOrganization)
+	assert.Equal(t, org.ID.String(), login.ActiveOrganization.ID)
+
+	// Verify membership is now 'active' in the database
+	reloadedAfter, err := userRepo.GetByID(ctx, invitedUser.ID)
+	require.NoError(t, err)
+	require.Len(t, reloadedAfter.Memberships, 1)
+	assert.Equal(t, membership.StatusActive, reloadedAfter.Memberships[0].Status)
 }
 
 func doJSONRequest(t *testing.T, baseURL, method, path, token string, body io.Reader) *http.Response {

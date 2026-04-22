@@ -88,7 +88,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httputil.WriteJSON(w, http.StatusCreated, toResponse(result))
+	httputil.WriteJSON(w, http.StatusCreated, toResponseForOrganization(result, organizationID.UUID()))
 }
 
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
@@ -108,7 +108,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		handleError(w, err)
 		return
 	}
-	httputil.WriteJSON(w, http.StatusOK, toResponse(result))
+	httputil.WriteJSON(w, http.StatusOK, toResponseForOrganization(result, organizationID.UUID()))
 }
 
 const maxPageSize = 100
@@ -145,7 +145,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 	items := make([]Response, len(result.Users))
 	for i := range result.Users {
-		items[i] = toResponse(&result.Users[i])
+		items[i] = toResponseForOrganization(&result.Users[i], organizationID.UUID())
 	}
 	httputil.WriteJSON(w, http.StatusOK, ListResponse{Data: items, Total: result.Total, Page: page, Size: size})
 }
@@ -176,7 +176,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		handleError(w, err)
 		return
 	}
-	httputil.WriteJSON(w, http.StatusOK, toResponse(result))
+	httputil.WriteJSON(w, http.StatusOK, toResponseForOrganization(result, organizationID.UUID()))
 }
 
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {

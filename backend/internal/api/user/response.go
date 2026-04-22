@@ -3,18 +3,29 @@ package user
 import (
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/getbud-co/bud2/backend/internal/domain/membership"
 	usr "github.com/getbud-co/bud2/backend/internal/domain/user"
 )
 
 type Response struct {
-	ID            string `json:"id"`
-	Name          string `json:"name"`
-	Email         string `json:"email"`
-	Status        string `json:"status"`
-	IsSystemAdmin bool   `json:"is_system_admin"`
-	CreatedAt     string `json:"created_at"`
-	UpdatedAt     string `json:"updated_at"`
+	ID               string  `json:"id"`
+	FirstName        string  `json:"first_name"`
+	LastName         string  `json:"last_name"`
+	Email            string  `json:"email"`
+	Status           string  `json:"status"`
+	IsSystemAdmin    bool    `json:"is_system_admin"`
+	Nickname         *string `json:"nickname,omitempty"`
+	JobTitle         *string `json:"job_title,omitempty"`
+	BirthDate        *string `json:"birth_date,omitempty"`
+	Language         string  `json:"language"`
+	Gender           *string `json:"gender,omitempty"`
+	Phone            *string `json:"phone,omitempty"`
+	Role             *string `json:"role,omitempty"`
+	MembershipStatus *string `json:"membership_status,omitempty"`
+	CreatedAt        string  `json:"created_at"`
+	UpdatedAt        string  `json:"updated_at"`
 }
 
 type MembershipResponse struct {
@@ -37,15 +48,40 @@ type ListResponse struct {
 }
 
 func toResponse(u *usr.User) Response {
-	return Response{
+	resp := Response{
 		ID:            u.ID.String(),
-		Name:          u.Name,
+		FirstName:     u.FirstName,
+		LastName:      u.LastName,
 		Email:         u.Email,
 		Status:        string(u.Status),
 		IsSystemAdmin: u.IsSystemAdmin,
+		Nickname:      u.Nickname,
+		JobTitle:      u.JobTitle,
+		Language:      u.Language,
+		Gender:        u.Gender,
+		Phone:         u.Phone,
 		CreatedAt:     u.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:     u.UpdatedAt.Format(time.RFC3339),
 	}
+	if u.BirthDate != nil {
+		s := u.BirthDate.Format("2006-01-02")
+		resp.BirthDate = &s
+	}
+	return resp
+}
+
+func toResponseForOrganization(u *usr.User, orgID uuid.UUID) Response {
+	resp := toResponse(u)
+	for i := range u.Memberships {
+		if u.Memberships[i].OrganizationID == orgID {
+			role := string(u.Memberships[i].Role)
+			resp.Role = &role
+			mStatus := string(u.Memberships[i].Status)
+			resp.MembershipStatus = &mStatus
+			break
+		}
+	}
+	return resp
 }
 
 func toMembershipResponse(m *membership.Membership) MembershipResponse {

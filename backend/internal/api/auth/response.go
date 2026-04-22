@@ -13,7 +13,8 @@ type authResponse struct {
 
 type userResponse struct {
 	ID            string `json:"id"`
-	Name          string `json:"name"`
+	FirstName     string `json:"first_name"`
+	LastName      string `json:"last_name"`
 	Email         string `json:"email"`
 	Status        string `json:"status"`
 	IsSystemAdmin bool   `json:"is_system_admin"`
@@ -33,7 +34,8 @@ func responseFromSession(session appauth.Session) authResponse {
 	resp := authResponse{
 		User: userResponse{
 			ID:            session.User.ID.String(),
-			Name:          session.User.Name,
+			FirstName:     session.User.FirstName,
+			LastName:      session.User.LastName,
 			Email:         session.User.Email,
 			Status:        string(session.User.Status),
 			IsSystemAdmin: session.User.IsSystemAdmin,

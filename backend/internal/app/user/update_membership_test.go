@@ -44,24 +44,24 @@ func TestUpdateMembershipUseCase_Execute_Success(t *testing.T) {
 	updated := fixtures.NewUserWithMembership()
 	updated.ID = u.ID
 	updated.Memberships[0].OrganizationID = u.Memberships[0].OrganizationID
-	updated.Memberships[0].Role = membership.RoleManager
+	updated.Memberships[0].Role = membership.RoleGestor
 	updated.Memberships[0].Status = membership.StatusInactive
 
 	users.On("GetByID", mock.Anything, u.ID).Return(u, nil)
 	users.On("Update", mock.Anything, mock.MatchedBy(func(target *usr.User) bool {
 		m, err := target.MembershipForOrganization(organizationID.UUID())
-		return err == nil && m.Role == membership.RoleManager && m.Status == membership.StatusInactive
+		return err == nil && m.Role == membership.RoleGestor && m.Status == membership.StatusInactive
 	})).Return(updated, nil)
 
 	result, err := uc.Execute(context.Background(), UpdateMembershipCommand{
 		OrganizationID: organizationID,
 		ID:             u.ID,
-		Role:           string(membership.RoleManager),
+		Role:           string(membership.RoleGestor),
 		Status:         string(membership.StatusInactive),
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, membership.RoleManager, result.Role)
+	assert.Equal(t, membership.RoleGestor, result.Role)
 	assert.Equal(t, membership.StatusInactive, result.Status)
 }
 
@@ -75,7 +75,7 @@ func TestUpdateMembershipUseCase_Execute_ReturnsNotFoundForOtherOrganization(t *
 	result, err := uc.Execute(context.Background(), UpdateMembershipCommand{
 		OrganizationID: domain.TenantID(uuid.New()),
 		ID:             u.ID,
-		Role:           string(membership.RoleManager),
+		Role:           string(membership.RoleGestor),
 		Status:         string(membership.StatusInactive),
 	})
 

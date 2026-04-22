@@ -13,7 +13,8 @@ type Response struct {
 	} `json:"organization"`
 	Admin struct {
 		ID            string `json:"id"`
-		Name          string `json:"name"`
+		FirstName     string `json:"first_name"`
+		LastName      string `json:"last_name"`
 		Email         string `json:"email"`
 		IsSystemAdmin bool   `json:"is_system_admin"`
 	} `json:"admin"`
@@ -26,7 +27,8 @@ func createBootstrapResponse(result *bootstrap.Result) Response {
 	resp.Organization.Domain = result.Organization.Domain
 	resp.Organization.Workspace = result.Organization.Workspace
 	resp.Admin.ID = result.Admin.ID.String()
-	resp.Admin.Name = result.Admin.Name
+	resp.Admin.FirstName = result.Admin.FirstName
+	resp.Admin.LastName = result.Admin.LastName
 	resp.Admin.Email = result.Admin.Email
 	resp.Admin.IsSystemAdmin = result.Admin.IsSystemAdmin
 

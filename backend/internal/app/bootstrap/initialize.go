@@ -24,7 +24,8 @@ type Command struct {
 	OrganizationName      string
 	OrganizationDomain    string
 	OrganizationWorkspace string
-	AdminName             string
+	AdminFirstName        string
+	AdminLastName         string
 	AdminEmail            string
 	AdminPassword         string
 }
@@ -97,15 +98,17 @@ func (uc *UseCase) Execute(ctx context.Context, cmd Command) (*Result, error) {
 
 		admin := &user.User{
 			ID:            uuid.New(),
-			Name:          cmd.AdminName,
+			FirstName:     cmd.AdminFirstName,
+			LastName:      cmd.AdminLastName,
 			Email:         cmd.AdminEmail,
 			PasswordHash:  passwordHash,
 			Status:        user.StatusActive,
 			IsSystemAdmin: false,
+			Language:      "pt-br",
 		}
 		if txErr = admin.AddMembership(membership.Membership{
 			OrganizationID: createdOrg.ID,
-			Role:           membership.RoleAdmin,
+			Role:           membership.RoleSuperAdmin,
 			Status:         membership.StatusActive,
 		}); txErr != nil {
 			return txErr
