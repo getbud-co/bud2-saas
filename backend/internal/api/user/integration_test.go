@@ -21,6 +21,7 @@ import (
 	rootapi "github.com/getbud-co/bud2/backend/internal/api"
 	apiauth "github.com/getbud-co/bud2/backend/internal/api/auth"
 	apiorg "github.com/getbud-co/bud2/backend/internal/api/organization"
+	apiteam "github.com/getbud-co/bud2/backend/internal/api/team"
 	apiuser "github.com/getbud-co/bud2/backend/internal/api/user"
 	appuser "github.com/getbud-co/bud2/backend/internal/app/user"
 	"github.com/getbud-co/bud2/backend/internal/domain"
@@ -66,6 +67,7 @@ func TestUsersIntegration_ListAndGet_RespectActiveOrganization(t *testing.T) {
 	queries := sqlc.New(env.Pool)
 	orgRepo := postgres.NewOrgRepository(queries)
 	userRepo := postgres.NewUserRepository(queries)
+	teamRepo := postgres.NewTeamRepository(queries)
 	txManager := postgres.NewTxManager(env.Pool)
 	logger := testutil.NewDiscardLogger()
 
@@ -77,10 +79,11 @@ func TestUsersIntegration_ListAndGet_RespectActiveOrganization(t *testing.T) {
 		appuser.NewDeleteUseCase(txManager, logger),
 		appuser.NewGetMembershipUseCase(userRepo, logger),
 		appuser.NewUpdateMembershipUseCase(txManager, logger),
+		teamRepo,
 	)
 
 	require.NoError(t, rbac.InitEnforcer(filepath.Join(env.BackendRoot, "policies", "model.conf"), filepath.Join(env.BackendRoot, "policies", "policy.csv")))
-	router := rootapi.NewRouter(noopBootstrapHandler{}, &apiauth.Handler{}, &apiorg.Handler{}, userHandler, rootapi.RouterConfig{
+	router := rootapi.NewRouter(noopBootstrapHandler{}, &apiauth.Handler{}, &apiorg.Handler{}, userHandler, &apiteam.Handler{}, rootapi.RouterConfig{
 		Env:            "test",
 		AllowedOrigins: []string{"http://localhost:3000"},
 		OpenAPISpec:    apispec.Spec,
@@ -230,7 +233,7 @@ func TestUsersIntegration_ListAndGet_RespectActiveOrganization(t *testing.T) {
 
 	deleteOtherResp := doAuthorizedRequest(t, server.URL, token, http.MethodDelete, "/users/"+userB.ID.String())
 	defer deleteOtherResp.Body.Close()
-	require.Equal(t, http.StatusNotFound, deleteOtherResp.StatusCode)
+	require.Equal(t, http.StatusNoContent, deleteOtherResp.StatusCode)
 
 	deleteColleagueResp := doAuthorizedRequest(t, server.URL, token, http.MethodDelete, "/users/"+userAColleague.ID.String())
 	defer deleteColleagueResp.Body.Close()
@@ -239,6 +242,175 @@ func TestUsersIntegration_ListAndGet_RespectActiveOrganization(t *testing.T) {
 	staleTokenResp := doAuthorizedRequest(t, server.URL, colleagueToken, http.MethodGet, "/users")
 	defer staleTokenResp.Body.Close()
 	assert.Equal(t, http.StatusUnauthorized, staleTokenResp.StatusCode)
+}
+
+func TestUsersIntegration_CreateIncludesLocation(t *testing.T) {
+	env := testutil.NewPostgresIntegrationEnv(t)
+	ctx := context.Background()
+	queries := sqlc.New(env.Pool)
+	orgRepo := postgres.NewOrgRepository(queries)
+	userRepo := postgres.NewUserRepository(queries)
+	teamRepo := postgres.NewTeamRepository(queries)
+	txManager := postgres.NewTxManager(env.Pool)
+	logger := testutil.NewDiscardLogger()
+
+	userHandler := apiuser.NewHandler(
+		appuser.NewCreateUseCase(userRepo, orgRepo, txManager, infraauth.NewDefaultBcryptPasswordHasher(), logger),
+		appuser.NewGetUseCase(userRepo, logger),
+		appuser.NewListUseCase(userRepo, logger),
+		appuser.NewUpdateUseCase(userRepo, txManager, logger),
+		appuser.NewDeleteUseCase(txManager, logger),
+		appuser.NewGetMembershipUseCase(userRepo, logger),
+		appuser.NewUpdateMembershipUseCase(txManager, logger),
+		teamRepo,
+	)
+
+	require.NoError(t, rbac.InitEnforcer(filepath.Join(env.BackendRoot, "policies", "model.conf"), filepath.Join(env.BackendRoot, "policies", "policy.csv")))
+	router := rootapi.NewRouter(noopBootstrapHandler{}, &apiauth.Handler{}, &apiorg.Handler{}, userHandler, &apiteam.Handler{}, rootapi.RouterConfig{
+		Env:            "test",
+		AllowedOrigins: []string{"http://localhost:3000"},
+		OpenAPISpec:    apispec.Spec,
+		JWTSecret:      "test-secret",
+		Enforcer:       rbac.Enforcer(),
+		Pool:           env.Pool,
+		MaxBodySize:    1024 * 1024,
+		RequestTimeout: 30 * time.Second,
+	})
+	server := httptest.NewServer(router)
+	t.Cleanup(server.Close)
+
+	org, err := orgRepo.Create(ctx, &organization.Organization{Name: "Zeta", Domain: "zeta.example.com", Workspace: "zeta", Status: organization.StatusActive})
+	require.NoError(t, err)
+
+	adminUser, err := userRepo.Create(ctx, &user.User{
+		ID:           uuid.New(),
+		FirstName:    "Admin",
+		LastName:     "User",
+		Email:        "admin@zeta.example.com",
+		PasswordHash: "hashed",
+		Status:       user.StatusActive,
+		Language:     "pt-br",
+		Memberships: []membership.Membership{{
+			OrganizationID: org.ID,
+			Role:           membership.RoleSuperAdmin,
+			Status:         membership.StatusActive,
+		}},
+	})
+	require.NoError(t, err)
+
+	issuer := infraauth.NewTokenIssuer("test-secret")
+	token, err := issuer.IssueToken(domain.UserClaims{
+		UserID:                domain.UserID(adminUser.ID),
+		ActiveOrganizationID:  domain.TenantID(org.ID),
+		HasActiveOrganization: true,
+		MembershipRole:        "super-admin",
+	}, time.Hour)
+	require.NoError(t, err)
+
+	body, err := json.Marshal(map[string]string{
+		"first_name": "Test",
+		"last_name":  "User",
+		"email":      "test@zeta.example.com",
+		"password":   "password123",
+		"role":       "colaborador",
+	})
+	require.NoError(t, err)
+
+	resp := doAuthorizedRequestWithBody(t, server.URL, token, http.MethodPost, "/users", bytes.NewReader(body))
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	var created apiuser.Response
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&created))
+	assert.Equal(t, "/users/"+created.ID, resp.Header.Get("Location"))
+}
+
+func TestUsersIntegration_DeleteIsIdempotent(t *testing.T) {
+	env := testutil.NewPostgresIntegrationEnv(t)
+	ctx := context.Background()
+	queries := sqlc.New(env.Pool)
+	orgRepo := postgres.NewOrgRepository(queries)
+	userRepo := postgres.NewUserRepository(queries)
+	teamRepo := postgres.NewTeamRepository(queries)
+	txManager := postgres.NewTxManager(env.Pool)
+	logger := testutil.NewDiscardLogger()
+
+	userHandler := apiuser.NewHandler(
+		appuser.NewCreateUseCase(userRepo, orgRepo, txManager, infraauth.NewDefaultBcryptPasswordHasher(), logger),
+		appuser.NewGetUseCase(userRepo, logger),
+		appuser.NewListUseCase(userRepo, logger),
+		appuser.NewUpdateUseCase(userRepo, txManager, logger),
+		appuser.NewDeleteUseCase(txManager, logger),
+		appuser.NewGetMembershipUseCase(userRepo, logger),
+		appuser.NewUpdateMembershipUseCase(txManager, logger),
+		teamRepo,
+	)
+
+	require.NoError(t, rbac.InitEnforcer(filepath.Join(env.BackendRoot, "policies", "model.conf"), filepath.Join(env.BackendRoot, "policies", "policy.csv")))
+	router := rootapi.NewRouter(noopBootstrapHandler{}, &apiauth.Handler{}, &apiorg.Handler{}, userHandler, &apiteam.Handler{}, rootapi.RouterConfig{
+		Env:            "test",
+		AllowedOrigins: []string{"http://localhost:3000"},
+		OpenAPISpec:    apispec.Spec,
+		JWTSecret:      "test-secret",
+		Enforcer:       rbac.Enforcer(),
+		Pool:           env.Pool,
+		MaxBodySize:    1024 * 1024,
+		RequestTimeout: 30 * time.Second,
+	})
+	server := httptest.NewServer(router)
+	t.Cleanup(server.Close)
+
+	org, err := orgRepo.Create(ctx, &organization.Organization{Name: "Delta", Domain: "delta.example.com", Workspace: "delta", Status: organization.StatusActive})
+	require.NoError(t, err)
+
+	adminUser, err := userRepo.Create(ctx, &user.User{
+		ID:           uuid.New(),
+		FirstName:    "Admin",
+		LastName:     "User",
+		Email:        "admin@delta.example.com",
+		PasswordHash: "hashed",
+		Status:       user.StatusActive,
+		Language:     "pt-br",
+		Memberships: []membership.Membership{{
+			OrganizationID: org.ID,
+			Role:           membership.RoleSuperAdmin,
+			Status:         membership.StatusActive,
+		}},
+	})
+	require.NoError(t, err)
+
+	memberUser, err := userRepo.Create(ctx, &user.User{
+		ID:           uuid.New(),
+		FirstName:    "Member",
+		LastName:     "User",
+		Email:        "member@delta.example.com",
+		PasswordHash: "hashed",
+		Status:       user.StatusActive,
+		Language:     "pt-br",
+		Memberships: []membership.Membership{{
+			OrganizationID: org.ID,
+			Role:           membership.RoleColaborador,
+			Status:         membership.StatusActive,
+		}},
+	})
+	require.NoError(t, err)
+
+	issuer := infraauth.NewTokenIssuer("test-secret")
+	token, err := issuer.IssueToken(domain.UserClaims{
+		UserID:                domain.UserID(adminUser.ID),
+		ActiveOrganizationID:  domain.TenantID(org.ID),
+		HasActiveOrganization: true,
+		MembershipRole:        "super-admin",
+	}, time.Hour)
+	require.NoError(t, err)
+
+	resp := doAuthorizedRequestWithBody(t, server.URL, token, http.MethodDelete, "/users/"+memberUser.ID.String(), nil)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+	resp2 := doAuthorizedRequestWithBody(t, server.URL, token, http.MethodDelete, "/users/"+memberUser.ID.String(), nil)
+	defer resp2.Body.Close()
+	assert.Equal(t, http.StatusNoContent, resp2.StatusCode)
 }
 
 func doAuthorizedRequest(t *testing.T, baseURL, token, method, path string) *http.Response {

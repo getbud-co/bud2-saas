@@ -10,6 +10,7 @@ import (
 
 	apptx "github.com/getbud-co/bud2/backend/internal/app/tx"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
+	"github.com/getbud-co/bud2/backend/internal/domain/team"
 	"github.com/getbud-co/bud2/backend/internal/domain/user"
 	"github.com/getbud-co/bud2/backend/internal/test/fixtures"
 	"github.com/getbud-co/bud2/backend/internal/test/mocks"
@@ -28,6 +29,7 @@ type mockTxRepos struct {
 
 func (m mockTxRepos) Organizations() organization.Repository { return m.orgRepo }
 func (m mockTxRepos) Users() user.Repository                 { return m.userRepo }
+func (m mockTxRepos) Teams() team.Repository                 { return nil }
 
 var _ apptx.Repositories = mockTxRepos{}
 

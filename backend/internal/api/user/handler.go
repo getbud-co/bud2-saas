@@ -2,6 +2,8 @@ package user
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -13,11 +15,12 @@ import (
 	appuser "github.com/getbud-co/bud2/backend/internal/app/user"
 	"github.com/getbud-co/bud2/backend/internal/domain"
 	"github.com/getbud-co/bud2/backend/internal/domain/membership"
+	"github.com/getbud-co/bud2/backend/internal/domain/team"
 	usr "github.com/getbud-co/bud2/backend/internal/domain/user"
 )
 
 type createUseCase interface {
-	Execute(ctx context.Context, cmd appuser.CreateCommand) (*usr.User, error)
+	Execute(ctx context.Context, cmd appuser.CreateCommand) (*usr.User, []uuid.UUID, error)
 }
 
 type getUseCase interface {
@@ -29,7 +32,7 @@ type listUseCase interface {
 }
 
 type updateUseCase interface {
-	Execute(ctx context.Context, cmd appuser.UpdateCommand) (*usr.User, error)
+	Execute(ctx context.Context, cmd appuser.UpdateCommand) (*usr.User, []uuid.UUID, error)
 }
 
 type getMembershipUseCase interface {
@@ -44,6 +47,11 @@ type deleteUseCase interface {
 	Execute(ctx context.Context, cmd appuser.DeleteCommand) error
 }
 
+type teamLister interface {
+	ListMembersByUser(ctx context.Context, organizationID, userID uuid.UUID) ([]team.TeamMember, error)
+	ListTeamIDsByUsers(ctx context.Context, organizationID uuid.UUID, userIDs []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error)
+}
+
 type Handler struct {
 	create           createUseCase
 	get              getUseCase
@@ -52,9 +60,10 @@ type Handler struct {
 	delete           deleteUseCase
 	getMembership    getMembershipUseCase
 	updateMembership updateMembershipUseCase
+	teams            teamLister
 }
 
-func NewHandler(create createUseCase, get getUseCase, list listUseCase, update updateUseCase, delete deleteUseCase, getMembership getMembershipUseCase, updateMembership updateMembershipUseCase) *Handler {
+func NewHandler(create createUseCase, get getUseCase, list listUseCase, update updateUseCase, delete deleteUseCase, getMembership getMembershipUseCase, updateMembership updateMembershipUseCase, teams teamLister) *Handler {
 	return &Handler{
 		create:           create,
 		get:              get,
@@ -63,6 +72,7 @@ func NewHandler(create createUseCase, get getUseCase, list listUseCase, update u
 		delete:           delete,
 		getMembership:    getMembership,
 		updateMembership: updateMembership,
+		teams:            teams,
 	}
 }
 
@@ -82,13 +92,14 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.create.Execute(r.Context(), req.toCommand(organizationID))
+	result, teamIDs, err := h.create.Execute(r.Context(), req.toCommand(organizationID))
 	if err != nil {
 		handleError(w, err)
 		return
 	}
 
-	httputil.WriteJSON(w, http.StatusCreated, toResponseForOrganization(result, organizationID.UUID()))
+	w.Header().Set("Location", fmt.Sprintf("/users/%s", result.ID))
+	httputil.WriteJSON(w, http.StatusCreated, toResponseWithTeams(result, organizationID.UUID(), teamIDs))
 }
 
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
@@ -108,7 +119,16 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		handleError(w, err)
 		return
 	}
-	httputil.WriteJSON(w, http.StatusOK, toResponseForOrganization(result, organizationID.UUID()))
+	members, err := h.teams.ListMembersByUser(r.Context(), organizationID.UUID(), id)
+	if err != nil {
+		httputil.WriteProblem(w, http.StatusInternalServerError, "Internal Server Error", err.Error())
+		return
+	}
+	teamIDs := make([]uuid.UUID, len(members))
+	for i, m := range members {
+		teamIDs[i] = m.TeamID
+	}
+	httputil.WriteJSON(w, http.StatusOK, toResponseWithTeams(result, organizationID.UUID(), teamIDs))
 }
 
 const maxPageSize = 100
@@ -143,9 +163,19 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userIDs := make([]uuid.UUID, len(result.Users))
+	for i := range result.Users {
+		userIDs[i] = result.Users[i].ID
+	}
+	teamsByUser, err := h.teams.ListTeamIDsByUsers(r.Context(), organizationID.UUID(), userIDs)
+	if err != nil {
+		httputil.WriteProblem(w, http.StatusInternalServerError, "Internal Server Error", err.Error())
+		return
+	}
+
 	items := make([]Response, len(result.Users))
 	for i := range result.Users {
-		items[i] = toResponseForOrganization(&result.Users[i], organizationID.UUID())
+		items[i] = toResponseWithTeams(&result.Users[i], organizationID.UUID(), teamsByUser[result.Users[i].ID])
 	}
 	httputil.WriteJSON(w, http.StatusOK, ListResponse{Data: items, Total: result.Total, Page: page, Size: size})
 }
@@ -171,12 +201,12 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.update.Execute(r.Context(), req.toCommand(organizationID, id))
+	result, teamIDs, err := h.update.Execute(r.Context(), req.toCommand(organizationID, id))
 	if err != nil {
 		handleError(w, err)
 		return
 	}
-	httputil.WriteJSON(w, http.StatusOK, toResponseForOrganization(result, organizationID.UUID()))
+	httputil.WriteJSON(w, http.StatusOK, toResponseWithTeams(result, organizationID.UUID(), teamIDs))
 }
 
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
@@ -202,6 +232,10 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 		TargetUserID:    id,
 	})
 	if err != nil {
+		if errors.Is(err, usr.ErrNotFound) || errors.Is(err, membership.ErrNotFound) {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		handleError(w, err)
 		return
 	}

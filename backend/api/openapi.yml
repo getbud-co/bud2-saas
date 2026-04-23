@@ -180,6 +180,11 @@ paths:
       responses:
         "201":
           description: Created
+          headers:
+            Location:
+              schema:
+                type: string
+              description: URL do recurso criado
           content:
             application/json:
               schema:
@@ -336,56 +341,15 @@ paths:
       responses:
         "201":
           description: Created
+          headers:
+            Location:
+              schema:
+                type: string
+              description: URL do recurso criado
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/User"
-
-  /users/{id}:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema: { type: string, format: uuid }
-    get:
-      summary: Get user from active organization
-      tags: [Users]
-      security:
-        - bearerAuth: []
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/User"
-    put:
-      summary: Update user in active organization
-      tags: [Users]
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateUserRequest"
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/User"
-    delete:
-      summary: Soft delete membership from active organization
-      tags: [Users]
-      description: Soft deletes the user's membership in the active organization.
-      security:
-        - bearerAuth: []
-      responses:
-        "204":
-          description: Deleted
         "401":
           description: Unauthorized
           content:
@@ -400,6 +364,170 @@ paths:
                 $ref: "#/components/schemas/ProblemDetail"
         "404":
           description: Not found or inaccessible
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
+  /teams:
+    get:
+      summary: List teams in active organization
+      tags: [Teams]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: size
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: status
+          in: query
+          schema: { type: string, enum: [active, archived] }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamListResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    post:
+      summary: Create team in active organization
+      tags: [Teams]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTeamRequest"
+      responses:
+        "201":
+          description: Created
+          headers:
+            Location:
+              schema:
+                type: string
+              description: URL do recurso criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: Team name already in use
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: Validation error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
+  /teams/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get team from active organization
+      tags: [Teams]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    put:
+      summary: Update team in active organization
+      tags: [Teams]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTeamRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: Team name already in use
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: Validation error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    delete:
+      summary: Soft delete team from active organization
+      tags: [Teams]
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Not found
           content:
             application/problem+json:
               schema:
@@ -605,7 +733,7 @@ components:
 
     User:
       type: object
-      required: [id, first_name, last_name, email, status, is_system_admin, language, created_at, updated_at]
+      required: [id, first_name, last_name, email, status, is_system_admin, language, team_ids, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         first_name: { type: string }
@@ -621,6 +749,9 @@ components:
         phone: { type: string }
         role: { type: string, enum: [super-admin, admin-rh, gestor, colaborador, visualizador] }
         membership_status: { type: string, enum: [invited, active, inactive] }
+        team_ids:
+          type: array
+          items: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
 
@@ -665,6 +796,9 @@ components:
         language: { type: string, minLength: 2, maxLength: 10 }
         gender: { type: string, enum: [feminino, masculino, nao-binario, prefiro-nao-dizer] }
         phone: { type: string }
+        team_ids:
+          type: array
+          items: { type: string, format: uuid }
 
     UpdateUserRequest:
       type: object
@@ -680,6 +814,9 @@ components:
         language: { type: string, minLength: 2, maxLength: 10 }
         gender: { type: string, enum: [feminino, masculino, nao-binario, prefiro-nao-dizer] }
         phone: { type: string }
+        team_ids:
+          type: array
+          items: { type: string, format: uuid }
 
     UpdateMembershipRequest:
       type: object
@@ -687,3 +824,87 @@ components:
       properties:
         role: { type: string, enum: [super-admin, admin-rh, gestor, colaborador, visualizador] }
         status: { type: string, enum: [invited, active, inactive] }
+
+    TeamMemberUser:
+      type: object
+      required: [id, first_name, last_name]
+      properties:
+        id: { type: string, format: uuid }
+        first_name: { type: string }
+        last_name: { type: string }
+        initials: { type: string }
+        job_title: { type: string }
+        avatar_url: { type: string }
+
+    TeamMember:
+      type: object
+      required: [team_id, user_id, role_in_team, joined_at]
+      properties:
+        team_id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        role_in_team: { type: string, enum: [leader, member, observer] }
+        joined_at: { type: string, format: date-time }
+        user:
+          $ref: "#/components/schemas/TeamMemberUser"
+
+    Team:
+      type: object
+      required: [id, org_id, name, color, status, members, member_count, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string }
+        color: { type: string, enum: [neutral, orange, wine, caramel, success, warning, error] }
+        status: { type: string, enum: [active, archived] }
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamMember"
+        member_count: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    TeamListResponse:
+      type: object
+      required: [data, total, page, size]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Team"
+        total: { type: integer }
+        page: { type: integer }
+        size: { type: integer }
+
+    TeamMemberInput:
+      type: object
+      required: [user_id, role_in_team]
+      properties:
+        user_id: { type: string, format: uuid }
+        role_in_team: { type: string, enum: [leader, member, observer] }
+
+    CreateTeamRequest:
+      type: object
+      required: [name, color]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 500 }
+        color: { type: string, enum: [neutral, orange, wine, caramel, success, warning, error] }
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamMemberInput"
+
+    UpdateTeamRequest:
+      type: object
+      required: [name, color, status]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 500 }
+        color: { type: string, enum: [neutral, orange, wine, caramel, success, warning, error] }
+        status: { type: string, enum: [active, archived] }
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamMemberInput"

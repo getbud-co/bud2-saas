@@ -10,22 +10,23 @@ import (
 )
 
 type Response struct {
-	ID               string  `json:"id"`
-	FirstName        string  `json:"first_name"`
-	LastName         string  `json:"last_name"`
-	Email            string  `json:"email"`
-	Status           string  `json:"status"`
-	IsSystemAdmin    bool    `json:"is_system_admin"`
-	Nickname         *string `json:"nickname,omitempty"`
-	JobTitle         *string `json:"job_title,omitempty"`
-	BirthDate        *string `json:"birth_date,omitempty"`
-	Language         string  `json:"language"`
-	Gender           *string `json:"gender,omitempty"`
-	Phone            *string `json:"phone,omitempty"`
-	Role             *string `json:"role,omitempty"`
-	MembershipStatus *string `json:"membership_status,omitempty"`
-	CreatedAt        string  `json:"created_at"`
-	UpdatedAt        string  `json:"updated_at"`
+	ID               string   `json:"id"`
+	FirstName        string   `json:"first_name"`
+	LastName         string   `json:"last_name"`
+	Email            string   `json:"email"`
+	Status           string   `json:"status"`
+	IsSystemAdmin    bool     `json:"is_system_admin"`
+	Nickname         *string  `json:"nickname,omitempty"`
+	JobTitle         *string  `json:"job_title,omitempty"`
+	BirthDate        *string  `json:"birth_date,omitempty"`
+	Language         string   `json:"language"`
+	Gender           *string  `json:"gender,omitempty"`
+	Phone            *string  `json:"phone,omitempty"`
+	Role             *string  `json:"role,omitempty"`
+	MembershipStatus *string  `json:"membership_status,omitempty"`
+	TeamIDs          []string `json:"team_ids"`
+	CreatedAt        string   `json:"created_at"`
+	UpdatedAt        string   `json:"updated_at"`
 }
 
 type MembershipResponse struct {
@@ -77,6 +78,15 @@ func toResponseForOrganization(u *usr.User, orgID uuid.UUID) Response {
 		resp.Role = &role
 		mStatus := string(m.Status)
 		resp.MembershipStatus = &mStatus
+	}
+	return resp
+}
+
+func toResponseWithTeams(u *usr.User, orgID uuid.UUID, teamIDs []uuid.UUID) Response {
+	resp := toResponseForOrganization(u, orgID)
+	resp.TeamIDs = make([]string, len(teamIDs))
+	for i, id := range teamIDs {
+		resp.TeamIDs[i] = id.String()
 	}
 	return resp
 }

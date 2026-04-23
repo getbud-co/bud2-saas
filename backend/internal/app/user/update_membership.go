@@ -45,6 +45,11 @@ func (uc *UpdateMembershipUseCase) Execute(ctx context.Context, cmd UpdateMember
 		if err := m.Validate(); err != nil {
 			return err
 		}
+		if m.Status != membership.StatusActive {
+			if err := repos.Teams().SoftDeleteMemberByUser(ctx, cmd.OrganizationID.UUID(), cmd.ID); err != nil {
+				return err
+			}
+		}
 
 		u, err = repos.Users().Update(ctx, u)
 		if err != nil {

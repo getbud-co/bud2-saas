@@ -14,6 +14,7 @@ import (
 	domainauth "github.com/getbud-co/bud2/backend/internal/domain/auth"
 	"github.com/getbud-co/bud2/backend/internal/domain/membership"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
+	domainteam "github.com/getbud-co/bud2/backend/internal/domain/team"
 	usr "github.com/getbud-co/bud2/backend/internal/domain/user"
 )
 
@@ -30,6 +31,7 @@ type CreateCommand struct {
 	Language       string
 	Gender         *string
 	Phone          *string
+	TeamIDs        []uuid.UUID
 }
 
 type CreateUseCase struct {
@@ -44,27 +46,27 @@ func NewCreateUseCase(users usr.Repository, organizations organization.Repositor
 	return &CreateUseCase{users: users, organizations: organizations, txm: txm, passwordHasher: passwordHasher, logger: logger}
 }
 
-func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*usr.User, error) {
+func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*usr.User, []uuid.UUID, error) {
 	role := membership.Role(cmd.Role)
 	if !role.IsValid() {
-		return nil, domain.ErrValidation
+		return nil, nil, domain.ErrValidation
 	}
 
 	existingUser, err := uc.users.GetByEmail(ctx, cmd.Email)
 	if err != nil && !errors.Is(err, usr.ErrNotFound) {
-		return nil, err
+		return nil, nil, err
 	}
 
 	targetUser := existingUser
 	passwordHash := ""
 	if errors.Is(err, usr.ErrNotFound) {
 		if _, orgErr := uc.organizations.GetByDomain(ctx, emailDomain(cmd.Email)); orgErr != nil {
-			return nil, fmt.Errorf("native organization not found for email domain: %w", orgErr)
+			return nil, nil, fmt.Errorf("native organization not found for email domain: %w", orgErr)
 		}
 		var hashErr error
 		passwordHash, hashErr = uc.passwordHasher.Hash(cmd.Password)
 		if hashErr != nil {
-			return nil, fmt.Errorf("invalid password: %w", hashErr)
+			return nil, nil, fmt.Errorf("invalid password: %w", hashErr)
 		}
 	}
 
@@ -73,6 +75,7 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*usr.U
 		lang = "pt-br"
 	}
 
+	var resultTeamIDs []uuid.UUID
 	err = uc.txm.WithTx(ctx, func(repos apptx.Repositories) error {
 		var txErr error
 		if targetUser == nil {
@@ -120,11 +123,17 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*usr.U
 				return txErr
 			}
 		}
+		if len(cmd.TeamIDs) > 0 {
+			if txErr = repos.Teams().SyncMembersByUser(ctx, cmd.OrganizationID.UUID(), targetUser.ID, cmd.TeamIDs, domainteam.RoleMember); txErr != nil {
+				return txErr
+			}
+		}
+		resultTeamIDs = cmd.TeamIDs
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return targetUser, nil
+	return targetUser, resultTeamIDs, nil
 }
