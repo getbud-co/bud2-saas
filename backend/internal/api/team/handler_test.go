@@ -29,33 +29,6 @@ func (m *mockTeamCreateUseCase) Execute(ctx context.Context, cmd appteam.CreateC
 	return args.Get(0).(*domainteam.Team), args.Error(1)
 }
 
-type mockTeamGetUseCase struct{ mock.Mock }
-
-func (m *mockTeamGetUseCase) Execute(ctx context.Context, organizationID domain.TenantID, id uuid.UUID) (*domainteam.Team, error) {
-	args := m.Called(ctx, organizationID, id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domainteam.Team), args.Error(1)
-}
-
-type mockTeamListUseCase struct{ mock.Mock }
-
-func (m *mockTeamListUseCase) Execute(ctx context.Context, cmd appteam.ListCommand) (domainteam.ListResult, error) {
-	args := m.Called(ctx, cmd)
-	return args.Get(0).(domainteam.ListResult), args.Error(1)
-}
-
-type mockTeamUpdateUseCase struct{ mock.Mock }
-
-func (m *mockTeamUpdateUseCase) Execute(ctx context.Context, cmd appteam.UpdateCommand) (*domainteam.Team, error) {
-	args := m.Called(ctx, cmd)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domainteam.Team), args.Error(1)
-}
-
 type mockTeamDeleteUseCase struct{ mock.Mock }
 
 func (m *mockTeamDeleteUseCase) Execute(ctx context.Context, cmd appteam.DeleteCommand) error {
