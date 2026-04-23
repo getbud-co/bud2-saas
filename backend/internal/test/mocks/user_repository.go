@@ -29,6 +29,14 @@ func (m *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*user.User,
 	return args.Get(0).(*user.User), args.Error(1)
 }
 
+func (m *UserRepository) GetByIDForOrganization(ctx context.Context, id, organizationID uuid.UUID) (*user.User, error) {
+	args := m.Called(ctx, id, organizationID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*user.User), args.Error(1)
+}
+
 func (m *UserRepository) GetByEmail(ctx context.Context, email string) (*user.User, error) {
 	args := m.Called(ctx, email)
 	if args.Get(0) == nil {

@@ -48,7 +48,7 @@ func TestDeleteUseCase_Execute_Success(t *testing.T) {
 	targetUser := fixtures.NewUserWithMembership()
 	targetUser.Memberships[0].OrganizationID = organizationID.UUID()
 
-	txUsers.On("GetByID", mock.Anything, targetUser.ID).Return(targetUser, nil)
+	txUsers.On("GetByIDForOrganization", mock.Anything, targetUser.ID, organizationID.UUID()).Return(targetUser, nil)
 	txUsers.On("DeleteMembership", mock.Anything, organizationID.UUID(), targetUser.ID).Return(nil)
 
 	err := uc.Execute(context.Background(), DeleteCommand{
@@ -80,10 +80,11 @@ func TestDeleteUseCase_Execute_MembershipNotFound(t *testing.T) {
 	uc := NewDeleteUseCase(txm, testutil.NewDiscardLogger())
 
 	targetUser := fixtures.NewUser()
-	txUsers.On("GetByID", mock.Anything, targetUser.ID).Return(targetUser, nil)
+	organizationID := fixtures.NewTestTenantID()
+	txUsers.On("GetByIDForOrganization", mock.Anything, targetUser.ID, organizationID.UUID()).Return(nil, membership.ErrNotFound)
 
 	err := uc.Execute(context.Background(), DeleteCommand{
-		OrganizationID:  fixtures.NewTestTenantID(),
+		OrganizationID:  organizationID,
 		RequesterUserID: uuid.New(),
 		TargetUserID:    targetUser.ID,
 	})

@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/getbud-co/bud2/backend/internal/domain/membership"
 	usr "github.com/getbud-co/bud2/backend/internal/domain/user"
@@ -22,7 +23,7 @@ func TestGetUseCase_Execute_Success(t *testing.T) {
 	testMembership := &testUser.Memberships[0]
 	testMembership.OrganizationID = tenantID.UUID()
 
-	users.On("GetByID", t.Context(), testUser.ID).Return(testUser, nil)
+	users.On("GetByIDForOrganization", t.Context(), testUser.ID, tenantID.UUID()).Return(testUser, nil)
 
 	result, err := uc.Execute(t.Context(), tenantID, testUser.ID)
 
@@ -36,10 +37,8 @@ func TestGetUseCase_Execute_MembershipNotFound(t *testing.T) {
 
 	tenantID := fixtures.NewTestTenantID()
 	userID := uuid.New()
-	testUser := fixtures.NewUser()
-	testUser.ID = userID
 
-	users.On("GetByID", t.Context(), userID).Return(testUser, nil)
+	users.On("GetByIDForOrganization", t.Context(), userID, tenantID.UUID()).Return(nil, membership.ErrNotFound)
 
 	result, err := uc.Execute(t.Context(), tenantID, userID)
 
@@ -53,7 +52,7 @@ func TestGetUseCase_Execute_UserNotFound(t *testing.T) {
 
 	userID := uuid.New()
 
-	users.On("GetByID", t.Context(), userID).Return(nil, usr.ErrNotFound)
+	users.On("GetByIDForOrganization", t.Context(), userID, mock.Anything).Return(nil, usr.ErrNotFound)
 
 	result, err := uc.Execute(t.Context(), fixtures.NewTestTenantID(), userID)
 

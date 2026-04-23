@@ -53,7 +53,7 @@ func TestUpdateUseCase_Execute_Success(t *testing.T) {
 	updatedUser.Memberships[0].OrganizationID = tenantID.UUID()
 	updatedUser.Memberships[0].Role = membership.RoleGestor
 
-	txUsers.On("GetByID", mock.Anything, testUser.ID).Return(testUser, nil)
+	txUsers.On("GetByIDForOrganization", mock.Anything, testUser.ID, tenantID.UUID()).Return(testUser, nil)
 	txUsers.On("Update", mock.Anything, mock.Anything).Return(updatedUser, nil)
 
 	result, err := uc.Execute(context.Background(), UpdateCommand{
@@ -87,7 +87,7 @@ func TestUpdateUseCase_Execute_MembershipNotFound(t *testing.T) {
 	tenantID := fixtures.NewTestTenantID()
 	testUser := fixtures.NewUser()
 
-	txUsers.On("GetByID", mock.Anything, testUser.ID).Return(testUser, nil)
+	txUsers.On("GetByIDForOrganization", mock.Anything, testUser.ID, tenantID.UUID()).Return(nil, membership.ErrNotFound)
 
 	result, err := uc.Execute(context.Background(), UpdateCommand{
 		OrganizationID: tenantID, ID: testUser.ID, FirstName: "Test", LastName: "User", Email: testUser.Email, Status: "active",
@@ -109,7 +109,7 @@ func TestUpdateUseCase_Execute_EmailConflict(t *testing.T) {
 	otherUser.ID = uuid.New()
 	otherUser.Email = "other@example.com"
 
-	txUsers.On("GetByID", mock.Anything, testUser.ID).Return(testUser, nil)
+	txUsers.On("GetByIDForOrganization", mock.Anything, testUser.ID, tenantID.UUID()).Return(testUser, nil)
 	txUsers.On("GetByEmail", mock.Anything, "other@example.com").Return(otherUser, nil)
 
 	result, err := uc.Execute(context.Background(), UpdateCommand{
@@ -129,7 +129,7 @@ func TestUpdateUseCase_Execute_SameEmailNoConflict(t *testing.T) {
 	testUser := fixtures.NewUserWithMembership()
 	testUser.Memberships[0].OrganizationID = tenantID.UUID()
 
-	txUsers.On("GetByID", mock.Anything, testUser.ID).Return(testUser, nil)
+	txUsers.On("GetByIDForOrganization", mock.Anything, testUser.ID, tenantID.UUID()).Return(testUser, nil)
 	txUsers.On("Update", mock.Anything, mock.Anything).Return(testUser, nil)
 
 	result, err := uc.Execute(context.Background(), UpdateCommand{
@@ -150,7 +150,7 @@ func TestUpdateUseCase_Execute_InvalidMembershipStatus(t *testing.T) {
 	testUser := fixtures.NewUserWithMembership()
 	testUser.Memberships[0].OrganizationID = tenantID.UUID()
 
-	txUsers.On("GetByID", mock.Anything, testUser.ID).Return(testUser, nil)
+	txUsers.On("GetByIDForOrganization", mock.Anything, testUser.ID, tenantID.UUID()).Return(testUser, nil)
 
 	result, err := uc.Execute(context.Background(), UpdateCommand{
 		OrganizationID: tenantID, ID: testUser.ID, FirstName: testUser.FirstName, LastName: testUser.LastName, Email: testUser.Email, Status: "invalid",
@@ -169,7 +169,7 @@ func TestUpdateUseCase_Execute_GetByEmailError(t *testing.T) {
 	testUser := fixtures.NewUserWithMembership()
 	testUser.Memberships[0].OrganizationID = tenantID.UUID()
 
-	txUsers.On("GetByID", mock.Anything, testUser.ID).Return(testUser, nil)
+	txUsers.On("GetByIDForOrganization", mock.Anything, testUser.ID, tenantID.UUID()).Return(testUser, nil)
 	txUsers.On("GetByEmail", mock.Anything, "new@example.com").Return(nil, errors.New("db error"))
 
 	result, err := uc.Execute(context.Background(), UpdateCommand{
@@ -189,7 +189,7 @@ func TestUpdateUseCase_Execute_UserUpdateError(t *testing.T) {
 	testUser := fixtures.NewUserWithMembership()
 	testUser.Memberships[0].OrganizationID = tenantID.UUID()
 
-	txUsers.On("GetByID", mock.Anything, testUser.ID).Return(testUser, nil)
+	txUsers.On("GetByIDForOrganization", mock.Anything, testUser.ID, tenantID.UUID()).Return(testUser, nil)
 	txUsers.On("Update", mock.Anything, mock.Anything).Return(nil, errors.New("db error"))
 
 	result, err := uc.Execute(context.Background(), UpdateCommand{

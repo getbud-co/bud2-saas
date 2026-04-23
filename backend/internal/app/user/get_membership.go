@@ -21,7 +21,7 @@ func NewGetMembershipUseCase(users usr.Repository, logger *slog.Logger) *GetMemb
 }
 
 func (uc *GetMembershipUseCase) Execute(ctx context.Context, organizationID domain.TenantID, id uuid.UUID) (*membership.Membership, error) {
-	u, err := uc.users.GetByID(ctx, id)
+	u, err := uc.users.GetByIDForOrganization(ctx, id, organizationID.UUID())
 	if err != nil {
 		return nil, err
 	}

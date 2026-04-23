@@ -41,11 +41,8 @@ func NewUpdateUseCase(users usr.Repository, txm apptx.Manager, logger *slog.Logg
 func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*usr.User, error) {
 	var updatedUser *usr.User
 	err := uc.txm.WithTx(ctx, func(repos apptx.Repositories) error {
-		u, txErr := repos.Users().GetByID(ctx, cmd.ID)
+		u, txErr := repos.Users().GetByIDForOrganization(ctx, cmd.ID, cmd.OrganizationID.UUID())
 		if txErr != nil {
-			return txErr
-		}
-		if _, txErr = u.MembershipForOrganization(cmd.OrganizationID.UUID()); txErr != nil {
 			return txErr
 		}
 

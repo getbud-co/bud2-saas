@@ -245,6 +245,62 @@ func (q *Queries) ListUserMemberships(ctx context.Context, arg ListUserMembershi
 	return items, nil
 }
 
+const listUserMembershipsForOrganization = `-- name: ListUserMembershipsForOrganization :many
+SELECT id, organization_id, user_id, role, status, invited_by_user_id, joined_at, created_at, updated_at
+FROM organization_memberships
+WHERE user_id = $1
+  AND organization_id = $2
+  AND deleted_at IS NULL
+ORDER BY created_at ASC
+`
+
+type ListUserMembershipsForOrganizationParams struct {
+	UserID         uuid.UUID
+	OrganizationID uuid.UUID
+}
+
+type ListUserMembershipsForOrganizationRow struct {
+	ID              uuid.UUID
+	OrganizationID  uuid.UUID
+	UserID          uuid.UUID
+	Role            string
+	Status          string
+	InvitedByUserID pgtype.UUID
+	JoinedAt        pgtype.Timestamptz
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+func (q *Queries) ListUserMembershipsForOrganization(ctx context.Context, arg ListUserMembershipsForOrganizationParams) ([]ListUserMembershipsForOrganizationRow, error) {
+	rows, err := q.db.Query(ctx, listUserMembershipsForOrganization, arg.UserID, arg.OrganizationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUserMembershipsForOrganizationRow
+	for rows.Next() {
+		var i ListUserMembershipsForOrganizationRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrganizationID,
+			&i.UserID,
+			&i.Role,
+			&i.Status,
+			&i.InvitedByUserID,
+			&i.JoinedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const softDeleteOrganizationMembership = `-- name: SoftDeleteOrganizationMembership :exec
 UPDATE organization_memberships
 SET deleted_at = NOW()

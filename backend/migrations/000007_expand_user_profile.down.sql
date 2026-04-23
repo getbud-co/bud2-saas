@@ -6,7 +6,8 @@
 
 -- Restore name column from first_name / last_name
 ALTER TABLE users ADD COLUMN name TEXT;
-UPDATE users SET name = TRIM(first_name || ' ' || last_name);
+UPDATE users SET name = COALESCE(NULLIF(TRIM(first_name || ' ' || last_name), ''), 'Unknown')
+WHERE name IS NULL;
 ALTER TABLE users ALTER COLUMN name SET NOT NULL;
 
 ALTER TABLE users

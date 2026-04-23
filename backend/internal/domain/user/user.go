@@ -85,6 +85,7 @@ type ListResult struct {
 type Repository interface {
 	Create(ctx context.Context, user *User) (*User, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*User, error)
+	GetByIDForOrganization(ctx context.Context, id, organizationID uuid.UUID) (*User, error)
 	GetByEmail(ctx context.Context, email string) (*User, error)
 	ListByOrganization(ctx context.Context, organizationID uuid.UUID, status *Status, page, size int) (ListResult, error)
 	Update(ctx context.Context, user *User) (*User, error)

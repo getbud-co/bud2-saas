@@ -39,6 +39,7 @@ type Querier interface {
 	ListOrganizationsByUser(ctx context.Context, arg ListOrganizationsByUserParams) ([]ListOrganizationsByUserRow, error)
 	ListOrganizationsByUserAndStatus(ctx context.Context, arg ListOrganizationsByUserAndStatusParams) ([]ListOrganizationsByUserAndStatusRow, error)
 	ListUserMemberships(ctx context.Context, arg ListUserMembershipsParams) ([]ListUserMembershipsRow, error)
+	ListUserMembershipsForOrganization(ctx context.Context, arg ListUserMembershipsForOrganizationParams) ([]ListUserMembershipsForOrganizationRow, error)
 	RevokeAllRefreshTokensByUserID(ctx context.Context, userID uuid.UUID) error
 	RevokeRefreshToken(ctx context.Context, id uuid.UUID) error
 	SoftDeleteOrganization(ctx context.Context, id uuid.UUID) error

@@ -21,7 +21,8 @@ WHERE LOWER(email) = LOWER($1)
 
 -- name: ListOrganizationUsersByStatus :many
 SELECT u.id, u.first_name, u.last_name, u.email, u.password_hash, u.status, u.is_system_admin,
-       u.nickname, u.job_title, u.birth_date, u.language, u.gender, u.phone, u.created_at, u.updated_at
+       u.nickname, u.job_title, u.birth_date, u.language, u.gender, u.phone, u.created_at, u.updated_at,
+       om.role as membership_role, om.status as membership_status
 FROM users u
 INNER JOIN organization_memberships om ON om.user_id = u.id
 WHERE om.organization_id = $1
@@ -42,7 +43,8 @@ WHERE om.organization_id = $1
 
 -- name: ListOrganizationUsers :many
 SELECT u.id, u.first_name, u.last_name, u.email, u.password_hash, u.status, u.is_system_admin,
-       u.nickname, u.job_title, u.birth_date, u.language, u.gender, u.phone, u.created_at, u.updated_at
+       u.nickname, u.job_title, u.birth_date, u.language, u.gender, u.phone, u.created_at, u.updated_at,
+       om.role as membership_role, om.status as membership_status
 FROM users u
 INNER JOIN organization_memberships om ON om.user_id = u.id
 WHERE om.organization_id = $1

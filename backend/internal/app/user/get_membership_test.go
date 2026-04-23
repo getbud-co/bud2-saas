@@ -22,7 +22,7 @@ func TestGetMembershipUseCase_Execute_Success(t *testing.T) {
 
 	u := fixtures.NewUserWithMembership()
 	organizationID := domain.TenantID(u.Memberships[0].OrganizationID)
-	users.On("GetByID", mock.Anything, u.ID).Return(u, nil)
+	users.On("GetByIDForOrganization", mock.Anything, u.ID, organizationID.UUID()).Return(u, nil)
 
 	result, err := uc.Execute(context.Background(), organizationID, u.ID)
 
@@ -35,9 +35,10 @@ func TestGetMembershipUseCase_Execute_NotFoundForOrganization(t *testing.T) {
 	uc := NewGetMembershipUseCase(users, testutil.NewDiscardLogger())
 
 	u := fixtures.NewUserWithMembership()
-	users.On("GetByID", mock.Anything, u.ID).Return(u, nil)
+	otherOrgID := domain.TenantID(uuid.New())
+	users.On("GetByIDForOrganization", mock.Anything, u.ID, otherOrgID.UUID()).Return(nil, membership.ErrNotFound)
 
-	result, err := uc.Execute(context.Background(), domain.TenantID(uuid.New()), u.ID)
+	result, err := uc.Execute(context.Background(), otherOrgID, u.ID)
 
 	assert.ErrorIs(t, err, membership.ErrNotFound)
 	assert.Nil(t, result)

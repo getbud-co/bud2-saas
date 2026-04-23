@@ -230,7 +230,8 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow
 
 const listOrganizationUsers = `-- name: ListOrganizationUsers :many
 SELECT u.id, u.first_name, u.last_name, u.email, u.password_hash, u.status, u.is_system_admin,
-       u.nickname, u.job_title, u.birth_date, u.language, u.gender, u.phone, u.created_at, u.updated_at
+       u.nickname, u.job_title, u.birth_date, u.language, u.gender, u.phone, u.created_at, u.updated_at,
+       om.role as membership_role, om.status as membership_status
 FROM users u
 INNER JOIN organization_memberships om ON om.user_id = u.id
 WHERE om.organization_id = $1
@@ -247,21 +248,23 @@ type ListOrganizationUsersParams struct {
 }
 
 type ListOrganizationUsersRow struct {
-	ID            uuid.UUID
-	FirstName     string
-	LastName      string
-	Email         string
-	PasswordHash  string
-	Status        string
-	IsSystemAdmin bool
-	Nickname      pgtype.Text
-	JobTitle      pgtype.Text
-	BirthDate     pgtype.Date
-	Language      string
-	Gender        pgtype.Text
-	Phone         pgtype.Text
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ID               uuid.UUID
+	FirstName        string
+	LastName         string
+	Email            string
+	PasswordHash     string
+	Status           string
+	IsSystemAdmin    bool
+	Nickname         pgtype.Text
+	JobTitle         pgtype.Text
+	BirthDate        pgtype.Date
+	Language         string
+	Gender           pgtype.Text
+	Phone            pgtype.Text
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	MembershipRole   string
+	MembershipStatus string
 }
 
 func (q *Queries) ListOrganizationUsers(ctx context.Context, arg ListOrganizationUsersParams) ([]ListOrganizationUsersRow, error) {
@@ -289,6 +292,8 @@ func (q *Queries) ListOrganizationUsers(ctx context.Context, arg ListOrganizatio
 			&i.Phone,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MembershipRole,
+			&i.MembershipStatus,
 		); err != nil {
 			return nil, err
 		}
@@ -302,7 +307,8 @@ func (q *Queries) ListOrganizationUsers(ctx context.Context, arg ListOrganizatio
 
 const listOrganizationUsersByStatus = `-- name: ListOrganizationUsersByStatus :many
 SELECT u.id, u.first_name, u.last_name, u.email, u.password_hash, u.status, u.is_system_admin,
-       u.nickname, u.job_title, u.birth_date, u.language, u.gender, u.phone, u.created_at, u.updated_at
+       u.nickname, u.job_title, u.birth_date, u.language, u.gender, u.phone, u.created_at, u.updated_at,
+       om.role as membership_role, om.status as membership_status
 FROM users u
 INNER JOIN organization_memberships om ON om.user_id = u.id
 WHERE om.organization_id = $1
@@ -321,21 +327,23 @@ type ListOrganizationUsersByStatusParams struct {
 }
 
 type ListOrganizationUsersByStatusRow struct {
-	ID            uuid.UUID
-	FirstName     string
-	LastName      string
-	Email         string
-	PasswordHash  string
-	Status        string
-	IsSystemAdmin bool
-	Nickname      pgtype.Text
-	JobTitle      pgtype.Text
-	BirthDate     pgtype.Date
-	Language      string
-	Gender        pgtype.Text
-	Phone         pgtype.Text
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ID               uuid.UUID
+	FirstName        string
+	LastName         string
+	Email            string
+	PasswordHash     string
+	Status           string
+	IsSystemAdmin    bool
+	Nickname         pgtype.Text
+	JobTitle         pgtype.Text
+	BirthDate        pgtype.Date
+	Language         string
+	Gender           pgtype.Text
+	Phone            pgtype.Text
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	MembershipRole   string
+	MembershipStatus string
 }
 
 func (q *Queries) ListOrganizationUsersByStatus(ctx context.Context, arg ListOrganizationUsersByStatusParams) ([]ListOrganizationUsersByStatusRow, error) {
@@ -368,6 +376,8 @@ func (q *Queries) ListOrganizationUsersByStatus(ctx context.Context, arg ListOrg
 			&i.Phone,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MembershipRole,
+			&i.MembershipStatus,
 		); err != nil {
 			return nil, err
 		}

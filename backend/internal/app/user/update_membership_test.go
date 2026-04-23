@@ -47,7 +47,7 @@ func TestUpdateMembershipUseCase_Execute_Success(t *testing.T) {
 	updated.Memberships[0].Role = membership.RoleGestor
 	updated.Memberships[0].Status = membership.StatusInactive
 
-	users.On("GetByID", mock.Anything, u.ID).Return(u, nil)
+	users.On("GetByIDForOrganization", mock.Anything, u.ID, organizationID.UUID()).Return(u, nil)
 	users.On("Update", mock.Anything, mock.MatchedBy(func(target *usr.User) bool {
 		m, err := target.MembershipForOrganization(organizationID.UUID())
 		return err == nil && m.Role == membership.RoleGestor && m.Status == membership.StatusInactive
@@ -70,10 +70,11 @@ func TestUpdateMembershipUseCase_Execute_ReturnsNotFoundForOtherOrganization(t *
 	uc := NewUpdateMembershipUseCase(fakeTxManager{repos: fakeRepositories{users: users}}, testutil.NewDiscardLogger())
 
 	u := fixtures.NewUserWithMembership()
-	users.On("GetByID", mock.Anything, u.ID).Return(u, nil)
+	otherOrgID := domain.TenantID(uuid.New())
+	users.On("GetByIDForOrganization", mock.Anything, u.ID, otherOrgID.UUID()).Return(nil, membership.ErrNotFound)
 
 	result, err := uc.Execute(context.Background(), UpdateMembershipCommand{
-		OrganizationID: domain.TenantID(uuid.New()),
+		OrganizationID: otherOrgID,
 		ID:             u.ID,
 		Role:           string(membership.RoleGestor),
 		Status:         string(membership.StatusInactive),
@@ -90,7 +91,7 @@ func TestUpdateMembershipUseCase_Execute_ValidationError(t *testing.T) {
 
 	u := fixtures.NewUserWithMembership()
 	organizationID := domain.TenantID(u.Memberships[0].OrganizationID)
-	users.On("GetByID", mock.Anything, u.ID).Return(u, nil)
+	users.On("GetByIDForOrganization", mock.Anything, u.ID, organizationID.UUID()).Return(u, nil)
 
 	result, err := uc.Execute(context.Background(), UpdateMembershipCommand{
 		OrganizationID: organizationID,

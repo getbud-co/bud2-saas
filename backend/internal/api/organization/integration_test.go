@@ -88,20 +88,22 @@ func TestOrganizationsIntegration_UserScopedAccessAndSystemAdminCreate(t *testin
 
 	regularUser, err := userRepo.Create(ctx, &user.User{
 		ID:           uuid.New(),
-		Name:         "Regular",
+		FirstName:    "Regular",
+		LastName:     "User",
 		Email:        "regular@example.com",
 		PasswordHash: "hashed",
 		Status:       user.StatusActive,
+		Language:     "pt-br",
 		Memberships: []membership.Membership{{
 			OrganizationID: orgA.ID,
-			Role:           membership.RoleAdmin,
+			Role:           membership.RoleSuperAdmin,
 			Status:         membership.StatusActive,
 		}},
 	})
 	require.NoError(t, err)
 
 	issuer := infraauth.NewTokenIssuer("test-secret")
-	regularToken, err := issuer.IssueToken(domain.UserClaims{UserID: domain.UserID(regularUser.ID), MembershipRole: "admin"}, time.Hour)
+	regularToken, err := issuer.IssueToken(domain.UserClaims{UserID: domain.UserID(regularUser.ID), MembershipRole: "super-admin"}, time.Hour)
 	require.NoError(t, err)
 	sysAdminToken, err := issuer.IssueToken(domain.UserClaims{UserID: domain.UserID(uuid.New()), IsSystemAdmin: true}, time.Hour)
 	require.NoError(t, err)
