@@ -20,12 +20,5 @@ func NewGetUseCase(users usr.Repository, logger *slog.Logger) *GetUseCase {
 }
 
 func (uc *GetUseCase) Execute(ctx context.Context, organizationID domain.TenantID, id uuid.UUID) (*usr.User, error) {
-	u, err := uc.users.GetByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	if err := u.EnsureAccessibleInOrganization(organizationID.UUID()); err != nil {
-		return nil, err
-	}
-	return u, nil
+	return uc.users.GetByIDForOrganization(ctx, id, organizationID.UUID())
 }

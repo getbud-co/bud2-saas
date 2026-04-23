@@ -56,8 +56,8 @@ func TestCreateUseCase_Execute_Success_NewUser(t *testing.T) {
 	createdUser := fixtures.NewUserWithEmail("new@example.com")
 	createdUser.Memberships = []membership.Membership{{
 		OrganizationID: tenantID.UUID(),
-		Role:           membership.RoleAdmin,
-		Status:         membership.StatusActive,
+		Role:           membership.RoleSuperAdmin,
+		Status:         membership.StatusInvited,
 	}}
 
 	users.On("GetByEmail", mock.Anything, "new@example.com").Return(nil, usr.ErrNotFound)
@@ -66,7 +66,7 @@ func TestCreateUseCase_Execute_Success_NewUser(t *testing.T) {
 	txUsers.On("Create", mock.Anything, mock.Anything).Return(createdUser, nil)
 
 	result, err := uc.Execute(context.Background(), CreateCommand{
-		OrganizationID: tenantID, Name: "New User", Email: "new@example.com", Password: "password123", Role: "admin",
+		OrganizationID: tenantID, FirstName: "New", LastName: "User", Email: "new@example.com", Password: "password123", Role: "super-admin",
 	})
 
 	assert.NoError(t, err)
@@ -89,15 +89,15 @@ func TestCreateUseCase_Execute_Success_ExistingUser(t *testing.T) {
 	updatedUser := fixtures.NewUser()
 	updatedUser.Memberships = []membership.Membership{{
 		OrganizationID: tenantID.UUID(),
-		Role:           membership.RoleAdmin,
-		Status:         membership.StatusActive,
+		Role:           membership.RoleSuperAdmin,
+		Status:         membership.StatusInvited,
 	}}
 
 	users.On("GetByEmail", mock.Anything, existingUser.Email).Return(existingUser, nil)
 	txUsers.On("Update", mock.Anything, mock.Anything).Return(updatedUser, nil)
 
 	result, err := uc.Execute(context.Background(), CreateCommand{
-		OrganizationID: tenantID, Name: existingUser.Name, Email: existingUser.Email, Password: "password123", Role: "admin",
+		OrganizationID: tenantID, FirstName: existingUser.FirstName, LastName: existingUser.LastName, Email: existingUser.Email, Password: "password123", Role: "super-admin",
 	})
 
 	assert.NoError(t, err)
@@ -124,7 +124,7 @@ func TestCreateUseCase_Execute_MembershipAlreadyExists(t *testing.T) {
 	users.On("GetByEmail", mock.Anything, existingUser.Email).Return(existingUser, nil)
 
 	result, err := uc.Execute(context.Background(), CreateCommand{
-		OrganizationID: tenantID, Name: existingUser.Name, Email: existingUser.Email, Password: "password123", Role: "admin",
+		OrganizationID: tenantID, FirstName: existingUser.FirstName, LastName: existingUser.LastName, Email: existingUser.Email, Password: "password123", Role: "super-admin",
 	})
 
 	assert.ErrorIs(t, err, membership.ErrAlreadyExists)
@@ -139,7 +139,7 @@ func TestCreateUseCase_Execute_InvalidRole(t *testing.T) {
 	uc := NewCreateUseCase(users, organizations, nil, hasher, testutil.NewDiscardLogger())
 
 	result, err := uc.Execute(context.Background(), CreateCommand{
-		OrganizationID: fixtures.NewTestTenantID(), Name: "Test", Email: "test@example.com", Password: "password123", Role: "invalid",
+		OrganizationID: fixtures.NewTestTenantID(), FirstName: "Test", LastName: "User", Email: "test@example.com", Password: "password123", Role: "invalid",
 	})
 
 	assert.ErrorIs(t, err, domain.ErrValidation)
@@ -156,7 +156,7 @@ func TestCreateUseCase_Execute_EmailDomainOrgNotFound(t *testing.T) {
 	organizations.On("GetByDomain", mock.Anything, "unknown.com").Return(nil, organization.ErrNotFound)
 
 	result, err := uc.Execute(context.Background(), CreateCommand{
-		OrganizationID: fixtures.NewTestTenantID(), Name: "Test", Email: "test@unknown.com", Password: "password123", Role: "admin",
+		OrganizationID: fixtures.NewTestTenantID(), FirstName: "Test", LastName: "User", Email: "test@unknown.com", Password: "password123", Role: "super-admin",
 	})
 
 	assert.Error(t, err)
@@ -174,7 +174,7 @@ func TestCreateUseCase_Execute_PasswordHashError(t *testing.T) {
 	hasher.On("Hash", "password123").Return("", errors.New("hash error"))
 
 	result, err := uc.Execute(context.Background(), CreateCommand{
-		OrganizationID: fixtures.NewTestTenantID(), Name: "Test", Email: "test@example.com", Password: "password123", Role: "admin",
+		OrganizationID: fixtures.NewTestTenantID(), FirstName: "Test", LastName: "User", Email: "test@example.com", Password: "password123", Role: "super-admin",
 	})
 
 	assert.Error(t, err)
@@ -196,7 +196,7 @@ func TestCreateUseCase_Execute_UserCreateError(t *testing.T) {
 	txUsers.On("Create", mock.Anything, mock.Anything).Return(nil, errors.New("db error"))
 
 	result, err := uc.Execute(context.Background(), CreateCommand{
-		OrganizationID: fixtures.NewTestTenantID(), Name: "Test", Email: "test@example.com", Password: "password123", Role: "admin",
+		OrganizationID: fixtures.NewTestTenantID(), FirstName: "Test", LastName: "User", Email: "test@example.com", Password: "password123", Role: "super-admin",
 	})
 
 	assert.Error(t, err)
@@ -213,7 +213,7 @@ func TestCreateUseCase_Execute_GetByEmailError(t *testing.T) {
 	users.On("GetByEmail", mock.Anything, "test@example.com").Return(nil, errors.New("db error"))
 
 	result, err := uc.Execute(context.Background(), CreateCommand{
-		OrganizationID: fixtures.NewTestTenantID(), Name: "Test", Email: "test@example.com", Password: "password123", Role: "admin",
+		OrganizationID: fixtures.NewTestTenantID(), FirstName: "Test", LastName: "User", Email: "test@example.com", Password: "password123", Role: "super-admin",
 	})
 
 	assert.Error(t, err)
@@ -230,7 +230,7 @@ func TestCreateUseCase_Execute_TransactionError(t *testing.T) {
 	users.On("GetByEmail", mock.Anything, "new@example.com").Return(fixtures.NewUserWithEmail("new@example.com"), nil)
 
 	result, err := uc.Execute(context.Background(), CreateCommand{
-		OrganizationID: fixtures.NewTestTenantID(), Name: "New User", Email: "new@example.com", Password: "password123", Role: "admin",
+		OrganizationID: fixtures.NewTestTenantID(), FirstName: "New", LastName: "User", Email: "new@example.com", Password: "password123", Role: "super-admin",
 	})
 
 	assert.Error(t, err)

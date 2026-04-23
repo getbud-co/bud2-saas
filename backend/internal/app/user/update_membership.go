@@ -30,7 +30,7 @@ func NewUpdateMembershipUseCase(txm apptx.Manager, logger *slog.Logger) *UpdateM
 func (uc *UpdateMembershipUseCase) Execute(ctx context.Context, cmd UpdateMembershipCommand) (*membership.Membership, error) {
 	var updatedMembership *membership.Membership
 	err := uc.txm.WithTx(ctx, func(repos apptx.Repositories) error {
-		u, err := repos.Users().GetByID(ctx, cmd.ID)
+		u, err := repos.Users().GetByIDForOrganization(ctx, cmd.ID, cmd.OrganizationID.UUID())
 		if err != nil {
 			return err
 		}

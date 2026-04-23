@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"errors"
-	"math"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,13 +18,19 @@ type userQuerier interface {
 	CreateUser(ctx context.Context, arg sqlc.CreateUserParams) (sqlc.CreateUserRow, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (sqlc.GetUserByIDRow, error)
 	GetUserByEmail(ctx context.Context, lower string) (sqlc.GetUserByEmailRow, error)
+	ListOrganizationUsers(ctx context.Context, arg sqlc.ListOrganizationUsersParams) ([]sqlc.ListOrganizationUsersRow, error)
+	CountOrganizationUsers(ctx context.Context, organizationID uuid.UUID) (int64, error)
+	ListOrganizationUsersByStatus(ctx context.Context, arg sqlc.ListOrganizationUsersByStatusParams) ([]sqlc.ListOrganizationUsersByStatusRow, error)
+	CountOrganizationUsersByStatus(ctx context.Context, arg sqlc.CountOrganizationUsersByStatusParams) (int64, error)
 	UpdateUser(ctx context.Context, arg sqlc.UpdateUserParams) (sqlc.UpdateUserRow, error)
 	CreateOrganizationMembership(ctx context.Context, arg sqlc.CreateOrganizationMembershipParams) (sqlc.CreateOrganizationMembershipRow, error)
 	ListOrganizationMemberships(ctx context.Context, arg sqlc.ListOrganizationMembershipsParams) ([]sqlc.ListOrganizationMembershipsRow, error)
 	CountOrganizationMemberships(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	ListUserMemberships(ctx context.Context, arg sqlc.ListUserMembershipsParams) ([]sqlc.ListUserMembershipsRow, error)
+	ListUserMembershipsForOrganization(ctx context.Context, arg sqlc.ListUserMembershipsForOrganizationParams) ([]sqlc.ListUserMembershipsForOrganizationRow, error)
 	SoftDeleteOrganizationMembership(ctx context.Context, arg sqlc.SoftDeleteOrganizationMembershipParams) error
 	UpdateOrganizationMembership(ctx context.Context, arg sqlc.UpdateOrganizationMembershipParams) (sqlc.UpdateOrganizationMembershipRow, error)
+	ActivateInvitedMemberships(ctx context.Context, userID uuid.UUID) error
 }
 
 type UserRepository struct {
@@ -39,11 +44,18 @@ func NewUserRepository(q userQuerier) *UserRepository {
 func (r *UserRepository) Create(ctx context.Context, u *user.User) (*user.User, error) {
 	row, err := r.q.CreateUser(ctx, sqlc.CreateUserParams{
 		ID:            u.ID,
-		Name:          u.Name,
+		FirstName:     u.FirstName,
+		LastName:      u.LastName,
 		Email:         u.Email,
 		PasswordHash:  u.PasswordHash,
 		Status:        string(u.Status),
 		IsSystemAdmin: u.IsSystemAdmin,
+		Nickname:      textToPgtype(u.Nickname),
+		JobTitle:      textToPgtype(u.JobTitle),
+		BirthDate:     timeToPgtypeDate(u.BirthDate),
+		Language:      u.Language,
+		Gender:        textToPgtype(u.Gender),
+		Phone:         textToPgtype(u.Phone),
 	})
 	if err != nil {
 		return nil, err
@@ -53,7 +65,7 @@ func (r *UserRepository) Create(ctx context.Context, u *user.User) (*user.User, 
 	if err := r.syncMemberships(ctx, created); err != nil {
 		return nil, err
 	}
-	return r.GetByID(ctx, created.ID)
+	return created, nil
 }
 
 func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
@@ -66,6 +78,24 @@ func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*user.User,
 	}
 	result := getUserByIDRowToDomain(row)
 	if err := r.loadMemberships(ctx, result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (r *UserRepository) GetByIDForOrganization(ctx context.Context, id, organizationID uuid.UUID) (*user.User, error) {
+	row, err := r.q.GetUserByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, user.ErrNotFound
+		}
+		return nil, err
+	}
+	result := getUserByIDRowToDomain(row)
+	if err := r.loadMembershipsForOrganization(ctx, result, organizationID); err != nil {
+		return nil, err
+	}
+	if _, err := result.MembershipForOrganization(organizationID); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -96,10 +126,27 @@ func (r *UserRepository) ListByOrganization(ctx context.Context, organizationID 
 	limit := int32(size)
 	offset := int32((page - 1) * size)
 
-	var rows []membership.Membership
+	var rowsFiltered []sqlc.ListOrganizationUsersByStatusRow
+	var rowsUnfiltered []sqlc.ListOrganizationUsersRow
 	var total int64
-	if status == nil {
-		result, err := r.q.ListOrganizationMemberships(ctx, sqlc.ListOrganizationMembershipsParams{
+	var err error
+
+	if status != nil {
+		rowsFiltered, err = r.q.ListOrganizationUsersByStatus(ctx, sqlc.ListOrganizationUsersByStatusParams{
+			OrganizationID: organizationID,
+			Status:         string(*status),
+			Limit:          limit,
+			Offset:         offset,
+		})
+		if err != nil {
+			return user.ListResult{}, err
+		}
+		total, err = r.q.CountOrganizationUsersByStatus(ctx, sqlc.CountOrganizationUsersByStatusParams{
+			OrganizationID: organizationID,
+			Status:         string(*status),
+		})
+	} else {
+		rowsUnfiltered, err = r.q.ListOrganizationUsers(ctx, sqlc.ListOrganizationUsersParams{
 			OrganizationID: organizationID,
 			Limit:          limit,
 			Offset:         offset,
@@ -107,70 +154,37 @@ func (r *UserRepository) ListByOrganization(ctx context.Context, organizationID 
 		if err != nil {
 			return user.ListResult{}, err
 		}
-		rows = make([]membership.Membership, len(result))
-		for i := range result {
-			rows[i] = *listOrganizationMembershipsRowToMembership(result[i])
-		}
-		total, err = r.q.CountOrganizationMemberships(ctx, organizationID)
-		if err != nil {
-			return user.ListResult{}, err
-		}
-
-		usersOut := make([]user.User, 0, len(rows))
-		for _, item := range rows {
-			u, err := r.GetByID(ctx, item.UserID)
-			if err != nil {
-				return user.ListResult{}, err
-			}
-			usersOut = append(usersOut, *u)
-		}
-		return user.ListResult{Users: usersOut, Total: total}, nil
+		total, err = r.q.CountOrganizationUsers(ctx, organizationID)
 	}
-
-	result, err := r.q.ListOrganizationMemberships(ctx, sqlc.ListOrganizationMembershipsParams{
-		OrganizationID: organizationID,
-		Limit:          math.MaxInt32,
-		Offset:         0,
-	})
 	if err != nil {
 		return user.ListResult{}, err
 	}
-	rows = make([]membership.Membership, len(result))
-	for i := range result {
-		rows[i] = *listOrganizationMembershipsRowToMembership(result[i])
-	}
 
-	filteredUsers := make([]user.User, 0, len(rows))
-	for _, item := range rows {
-		u, err := r.GetByID(ctx, item.UserID)
-		if err != nil {
-			return user.ListResult{}, err
-		}
-		if u.Status == *status {
-			filteredUsers = append(filteredUsers, *u)
-		}
+	usersOut := make([]user.User, 0, len(rowsFiltered)+len(rowsUnfiltered))
+	for _, row := range rowsFiltered {
+		usersOut = append(usersOut, *listOrganizationUsersByStatusRowToDomain(row, organizationID))
 	}
-
-	total = int64(len(filteredUsers))
-	start := int(offset)
-	if start >= len(filteredUsers) {
-		return user.ListResult{Users: []user.User{}, Total: total}, nil
+	for _, row := range rowsUnfiltered {
+		usersOut = append(usersOut, *listOrganizationUsersRowToDomain(row, organizationID))
 	}
-	end := start + int(limit)
-	if end > len(filteredUsers) {
-		end = len(filteredUsers)
-	}
-	return user.ListResult{Users: filteredUsers[start:end], Total: total}, nil
+	return user.ListResult{Users: usersOut, Total: total}, nil
 }
 
 func (r *UserRepository) Update(ctx context.Context, u *user.User) (*user.User, error) {
 	row, err := r.q.UpdateUser(ctx, sqlc.UpdateUserParams{
 		ID:            u.ID,
-		Name:          u.Name,
+		FirstName:     u.FirstName,
+		LastName:      u.LastName,
 		Email:         u.Email,
 		PasswordHash:  u.PasswordHash,
 		Status:        string(u.Status),
 		IsSystemAdmin: u.IsSystemAdmin,
+		Nickname:      textToPgtype(u.Nickname),
+		JobTitle:      textToPgtype(u.JobTitle),
+		BirthDate:     timeToPgtypeDate(u.BirthDate),
+		Language:      u.Language,
+		Gender:        textToPgtype(u.Gender),
+		Phone:         textToPgtype(u.Phone),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -183,7 +197,7 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) (*user.User, 
 	if err := r.syncMemberships(ctx, updated); err != nil {
 		return nil, err
 	}
-	return r.GetByID(ctx, updated.ID)
+	return updated, nil
 }
 
 func (r *UserRepository) DeleteMembership(ctx context.Context, organizationID, userID uuid.UUID) error {
@@ -193,31 +207,125 @@ func (r *UserRepository) DeleteMembership(ctx context.Context, organizationID, u
 	})
 }
 
-func createUserRowToDomain(row sqlc.CreateUserRow) *user.User {
-	return &user.User{
-		ID:            row.ID,
-		Name:          row.Name,
-		Email:         row.Email,
-		PasswordHash:  row.PasswordHash,
-		Status:        user.Status(row.Status),
-		IsSystemAdmin: row.IsSystemAdmin,
-		CreatedAt:     row.CreatedAt,
-		UpdatedAt:     row.UpdatedAt,
+func (r *UserRepository) ActivateInvitedMemberships(ctx context.Context, userID uuid.UUID) error {
+	return r.q.ActivateInvitedMemberships(ctx, userID)
+}
+
+// ── Row mappers ───────────────────────────────────────────────────────────────
+
+func populateUser(
+	id uuid.UUID,
+	firstName, lastName, email, passwordHash, status string,
+	isSystemAdmin bool,
+	nickname, jobTitle pgtype.Text,
+	birthDate pgtype.Date,
+	language string,
+	gender, phone pgtype.Text,
+	createdAt, updatedAt time.Time,
+	memberships []membership.Membership,
+) *user.User {
+	u := &user.User{
+		ID:            id,
+		FirstName:     firstName,
+		LastName:      lastName,
+		Email:         email,
+		PasswordHash:  passwordHash,
+		Status:        user.Status(status),
+		IsSystemAdmin: isSystemAdmin,
+		Nickname:      pgtypeToText(nickname),
+		JobTitle:      pgtypeToText(jobTitle),
+		BirthDate:     pgtypeDateToTime(birthDate),
+		Language:      language,
+		Gender:        pgtypeToText(gender),
+		Phone:         pgtypeToText(phone),
+		CreatedAt:     createdAt,
+		UpdatedAt:     updatedAt,
+		Memberships:   memberships,
 	}
+	return u
+}
+
+func createUserRowToDomain(row sqlc.CreateUserRow) *user.User {
+	return populateUser(row.ID, row.FirstName, row.LastName, row.Email, row.PasswordHash, row.Status,
+		row.IsSystemAdmin, row.Nickname, row.JobTitle, row.BirthDate, row.Language, row.Gender, row.Phone,
+		row.CreatedAt, row.UpdatedAt, nil)
 }
 
 func getUserByIDRowToDomain(row sqlc.GetUserByIDRow) *user.User {
-	return &user.User{ID: row.ID, Name: row.Name, Email: row.Email, PasswordHash: row.PasswordHash, Status: user.Status(row.Status), IsSystemAdmin: row.IsSystemAdmin, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
+	return populateUser(row.ID, row.FirstName, row.LastName, row.Email, row.PasswordHash, row.Status,
+		row.IsSystemAdmin, row.Nickname, row.JobTitle, row.BirthDate, row.Language, row.Gender, row.Phone,
+		row.CreatedAt, row.UpdatedAt, nil)
 }
 
 func getUserByEmailRowToDomain(row sqlc.GetUserByEmailRow) *user.User {
-	return &user.User{ID: row.ID, Name: row.Name, Email: row.Email, PasswordHash: row.PasswordHash, Status: user.Status(row.Status), IsSystemAdmin: row.IsSystemAdmin, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
+	return populateUser(row.ID, row.FirstName, row.LastName, row.Email, row.PasswordHash, row.Status,
+		row.IsSystemAdmin, row.Nickname, row.JobTitle, row.BirthDate, row.Language, row.Gender, row.Phone,
+		row.CreatedAt, row.UpdatedAt, nil)
+}
+
+func listOrganizationUsersRowToDomain(row sqlc.ListOrganizationUsersRow, orgID uuid.UUID) *user.User {
+	return populateUser(row.ID, row.FirstName, row.LastName, row.Email, row.PasswordHash, row.Status,
+		row.IsSystemAdmin, row.Nickname, row.JobTitle, row.BirthDate, row.Language, row.Gender, row.Phone,
+		row.CreatedAt, row.UpdatedAt, []membership.Membership{{
+			OrganizationID: orgID,
+			Role:           membership.Role(row.MembershipRole),
+			Status:         membership.Status(row.MembershipStatus),
+		}})
+}
+
+func listOrganizationUsersByStatusRowToDomain(row sqlc.ListOrganizationUsersByStatusRow, orgID uuid.UUID) *user.User {
+	return populateUser(row.ID, row.FirstName, row.LastName, row.Email, row.PasswordHash, row.Status,
+		row.IsSystemAdmin, row.Nickname, row.JobTitle, row.BirthDate, row.Language, row.Gender, row.Phone,
+		row.CreatedAt, row.UpdatedAt, []membership.Membership{{
+			OrganizationID: orgID,
+			Role:           membership.Role(row.MembershipRole),
+			Status:         membership.Status(row.MembershipStatus),
+		}})
 }
 
 func updateUserRowToDomain(row sqlc.UpdateUserRow) *user.User {
-	return &user.User{ID: row.ID, Name: row.Name, Email: row.Email, PasswordHash: row.PasswordHash, Status: user.Status(row.Status), IsSystemAdmin: row.IsSystemAdmin, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
+	return populateUser(row.ID, row.FirstName, row.LastName, row.Email, row.PasswordHash, row.Status,
+		row.IsSystemAdmin, row.Nickname, row.JobTitle, row.BirthDate, row.Language, row.Gender, row.Phone,
+		row.CreatedAt, row.UpdatedAt, nil)
 }
 
+// ── pgtype helpers ────────────────────────────────────────────────────────────
+
+func textToPgtype(s *string) pgtype.Text {
+	if s == nil {
+		return pgtype.Text{Valid: false}
+	}
+	return pgtype.Text{String: *s, Valid: true}
+}
+
+func pgtypeToText(t pgtype.Text) *string {
+	if !t.Valid {
+		return nil
+	}
+	s := t.String
+	return &s
+}
+
+func timeToPgtypeDate(t *time.Time) pgtype.Date {
+	if t == nil {
+		return pgtype.Date{Valid: false}
+	}
+	return pgtype.Date{Time: *t, Valid: true}
+}
+
+func pgtypeDateToTime(d pgtype.Date) *time.Time {
+	if !d.Valid {
+		return nil
+	}
+	t := d.Time
+	return &t
+}
+
+// ── Membership helpers ────────────────────────────────────────────────────────
+
+// loadMemberships loads all memberships for a user across all organizations.
+// Use with caution: it does not filter by tenant. Prefer loadMembershipsForOrganization
+// when operating within a known tenant scope.
 func (r *UserRepository) loadMemberships(ctx context.Context, u *user.User) error {
 	rows, err := r.q.ListUserMemberships(ctx, sqlc.ListUserMembershipsParams{
 		UserID: u.ID,
@@ -230,6 +338,21 @@ func (r *UserRepository) loadMemberships(ctx context.Context, u *user.User) erro
 	u.Memberships = make([]membership.Membership, len(rows))
 	for i := range rows {
 		u.Memberships[i] = *listUserMembershipsRowToMembership(rows[i])
+	}
+	return nil
+}
+
+func (r *UserRepository) loadMembershipsForOrganization(ctx context.Context, u *user.User, organizationID uuid.UUID) error {
+	rows, err := r.q.ListUserMembershipsForOrganization(ctx, sqlc.ListUserMembershipsForOrganizationParams{
+		UserID:         u.ID,
+		OrganizationID: organizationID,
+	})
+	if err != nil {
+		return err
+	}
+	u.Memberships = make([]membership.Membership, len(rows))
+	for i := range rows {
+		u.Memberships[i] = *listUserMembershipsForOrganizationRowToMembership(rows[i])
 	}
 	return nil
 }
@@ -271,11 +394,11 @@ func createOrganizationMembershipRowToMembership(row sqlc.CreateOrganizationMemb
 	return membershipRowToDomain(row.ID, row.OrganizationID, row.UserID, row.Role, row.Status, row.InvitedByUserID, row.JoinedAt, row.CreatedAt, row.UpdatedAt)
 }
 
-func listOrganizationMembershipsRowToMembership(row sqlc.ListOrganizationMembershipsRow) *membership.Membership {
+func listUserMembershipsRowToMembership(row sqlc.ListUserMembershipsRow) *membership.Membership {
 	return membershipRowToDomain(row.ID, row.OrganizationID, row.UserID, row.Role, row.Status, row.InvitedByUserID, row.JoinedAt, row.CreatedAt, row.UpdatedAt)
 }
 
-func listUserMembershipsRowToMembership(row sqlc.ListUserMembershipsRow) *membership.Membership {
+func listUserMembershipsForOrganizationRowToMembership(row sqlc.ListUserMembershipsForOrganizationRow) *membership.Membership {
 	return membershipRowToDomain(row.ID, row.OrganizationID, row.UserID, row.Role, row.Status, row.InvitedByUserID, row.JoinedAt, row.CreatedAt, row.UpdatedAt)
 }
 

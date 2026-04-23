@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	domainauth "github.com/getbud-co/bud2/backend/internal/domain/auth"
+	"github.com/getbud-co/bud2/backend/internal/domain/membership"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	"github.com/getbud-co/bud2/backend/internal/domain/user"
 )
@@ -73,6 +74,23 @@ func (uc *LoginUseCase) Execute(ctx context.Context, cmd LoginCommand) (*LoginRe
 	if u.Status != user.StatusActive {
 		uc.support.logger.Warn("login failed - user inactive", "email", cmd.Email, "user_id", u.ID)
 		return nil, ErrUserInactive
+	}
+
+	// Activate any pending invited memberships across all organizations for this
+	// user. This runs outside a transaction intentionally: the operation is
+	// idempotent (WHERE status = 'invited') and self-healing on the next login
+	// attempt if loadSession fails after activation. Cross-org scope is accepted
+	// because membership activation must happen before we can determine which
+	// organizations the user can access.
+	if err = uc.support.users.ActivateInvitedMemberships(ctx, u.ID); err != nil {
+		return nil, fmt.Errorf("failed to activate invited memberships: %w", err)
+	}
+	// Reflect the activation in memory so loadSession sees active memberships
+	// without an extra round-trip to the database.
+	for i := range u.Memberships {
+		if u.Memberships[i].Status == membership.StatusInvited {
+			u.Memberships[i].Status = membership.StatusActive
+		}
 	}
 
 	session, err := uc.support.loadSession(ctx, u)

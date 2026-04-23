@@ -24,6 +24,14 @@ WHERE user_id = $1
 ORDER BY created_at ASC
 LIMIT $2 OFFSET $3;
 
+-- name: ListUserMembershipsForOrganization :many
+SELECT id, organization_id, user_id, role, status, invited_by_user_id, joined_at, created_at, updated_at
+FROM organization_memberships
+WHERE user_id = $1
+  AND organization_id = $2
+  AND deleted_at IS NULL
+ORDER BY created_at ASC;
+
 -- name: GetActiveOrganizationMembership :one
 SELECT id, organization_id, user_id, role, status, invited_by_user_id, joined_at, created_at, updated_at
 FROM organization_memberships
@@ -52,4 +60,13 @@ WHERE organization_id = $1
 UPDATE organization_memberships
 SET deleted_at = NOW()
 WHERE organization_id = $1
+  AND deleted_at IS NULL;
+
+-- name: ActivateInvitedMemberships :exec
+UPDATE organization_memberships
+SET status     = 'active',
+    joined_at  = NOW(),
+    updated_at = NOW()
+WHERE user_id = $1
+  AND status = 'invited'
   AND deleted_at IS NULL;

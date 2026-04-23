@@ -46,10 +46,11 @@ type listResponse struct {
 }
 
 type userResponse struct {
-	ID     string `json:"id"`
-	Email  string `json:"email"`
-	Name   string `json:"name"`
-	Status string `json:"status"`
+	ID        string `json:"id"`
+	Email     string `json:"email"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Status    string `json:"status"`
 }
 
 type membershipResponse struct {
@@ -99,26 +100,30 @@ func TestUsersIntegration_ListAndGet_RespectActiveOrganization(t *testing.T) {
 
 	userA, err := userRepo.Create(ctx, &user.User{
 		ID:           uuid.New(),
-		Name:         "Alpha User",
+		FirstName:    "Alpha",
+		LastName:     "User",
 		Email:        "alpha-user@example.com",
 		PasswordHash: "hashed",
 		Status:       user.StatusActive,
+		Language:     "pt-br",
 		Memberships: []membership.Membership{{
 			OrganizationID: orgA.ID,
-			Role:           membership.RoleAdmin,
+			Role:           membership.RoleSuperAdmin,
 			Status:         membership.StatusActive,
 		}},
 	})
 	require.NoError(t, err)
 	userAColleague, err := userRepo.Create(ctx, &user.User{
 		ID:           uuid.New(),
-		Name:         "Alpha Colleague",
+		FirstName:    "Alpha",
+		LastName:     "Colleague",
 		Email:        "alpha-colleague@example.com",
 		PasswordHash: "hashed",
 		Status:       user.StatusActive,
+		Language:     "pt-br",
 		Memberships: []membership.Membership{{
 			OrganizationID: orgA.ID,
-			Role:           membership.RoleCollaborator,
+			Role:           membership.RoleColaborador,
 			Status:         membership.StatusActive,
 		}},
 	})
@@ -126,13 +131,15 @@ func TestUsersIntegration_ListAndGet_RespectActiveOrganization(t *testing.T) {
 
 	userB, err := userRepo.Create(ctx, &user.User{
 		ID:           uuid.New(),
-		Name:         "Beta User",
+		FirstName:    "Beta",
+		LastName:     "User",
 		Email:        "beta-user@example.com",
 		PasswordHash: "hashed",
 		Status:       user.StatusActive,
+		Language:     "pt-br",
 		Memberships: []membership.Membership{{
 			OrganizationID: orgB.ID,
-			Role:           membership.RoleAdmin,
+			Role:           membership.RoleSuperAdmin,
 			Status:         membership.StatusActive,
 		}},
 	})
@@ -143,14 +150,14 @@ func TestUsersIntegration_ListAndGet_RespectActiveOrganization(t *testing.T) {
 		UserID:                domain.UserID(userA.ID),
 		ActiveOrganizationID:  domain.TenantID(orgA.ID),
 		HasActiveOrganization: true,
-		MembershipRole:        "admin",
+		MembershipRole:        "super-admin",
 	}, time.Hour)
 	require.NoError(t, err)
 	colleagueToken, err := issuer.IssueToken(domain.UserClaims{
 		UserID:                domain.UserID(userAColleague.ID),
 		ActiveOrganizationID:  domain.TenantID(orgA.ID),
 		HasActiveOrganization: true,
-		MembershipRole:        "collaborator",
+		MembershipRole:        "colaborador",
 	}, time.Hour)
 	require.NoError(t, err)
 
@@ -167,9 +174,10 @@ func TestUsersIntegration_ListAndGet_RespectActiveOrganization(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, getResp.StatusCode)
 
 	updateBody, err := json.Marshal(map[string]string{
-		"name":   "Alpha User Updated",
-		"email":  "alpha-updated@example.com",
-		"status": "inactive",
+		"first_name": "Alpha",
+		"last_name":  "Updated",
+		"email":      "alpha-updated@example.com",
+		"status":     "inactive",
 	})
 	require.NoError(t, err)
 	updateResp := doAuthorizedRequestWithBody(t, server.URL, token, http.MethodPut, "/users/"+userA.ID.String(), bytes.NewReader(updateBody))
@@ -177,7 +185,8 @@ func TestUsersIntegration_ListAndGet_RespectActiveOrganization(t *testing.T) {
 	require.Equal(t, http.StatusOK, updateResp.StatusCode)
 	var updated userResponse
 	require.NoError(t, json.NewDecoder(updateResp.Body).Decode(&updated))
-	assert.Equal(t, "Alpha User Updated", updated.Name)
+	assert.Equal(t, "Alpha", updated.FirstName)
+	assert.Equal(t, "Updated", updated.LastName)
 	assert.Equal(t, "alpha-updated@example.com", updated.Email)
 	assert.Equal(t, "inactive", updated.Status)
 
@@ -192,14 +201,14 @@ func TestUsersIntegration_ListAndGet_RespectActiveOrganization(t *testing.T) {
 	require.NoError(t, json.NewDecoder(membershipResp.Body).Decode(&membershipBody))
 	assert.Equal(t, orgA.ID.String(), membershipBody.OrganizationID)
 	assert.Equal(t, userA.ID.String(), membershipBody.UserID)
-	assert.Equal(t, "admin", membershipBody.Role)
+	assert.Equal(t, "super-admin", membershipBody.Role)
 
 	inaccessibleMembershipResp := doAuthorizedRequest(t, server.URL, token, http.MethodGet, "/users/"+userB.ID.String()+"/membership")
 	defer inaccessibleMembershipResp.Body.Close()
 	assert.Equal(t, http.StatusNotFound, inaccessibleMembershipResp.StatusCode)
 
 	updateMembershipBody, err := json.Marshal(map[string]string{
-		"role":   "admin",
+		"role":   "super-admin",
 		"status": "active",
 	})
 	require.NoError(t, err)
@@ -208,7 +217,7 @@ func TestUsersIntegration_ListAndGet_RespectActiveOrganization(t *testing.T) {
 	require.Equal(t, http.StatusOK, updateMembershipResp.StatusCode)
 	var updatedMembership membershipResponse
 	require.NoError(t, json.NewDecoder(updateMembershipResp.Body).Decode(&updatedMembership))
-	assert.Equal(t, "admin", updatedMembership.Role)
+	assert.Equal(t, "super-admin", updatedMembership.Role)
 	assert.Equal(t, "active", updatedMembership.Status)
 
 	forbiddenMembershipUpdateResp := doAuthorizedRequestWithBody(t, server.URL, token, http.MethodPut, "/users/"+userB.ID.String()+"/membership", bytes.NewReader(updateMembershipBody))

@@ -13,13 +13,16 @@ import (
 type Role string
 
 const (
-	RoleAdmin        Role = "admin"
-	RoleManager      Role = "manager"
-	RoleCollaborator Role = "collaborator"
+	RoleSuperAdmin   Role = "super-admin"
+	RoleAdminRH      Role = "admin-rh"
+	RoleGestor       Role = "gestor"
+	RoleColaborador  Role = "colaborador"
+	RoleVisualizador Role = "visualizador"
 )
 
 func (r Role) IsValid() bool {
-	return r == RoleAdmin || r == RoleManager || r == RoleCollaborator
+	return r == RoleSuperAdmin || r == RoleAdminRH || r == RoleGestor ||
+		r == RoleColaborador || r == RoleVisualizador
 }
 
 type Status string
@@ -54,7 +57,7 @@ func (m *Membership) Validate() error {
 		return fmt.Errorf("%w: user_id is required", domain.ErrValidation)
 	}
 	if !m.Role.IsValid() {
-		return fmt.Errorf("%w: role must be admin, manager or collaborator", domain.ErrValidation)
+		return fmt.Errorf("%w: role must be one of: super-admin, admin-rh, gestor, colaborador, visualizador", domain.ErrValidation)
 	}
 	if !m.Status.IsValid() {
 		return fmt.Errorf("%w: status must be invited, active or inactive", domain.ErrValidation)

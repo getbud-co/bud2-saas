@@ -102,13 +102,14 @@ func TestHandler_Create_Success(t *testing.T) {
 	u := fixtures.NewUser()
 	createUC.On("Execute", mock.Anything, appuser.CreateCommand{
 		OrganizationID: tenantID,
-		Name:           "Test User",
+		FirstName:      "Test",
+		LastName:       "User",
 		Email:          "test@example.com",
 		Password:       "password123",
-		Role:           "admin",
+		Role:           "super-admin",
 	}).Return(u, nil)
 
-	body, _ := json.Marshal(createRequest{Name: "Test User", Email: "test@example.com", Password: "password123", Role: "admin"})
+	body, _ := json.Marshal(createRequest{FirstName: "Test", LastName: "User", Email: "test@example.com", Password: "password123", Role: "super-admin"})
 	req := httptest.NewRequest(http.MethodPost, "/users", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req = req.WithContext(fixtures.NewContextWithTenant(tenantID))
@@ -178,12 +179,13 @@ func TestHandler_Update_Success(t *testing.T) {
 	updateUC.On("Execute", mock.Anything, appuser.UpdateCommand{
 		OrganizationID: tenantID,
 		ID:             u.ID,
-		Name:           "Updated",
+		FirstName:      "Updated",
+		LastName:       "Name",
 		Email:          "test@example.com",
 		Status:         "active",
 	}).Return(u, nil)
 
-	body, _ := json.Marshal(updateRequest{Name: "Updated", Email: "test@example.com", Status: "active"})
+	body, _ := json.Marshal(updateRequest{FirstName: "Updated", LastName: "Name", Email: "test@example.com", Status: "active"})
 	req := httptest.NewRequest(http.MethodPut, "/users/"+u.ID.String(), bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req = routeRequest(req, tenantID, u.ID.String())
@@ -251,11 +253,11 @@ func TestHandler_UpdateMembership_Success(t *testing.T) {
 	updateMembershipUC.On("Execute", mock.Anything, appuser.UpdateMembershipCommand{
 		OrganizationID: tenantID,
 		ID:             m.UserID,
-		Role:           "manager",
+		Role:           "gestor",
 		Status:         "active",
 	}).Return(m, nil)
 
-	body, _ := json.Marshal(updateMembershipRequest{Role: "manager", Status: "active"})
+	body, _ := json.Marshal(updateMembershipRequest{Role: "gestor", Status: "active"})
 	req := httptest.NewRequest(http.MethodPut, "/users/"+m.UserID.String()+"/membership", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req = routeRequest(req, tenantID, m.UserID.String())
@@ -290,7 +292,7 @@ func TestHandler_Create_MembershipConflict(t *testing.T) {
 	tenantID := fixtures.NewTestTenantID()
 	createUC.On("Execute", mock.Anything, mock.Anything).Return(nil, membership.ErrAlreadyExists)
 
-	body, _ := json.Marshal(createRequest{Name: "Test User", Email: "test@example.com", Password: "password123", Role: "admin"})
+	body, _ := json.Marshal(createRequest{FirstName: "Test", LastName: "User", Email: "test@example.com", Password: "password123", Role: "super-admin"})
 	req := httptest.NewRequest(http.MethodPost, "/users", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req = req.WithContext(fixtures.NewContextWithTenant(tenantID))
@@ -308,7 +310,7 @@ func TestHandler_Create_InternalError(t *testing.T) {
 	tenantID := fixtures.NewTestTenantID()
 	createUC.On("Execute", mock.Anything, mock.Anything).Return(nil, errors.New("internal error"))
 
-	body, _ := json.Marshal(createRequest{Name: "Test User", Email: "test@example.com", Password: "password123", Role: "admin"})
+	body, _ := json.Marshal(createRequest{FirstName: "Test", LastName: "User", Email: "test@example.com", Password: "password123", Role: "super-admin"})
 	req := httptest.NewRequest(http.MethodPost, "/users", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req = req.WithContext(fixtures.NewContextWithTenant(tenantID))

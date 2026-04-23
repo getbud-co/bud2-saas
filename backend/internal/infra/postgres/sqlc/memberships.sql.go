@@ -13,6 +13,21 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const activateInvitedMemberships = `-- name: ActivateInvitedMemberships :exec
+UPDATE organization_memberships
+SET status     = 'active',
+    joined_at  = NOW(),
+    updated_at = NOW()
+WHERE user_id = $1
+  AND status = 'invited'
+  AND deleted_at IS NULL
+`
+
+func (q *Queries) ActivateInvitedMemberships(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, activateInvitedMemberships, userID)
+	return err
+}
+
 const countOrganizationMemberships = `-- name: CountOrganizationMemberships :one
 SELECT COUNT(*) FROM organization_memberships
 WHERE organization_id = $1
@@ -209,6 +224,62 @@ func (q *Queries) ListUserMemberships(ctx context.Context, arg ListUserMembershi
 	var items []ListUserMembershipsRow
 	for rows.Next() {
 		var i ListUserMembershipsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrganizationID,
+			&i.UserID,
+			&i.Role,
+			&i.Status,
+			&i.InvitedByUserID,
+			&i.JoinedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserMembershipsForOrganization = `-- name: ListUserMembershipsForOrganization :many
+SELECT id, organization_id, user_id, role, status, invited_by_user_id, joined_at, created_at, updated_at
+FROM organization_memberships
+WHERE user_id = $1
+  AND organization_id = $2
+  AND deleted_at IS NULL
+ORDER BY created_at ASC
+`
+
+type ListUserMembershipsForOrganizationParams struct {
+	UserID         uuid.UUID
+	OrganizationID uuid.UUID
+}
+
+type ListUserMembershipsForOrganizationRow struct {
+	ID              uuid.UUID
+	OrganizationID  uuid.UUID
+	UserID          uuid.UUID
+	Role            string
+	Status          string
+	InvitedByUserID pgtype.UUID
+	JoinedAt        pgtype.Timestamptz
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+func (q *Queries) ListUserMembershipsForOrganization(ctx context.Context, arg ListUserMembershipsForOrganizationParams) ([]ListUserMembershipsForOrganizationRow, error) {
+	rows, err := q.db.Query(ctx, listUserMembershipsForOrganization, arg.UserID, arg.OrganizationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUserMembershipsForOrganizationRow
+	for rows.Next() {
+		var i ListUserMembershipsForOrganizationRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.OrganizationID,

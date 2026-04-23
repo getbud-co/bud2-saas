@@ -6,7 +6,8 @@ type createRequest struct {
 	OrganizationName      string `json:"organization_name" validate:"required,min=2,max=100"`
 	OrganizationDomain    string `json:"organization_domain" validate:"required,fqdn"`
 	OrganizationWorkspace string `json:"organization_workspace" validate:"required,min=2,max=100,slug"`
-	AdminName             string `json:"admin_name" validate:"required,min=2,max=100"`
+	AdminFirstName        string `json:"admin_first_name" validate:"required,min=1,max=100"`
+	AdminLastName         string `json:"admin_last_name" validate:"required,min=1,max=100"`
 	AdminEmail            string `json:"admin_email" validate:"required,email"`
 	AdminPassword         string `json:"admin_password" validate:"required,min=8"`
 }
@@ -16,7 +17,8 @@ func (r createRequest) toCommand() bootstrap.Command {
 		OrganizationName:      r.OrganizationName,
 		OrganizationDomain:    r.OrganizationDomain,
 		OrganizationWorkspace: r.OrganizationWorkspace,
-		AdminName:             r.AdminName,
+		AdminFirstName:        r.AdminFirstName,
+		AdminLastName:         r.AdminLastName,
 		AdminEmail:            r.AdminEmail,
 		AdminPassword:         r.AdminPassword,
 	}

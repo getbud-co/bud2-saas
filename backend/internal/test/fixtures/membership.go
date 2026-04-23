@@ -13,7 +13,7 @@ func NewMembership() *membership.Membership {
 		ID:             uuid.MustParse("770e8400-e29b-41d4-a716-446655440000"),
 		OrganizationID: uuid.MustParse("550e8400-e29b-41d4-a716-446655440000"),
 		UserID:         uuid.MustParse("660e8400-e29b-41d4-a716-446655440000"),
-		Role:           membership.RoleAdmin,
+		Role:           membership.RoleSuperAdmin,
 		Status:         membership.StatusActive,
 		CreatedAt:      time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		UpdatedAt:      time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),

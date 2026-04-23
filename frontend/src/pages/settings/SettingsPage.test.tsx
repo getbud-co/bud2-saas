@@ -20,6 +20,7 @@ import { MissionsDataProvider } from "@/contexts/MissionsDataContext";
 import { SurveysDataProvider } from "@/contexts/SurveysDataContext";
 import { SettingsDataProvider } from "@/contexts/SettingsDataContext";
 import { IntegrationsDataProvider } from "@/contexts/IntegrationsDataContext";
+import { MockAuthProvider } from "../../../tests/setup/MockAuthProvider";
 
 // ─── Test Helpers ───
 
@@ -27,23 +28,25 @@ function setup(initialPath = "/settings") {
   const user = userEvent.setup();
   const result = render(
     <MemoryRouter initialEntries={[initialPath]}>
-      <ConfigDataProvider>
-        <ActivityDataProvider>
-          <PeopleDataProvider>
-            <MissionsDataProvider>
-              <SurveysDataProvider>
-                <SettingsDataProvider>
-                  <IntegrationsDataProvider>
-                    <Routes>
-                      <Route path="/settings/*" element={<SettingsPage />} />
-                    </Routes>
-                  </IntegrationsDataProvider>
-                </SettingsDataProvider>
-              </SurveysDataProvider>
-            </MissionsDataProvider>
-          </PeopleDataProvider>
-        </ActivityDataProvider>
-      </ConfigDataProvider>
+      <MockAuthProvider>
+        <ConfigDataProvider>
+          <ActivityDataProvider>
+            <PeopleDataProvider>
+              <MissionsDataProvider>
+                <SurveysDataProvider>
+                  <SettingsDataProvider>
+                    <IntegrationsDataProvider>
+                      <Routes>
+                        <Route path="/settings/*" element={<SettingsPage />} />
+                      </Routes>
+                    </IntegrationsDataProvider>
+                  </SettingsDataProvider>
+                </SurveysDataProvider>
+              </MissionsDataProvider>
+            </PeopleDataProvider>
+          </ActivityDataProvider>
+        </ConfigDataProvider>
+      </MockAuthProvider>
     </MemoryRouter>,
   );
   return { user, ...result };

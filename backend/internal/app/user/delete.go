@@ -36,11 +36,8 @@ func (uc *DeleteUseCase) Execute(ctx context.Context, cmd DeleteCommand) error {
 	uc.logger.Debug("deleting user membership", "organization_id", cmd.OrganizationID, "user_id", cmd.TargetUserID)
 
 	return uc.txm.WithTx(ctx, func(repos apptx.Repositories) error {
-		u, err := repos.Users().GetByID(ctx, cmd.TargetUserID)
+		_, err := repos.Users().GetByIDForOrganization(ctx, cmd.TargetUserID, cmd.OrganizationID.UUID())
 		if err != nil {
-			return err
-		}
-		if _, err := u.MembershipForOrganization(cmd.OrganizationID.UUID()); err != nil {
 			return err
 		}
 		return repos.Users().DeleteMembership(ctx, cmd.OrganizationID.UUID(), cmd.TargetUserID)

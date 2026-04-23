@@ -49,9 +49,9 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onMobileCl
   const { logout, user: authUser } = useAuth();
   const activeViewId = searchParams.get("view");
 
-  const sidebarUserName = authUser?.name ?? "Usuário";
-  const sidebarUserInitials = authUser?.name
-    ? authUser.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
+  const sidebarUserName = authUser ? `${authUser.first_name} ${authUser.last_name}`.trim() : "Usuário";
+  const sidebarUserInitials = authUser
+    ? `${authUser.first_name[0] ?? ""}${authUser.last_name[0] ?? ""}`.toUpperCase() || "??"
     : "??";
 
   const [userOpen, setUserOpen] = useState(false);

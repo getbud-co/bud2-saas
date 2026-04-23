@@ -1,6 +1,7 @@
 package fixtures
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,11 +13,13 @@ import (
 func NewUser() *user.User {
 	return &user.User{
 		ID:            uuid.MustParse("660e8400-e29b-41d4-a716-446655440000"),
-		Name:          "Test User",
+		FirstName:     "Test",
+		LastName:      "User",
 		Email:         "test@example.com",
 		PasswordHash:  "",
 		Status:        user.StatusActive,
 		IsSystemAdmin: false,
+		Language:      "pt-br",
 		CreatedAt:     time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		UpdatedAt:     time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
@@ -44,8 +47,8 @@ func NewUserList(count int) []user.User {
 	users := make([]user.User, count)
 	for i := 0; i < count; i++ {
 		u := NewUser()
-		u.ID = uuid.MustParse("660e8400-e29b-41d4-a716-446655440001")
-		u.Email = "user" + string(rune('0'+i)) + "@example.com"
+		u.ID = uuid.New()
+		u.Email = "user" + strconv.Itoa(i) + "@example.com"
 		users[i] = *u
 	}
 	return users

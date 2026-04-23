@@ -13,7 +13,8 @@ func TestCreateRequestToCommand(t *testing.T) {
 		OrganizationName:      "Test Org",
 		OrganizationDomain:    "example.com",
 		OrganizationWorkspace: "example",
-		AdminName:             "Admin",
+		AdminFirstName:        "Admin",
+		AdminLastName:         "User",
 		AdminEmail:            "admin@example.com",
 		AdminPassword:         "password123",
 	}
@@ -24,7 +25,8 @@ func TestCreateRequestToCommand(t *testing.T) {
 		OrganizationName:      "Test Org",
 		OrganizationDomain:    "example.com",
 		OrganizationWorkspace: "example",
-		AdminName:             "Admin",
+		AdminFirstName:        "Admin",
+		AdminLastName:         "User",
 		AdminEmail:            "admin@example.com",
 		AdminPassword:         "password123",
 	}, cmd)

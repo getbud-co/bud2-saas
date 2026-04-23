@@ -18,11 +18,13 @@ func TestCreateUserRowToDomain_MapsFields(t *testing.T) {
 	now := time.Now().UTC()
 	row := sqlc.CreateUserRow{
 		ID:            uuid.New(),
-		Name:          "Test User",
+		FirstName:     "Test",
+		LastName:      "User",
 		Email:         "user@example.com",
 		PasswordHash:  "hashed",
 		Status:        string(user.StatusActive),
 		IsSystemAdmin: true,
+		Language:      "pt-br",
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
@@ -30,6 +32,8 @@ func TestCreateUserRowToDomain_MapsFields(t *testing.T) {
 	result := createUserRowToDomain(row)
 
 	assert.Equal(t, row.ID, result.ID)
+	assert.Equal(t, "Test", result.FirstName)
+	assert.Equal(t, "User", result.LastName)
 	assert.Equal(t, row.Email, result.Email)
 	assert.Equal(t, user.StatusActive, result.Status)
 	assert.True(t, result.IsSystemAdmin)
@@ -45,7 +49,7 @@ func TestMembershipRowToDomain_MapsOptionalFields(t *testing.T) {
 		uuid.New(),
 		uuid.New(),
 		uuid.New(),
-		string(membership.RoleManager),
+		string(membership.RoleGestor),
 		string(membership.StatusInactive),
 		pgtype.UUID{Bytes: invitedBy, Valid: true},
 		pgtype.Timestamptz{Time: joinedAt, Valid: true},
@@ -57,6 +61,6 @@ func TestMembershipRowToDomain_MapsOptionalFields(t *testing.T) {
 	require.NotNil(t, result.JoinedAt)
 	assert.Equal(t, invitedBy, *result.InvitedByUserID)
 	assert.Equal(t, joinedAt, *result.JoinedAt)
-	assert.Equal(t, membership.RoleManager, result.Role)
+	assert.Equal(t, membership.RoleGestor, result.Role)
 	assert.Equal(t, membership.StatusInactive, result.Status)
 }

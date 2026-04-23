@@ -31,13 +31,15 @@ func TestOrgRepository_ListByUser_ReturnsOnlyAccessibleOrganizations(t *testing.
 
 	createdUser, err := userRepo.Create(ctx, &user.User{
 		ID:           uuid.New(),
-		Name:         "Member",
+		FirstName:    "Member",
+		LastName:     "User",
 		Email:        "member@example.com",
 		PasswordHash: "hashed",
 		Status:       user.StatusActive,
+		Language:     "pt-br",
 		Memberships: []membership.Membership{{
 			OrganizationID: orgA.ID,
-			Role:           membership.RoleAdmin,
+			Role:           membership.RoleSuperAdmin,
 			Status:         membership.StatusActive,
 		}},
 	})
@@ -65,13 +67,15 @@ func TestOrgRepository_GetByIDForUser_HidesInaccessibleOrganization(t *testing.T
 
 	createdUser, err := userRepo.Create(ctx, &user.User{
 		ID:           uuid.New(),
-		Name:         "Member",
+		FirstName:    "Member",
+		LastName:     "User",
 		Email:        "member@example.com",
 		PasswordHash: "hashed",
 		Status:       user.StatusActive,
+		Language:     "pt-br",
 		Memberships: []membership.Membership{{
 			OrganizationID: orgA.ID,
-			Role:           membership.RoleAdmin,
+			Role:           membership.RoleSuperAdmin,
 			Status:         membership.StatusActive,
 		}},
 	})
