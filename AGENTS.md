@@ -42,6 +42,8 @@ Repository-specific guidance for AI agents. Keep this file short and durable: on
 - The HTTP contract source of truth is `backend/api/openapi.yml`.
 - Errors must follow Problem Details (RFC 7807).
 - When changing the API contract, update the OpenAPI spec first and then regenerate derived artifacts.
+- Resource creation (`POST`) must return `201` with a `Location` header pointing to the new resource.
+- `DELETE` must be idempotent: return `204` even when the resource is already removed (do not return `404` on repeated deletes).
 
 ## TDD and Quality
 - TDD is the default approach.
