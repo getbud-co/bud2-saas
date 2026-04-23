@@ -163,6 +163,18 @@ func TestUser_Validate(t *testing.T) {
 			},
 			expectedErr: nil,
 		},
+		{
+			name: "birth_date today is valid",
+			user: User{
+				FirstName: "Test",
+				LastName:  "User",
+				Email:     "test@example.com",
+				Language:  "pt-br",
+				Status:    StatusActive,
+				BirthDate: ptrTime(time.Now().Truncate(24 * time.Hour)),
+			},
+			expectedErr: nil,
+		},
 	}
 
 	for _, tt := range tests {

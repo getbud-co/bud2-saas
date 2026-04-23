@@ -66,8 +66,8 @@ func (u *User) Validate() error {
 		return fmt.Errorf("%w: gender must be one of: feminino, masculino, nao-binario, prefiro-nao-dizer", domain.ErrValidation)
 	}
 	minBirth := time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC)
-	if u.BirthDate != nil && (u.BirthDate.Before(minBirth) || !u.BirthDate.Before(time.Now())) {
-		return fmt.Errorf("%w: birth_date must be a past date after 1900-01-01", domain.ErrValidation)
+	if u.BirthDate != nil && (u.BirthDate.Before(minBirth) || u.BirthDate.After(time.Now())) {
+		return fmt.Errorf("%w: birth_date must not be in the future and must be after 1900-01-01", domain.ErrValidation)
 	}
 	for i := range u.Memberships {
 		if err := u.Memberships[i].Validate(); err != nil {

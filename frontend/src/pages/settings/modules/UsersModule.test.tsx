@@ -7,11 +7,25 @@
  * features like filters, bulk actions, and role management.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "../../../../tests/setup/test-utils";
 import { UsersModule } from "./UsersModule";
+
+// Mock users-api so API calls don't hit the network.
+// getToken returns null in MockAuthProvider, so calls bail early for most tests.
+vi.mock("@/lib/users-api", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/users-api")>("@/lib/users-api");
+  return {
+    ...actual,
+    listUsers: vi.fn().mockResolvedValue({ data: [], total: 0, page: 1, size: 100 }),
+    createUser: vi.fn(),
+    updateUser: vi.fn(),
+    deleteUserMembership: vi.fn(),
+    updateUserMembership: vi.fn(),
+  };
+});
 
 // ─── Test Helpers ───
 

@@ -1,3 +1,9 @@
+-- WARNING: This down migration is lossy for roles added after the up migration.
+-- Roles 'admin-rh' and 'super-admin' are both mapped back to 'admin'.
+-- Roles 'visualizador' and 'colaborador' are both mapped back to 'collaborator'.
+-- If any user was assigned 'admin-rh' or 'visualizador', their original role
+-- cannot be recovered after rollback.
+
 -- Restore name column from first_name / last_name
 ALTER TABLE users ADD COLUMN name TEXT;
 UPDATE users SET name = TRIM(first_name || ' ' || last_name);

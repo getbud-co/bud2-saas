@@ -40,6 +40,25 @@ WHERE om.organization_id = $1
   AND om.deleted_at IS NULL
   AND u.deleted_at IS NULL;
 
+-- name: ListOrganizationUsers :many
+SELECT u.id, u.first_name, u.last_name, u.email, u.password_hash, u.status, u.is_system_admin,
+       u.nickname, u.job_title, u.birth_date, u.language, u.gender, u.phone, u.created_at, u.updated_at
+FROM users u
+INNER JOIN organization_memberships om ON om.user_id = u.id
+WHERE om.organization_id = $1
+  AND om.deleted_at IS NULL
+  AND u.deleted_at IS NULL
+ORDER BY u.created_at ASC
+LIMIT $2 OFFSET $3;
+
+-- name: CountOrganizationUsers :one
+SELECT COUNT(*)
+FROM users u
+INNER JOIN organization_memberships om ON om.user_id = u.id
+WHERE om.organization_id = $1
+  AND om.deleted_at IS NULL
+  AND u.deleted_at IS NULL;
+
 -- name: UpdateUser :one
 UPDATE users
 SET first_name     = $2,

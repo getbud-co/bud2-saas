@@ -113,3 +113,20 @@ func TestLoginUseCase_Execute_RepositoryError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, result)
 }
+
+func TestLoginUseCase_Execute_ActivateInvitedMembershipsError(t *testing.T) {
+	users := new(mocks.UserRepository)
+	passwordHasher := infraauth.NewDefaultBcryptPasswordHasher()
+	hash, _ := passwordHasher.Hash("password123")
+	testUser := fixtures.NewUserWithMembership()
+	testUser.PasswordHash = hash
+	testUser.Email = "admin@example.com"
+
+	uc := newLoginUC(users, new(mocks.OrganizationRepository), new(mocks.RefreshTokenRepository), new(mocks.TokenHasher))
+	users.On("GetByEmail", mock.Anything, testUser.Email).Return(testUser, nil)
+	users.On("ActivateInvitedMemberships", mock.Anything, testUser.ID).Return(errors.New("db error"))
+
+	result, err := uc.Execute(context.Background(), LoginCommand{Email: testUser.Email, Password: "password123"})
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}

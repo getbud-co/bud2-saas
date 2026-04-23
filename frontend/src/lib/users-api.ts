@@ -74,8 +74,8 @@ export async function listUsers(
   params?: { page?: number; size?: number; status?: string },
 ): Promise<ListUsersResponse> {
   const query = new URLSearchParams();
-  if (params?.page) query.set("page", String(params.page));
-  if (params?.size) query.set("size", String(params.size));
+  if (params?.page != null) query.set("page", String(params.page));
+  if (params?.size != null) query.set("size", String(params.size));
   if (params?.status) query.set("status", params.status);
   const qs = query.toString();
   return apiRequest<ListUsersResponse>(`/users${qs ? `?${qs}` : ""}`, { token });
@@ -114,9 +114,9 @@ export async function updateUserMembership(
 
 export function userErrorToMessage(err: unknown): string {
   if (!(err instanceof ApiError)) return "Erro inesperado. Tente novamente.";
-  if (err.status === 409) return "Este usuário já é membro desta organização.";
+  if (err.status === 409) return "Conflito: este usuário já existe na organização.";
   if (err.status === 401) return "Sessão expirada. Faça login novamente.";
-  if (err.status === 403) return "Sem permissão para convidar usuários.";
+  if (err.status === 403) return "Sem permissão para esta operação.";
   if (err.status === 422) return `Dados inválidos: ${err.detail}`;
-  return "Erro ao convidar usuário. Tente novamente.";
+  return "Erro inesperado. Tente novamente.";
 }

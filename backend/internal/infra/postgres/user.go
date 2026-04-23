@@ -18,6 +18,8 @@ type userQuerier interface {
 	CreateUser(ctx context.Context, arg sqlc.CreateUserParams) (sqlc.CreateUserRow, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (sqlc.GetUserByIDRow, error)
 	GetUserByEmail(ctx context.Context, lower string) (sqlc.GetUserByEmailRow, error)
+	ListOrganizationUsers(ctx context.Context, arg sqlc.ListOrganizationUsersParams) ([]sqlc.ListOrganizationUsersRow, error)
+	CountOrganizationUsers(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	ListOrganizationUsersByStatus(ctx context.Context, arg sqlc.ListOrganizationUsersByStatusParams) ([]sqlc.ListOrganizationUsersByStatusRow, error)
 	CountOrganizationUsersByStatus(ctx context.Context, arg sqlc.CountOrganizationUsersByStatusParams) (int64, error)
 	UpdateUser(ctx context.Context, arg sqlc.UpdateUserParams) (sqlc.UpdateUserRow, error)
@@ -134,8 +136,8 @@ func (r *UserRepository) ListByOrganization(ctx context.Context, organizationID 
 		return user.ListResult{Users: usersOut, Total: total}, nil
 	}
 
-	// Unfiltered path: paginated membership list + per-page GetByID (bounded by page size).
-	result, err := r.q.ListOrganizationMemberships(ctx, sqlc.ListOrganizationMembershipsParams{
+	// Unfiltered path: single JOIN query for users, then load memberships per user.
+	rows, err := r.q.ListOrganizationUsers(ctx, sqlc.ListOrganizationUsersParams{
 		OrganizationID: organizationID,
 		Limit:          limit,
 		Offset:         offset,
@@ -143,14 +145,14 @@ func (r *UserRepository) ListByOrganization(ctx context.Context, organizationID 
 	if err != nil {
 		return user.ListResult{}, err
 	}
-	total, err := r.q.CountOrganizationMemberships(ctx, organizationID)
+	total, err := r.q.CountOrganizationUsers(ctx, organizationID)
 	if err != nil {
 		return user.ListResult{}, err
 	}
-	usersOut := make([]user.User, 0, len(result))
-	for _, row := range result {
-		u, err := r.GetByID(ctx, row.UserID)
-		if err != nil {
+	usersOut := make([]user.User, 0, len(rows))
+	for _, row := range rows {
+		u := listOrganizationUsersRowToDomain(row)
+		if err := r.loadMemberships(ctx, u); err != nil {
 			return user.ListResult{}, err
 		}
 		usersOut = append(usersOut, *u)
@@ -242,6 +244,26 @@ func getUserByIDRowToDomain(row sqlc.GetUserByIDRow) *user.User {
 }
 
 func getUserByEmailRowToDomain(row sqlc.GetUserByEmailRow) *user.User {
+	return &user.User{
+		ID:            row.ID,
+		FirstName:     row.FirstName,
+		LastName:      row.LastName,
+		Email:         row.Email,
+		PasswordHash:  row.PasswordHash,
+		Status:        user.Status(row.Status),
+		IsSystemAdmin: row.IsSystemAdmin,
+		Nickname:      pgtypeToText(row.Nickname),
+		JobTitle:      pgtypeToText(row.JobTitle),
+		BirthDate:     pgtypeDateToTime(row.BirthDate),
+		Language:      row.Language,
+		Gender:        pgtypeToText(row.Gender),
+		Phone:         pgtypeToText(row.Phone),
+		CreatedAt:     row.CreatedAt,
+		UpdatedAt:     row.UpdatedAt,
+	}
+}
+
+func listOrganizationUsersRowToDomain(row sqlc.ListOrganizationUsersRow) *user.User {
 	return &user.User{
 		ID:            row.ID,
 		FirstName:     row.FirstName,

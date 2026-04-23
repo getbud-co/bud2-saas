@@ -13,6 +13,22 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countOrganizationUsers = `-- name: CountOrganizationUsers :one
+SELECT COUNT(*)
+FROM users u
+INNER JOIN organization_memberships om ON om.user_id = u.id
+WHERE om.organization_id = $1
+  AND om.deleted_at IS NULL
+  AND u.deleted_at IS NULL
+`
+
+func (q *Queries) CountOrganizationUsers(ctx context.Context, organizationID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countOrganizationUsers, organizationID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countOrganizationUsersByStatus = `-- name: CountOrganizationUsersByStatus :one
 SELECT COUNT(*)
 FROM users u
@@ -210,6 +226,78 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const listOrganizationUsers = `-- name: ListOrganizationUsers :many
+SELECT u.id, u.first_name, u.last_name, u.email, u.password_hash, u.status, u.is_system_admin,
+       u.nickname, u.job_title, u.birth_date, u.language, u.gender, u.phone, u.created_at, u.updated_at
+FROM users u
+INNER JOIN organization_memberships om ON om.user_id = u.id
+WHERE om.organization_id = $1
+  AND om.deleted_at IS NULL
+  AND u.deleted_at IS NULL
+ORDER BY u.created_at ASC
+LIMIT $2 OFFSET $3
+`
+
+type ListOrganizationUsersParams struct {
+	OrganizationID uuid.UUID
+	Limit          int32
+	Offset         int32
+}
+
+type ListOrganizationUsersRow struct {
+	ID            uuid.UUID
+	FirstName     string
+	LastName      string
+	Email         string
+	PasswordHash  string
+	Status        string
+	IsSystemAdmin bool
+	Nickname      pgtype.Text
+	JobTitle      pgtype.Text
+	BirthDate     pgtype.Date
+	Language      string
+	Gender        pgtype.Text
+	Phone         pgtype.Text
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+func (q *Queries) ListOrganizationUsers(ctx context.Context, arg ListOrganizationUsersParams) ([]ListOrganizationUsersRow, error) {
+	rows, err := q.db.Query(ctx, listOrganizationUsers, arg.OrganizationID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListOrganizationUsersRow
+	for rows.Next() {
+		var i ListOrganizationUsersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.FirstName,
+			&i.LastName,
+			&i.Email,
+			&i.PasswordHash,
+			&i.Status,
+			&i.IsSystemAdmin,
+			&i.Nickname,
+			&i.JobTitle,
+			&i.BirthDate,
+			&i.Language,
+			&i.Gender,
+			&i.Phone,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listOrganizationUsersByStatus = `-- name: ListOrganizationUsersByStatus :many

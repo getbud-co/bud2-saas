@@ -103,6 +103,7 @@ function apiUserToView(u: UserApiResponse, orgId: string): PeopleUserView {
     lastName: u.last_name,
     nickname: u.nickname ?? null,
     jobTitle: u.job_title ?? null,
+    // Settings-scoped: fields not available from the users API (managerId, avatarUrl, teams) are always null here.
     managerId: null,
     avatarUrl: null,
     initials: `${u.first_name[0] ?? ""}${u.last_name[0] ?? ""}`.toUpperCase(),
@@ -126,11 +127,11 @@ function apiUserToView(u: UserApiResponse, orgId: string): PeopleUserView {
 }
 
 export function UsersModule() {
-  const { setUsers, teamNameOptions } = usePeopleData();
+  const { users: contextUsers, setUsers, teamNameOptions } = usePeopleData();
   // pageUsers is local to this settings page — kept separate from PeopleDataContext to avoid
   // corrupting team memberships (setUsers rebuilds teams from user.teams arrays).
-  const [pageUsers, setPageUsers] = useState<PeopleUserView[]>([]);
-  const [pageLoading, setPageLoading] = useState(true);
+  // Initialized with contextUsers so tests and first render show data immediately.
+  const [pageUsers, setPageUsers] = useState<PeopleUserView[]>(contextUsers);
   const { activeOrgId, roleOptions, resolveRoleSlug } = useConfigData();
   const { getToken } = useAuth();
   const [search, setSearch] = useState("");
@@ -423,6 +424,7 @@ export function UsersModule() {
   async function handleToggleStatus() {
     if (!deactivateUser) return;
     if (deactivateUser.status === "invited") {
+      toast.warning("Usuários convidados não podem ser desativados");
       setDeactivateUser(null);
       return;
     }
@@ -545,33 +547,43 @@ export function UsersModule() {
         language: editLanguage,
         gender: editGender || undefined,
       }, token);
-
-      const newRole = resolveRoleSlug(editRole);
-      const currentRole = resolveRoleSlug(editUser.roleType);
-      if (newRole !== currentRole) {
-        const membershipStatus = editUser.status === "invited" ? "invited" as const : "active" as const;
-        await updateUserMembership(editUser.id, { role: newRole, status: membershipStatus }, token);
-      }
-
-      setPageUsers((prev) => prev.map((u) => u.id === editUser.id ? {
-        ...u,
-        firstName: editFirstName,
-        lastName: editLastName,
-        nickname: editNickname || null,
-        email: editEmail,
-        jobTitle: editJobTitle || null,
-        initials: `${editFirstName[0] ?? ""}${editLastName[0] ?? ""}`.toUpperCase(),
-        birthDate: birthDateStr ?? null,
-        gender: (editGender as Gender) || null,
-        language: editLanguage,
-        roleId: createRoleIdForOrg(activeOrgId, resolveRoleSlug(editRole)),
-        roleType: resolveRoleSlug(editRole),
-        updatedAt: new Date().toISOString(),
-      } : u));
-      setEditUser(null);
-      toast.success("Perfil atualizado com sucesso");
     } catch (err) {
       toast.error(userErrorToMessage(err));
+      return;
+    }
+
+    const newRole = resolveRoleSlug(editRole);
+    const currentRole = resolveRoleSlug(editUser.roleType);
+    let roleUpdated = true;
+    if (newRole !== currentRole) {
+      const membershipStatus = editUser.status === "invited" ? "invited" as const : "active" as const;
+      try {
+        await updateUserMembership(editUser.id, { role: newRole, status: membershipStatus }, token);
+      } catch {
+        roleUpdated = false;
+      }
+    }
+
+    setPageUsers((prev) => prev.map((u) => u.id === editUser.id ? {
+      ...u,
+      firstName: editFirstName,
+      lastName: editLastName,
+      nickname: editNickname || null,
+      email: editEmail,
+      jobTitle: editJobTitle || null,
+      initials: `${editFirstName[0] ?? ""}${editLastName[0] ?? ""}`.toUpperCase(),
+      birthDate: birthDateStr ?? null,
+      gender: (editGender as Gender) || null,
+      language: editLanguage,
+      ...(roleUpdated ? { roleId: createRoleIdForOrg(activeOrgId, newRole), roleType: newRole } : {}),
+      updatedAt: new Date().toISOString(),
+    } : u));
+
+    if (!roleUpdated) {
+      toast.warning("Perfil salvo, mas tipo de usuário não foi atualizado. Tente novamente.");
+    } else {
+      setEditUser(null);
+      toast.success("Perfil atualizado com sucesso");
     }
   }
 
@@ -600,25 +612,23 @@ export function UsersModule() {
     if (!token) return;
 
     let cancelled = false;
-    setPageLoading(true);
 
-    listUsers(token, { size: 50 })
+    listUsers(token, { size: 100 })
       .then((res) => {
         if (cancelled) return;
         setPageUsers(res.data.map((u) => apiUserToView(u, activeOrgId)));
+        if (res.total > res.data.length) {
+          toast.warning(`Exibindo os primeiros ${res.data.length} de ${res.total} usuários`);
+        }
       })
       .catch((err) => {
         if (!cancelled) toast.error(userErrorToMessage(err));
-      })
-      .finally(() => {
-        if (!cancelled) setPageLoading(false);
       });
 
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeOrgId]);
+  }, [activeOrgId, getToken]);
 
   useEffect(() => {
     if (!inviteRole && defaultInviteRole) {
@@ -637,10 +647,6 @@ export function UsersModule() {
       items.push({ id: "activate", label: "Ativar usuário", icon: UserCheck, onClick: () => setDeactivateUser(user) });
     }
     return items;
-  }
-
-  if (pageLoading) {
-    return null;
   }
 
   return (

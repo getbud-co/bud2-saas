@@ -72,14 +72,11 @@ func toResponse(u *usr.User) Response {
 
 func toResponseForOrganization(u *usr.User, orgID uuid.UUID) Response {
 	resp := toResponse(u)
-	for i := range u.Memberships {
-		if u.Memberships[i].OrganizationID == orgID {
-			role := string(u.Memberships[i].Role)
-			resp.Role = &role
-			mStatus := string(u.Memberships[i].Status)
-			resp.MembershipStatus = &mStatus
-			break
-		}
+	if m, err := u.MembershipForOrganization(orgID); err == nil {
+		role := string(m.Role)
+		resp.Role = &role
+		mStatus := string(m.Status)
+		resp.MembershipStatus = &mStatus
 	}
 	return resp
 }
