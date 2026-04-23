@@ -9,12 +9,51 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { AuthContext } from "@/contexts/AuthContext";
 import { ConfigDataProvider, useConfigData } from "./ConfigDataContext";
 
 // ─── Test Helpers ───
 
 function wrapper({ children }: { children: ReactNode }) {
   return <ConfigDataProvider>{children}</ConfigDataProvider>;
+}
+
+function authenticatedWrapper({ children }: { children: ReactNode }) {
+  return (
+    <AuthContext.Provider
+      value={{
+        isAuthenticated: true,
+        initializing: false,
+        user: null,
+        activeOrganization: {
+          id: "api-org-9",
+          name: "API Org",
+          domain: "api-org.example.com",
+          workspace: "api-org",
+          status: "active",
+          membership_role: "super-admin",
+          membership_status: "active",
+        },
+        organizations: [
+          {
+            id: "api-org-9",
+            name: "API Org",
+            domain: "api-org.example.com",
+            workspace: "api-org",
+            status: "active",
+            membership_role: "super-admin",
+            membership_status: "active",
+          },
+        ],
+        login: async () => {},
+        switchOrganization: async () => {},
+        logout: () => {},
+        getToken: () => "test-token",
+      }}
+    >
+      <ConfigDataProvider>{children}</ConfigDataProvider>
+    </AuthContext.Provider>
+  );
 }
 
 // ─── Tests ───
@@ -93,6 +132,20 @@ describe("ConfigDataContext", () => {
       const { result } = renderHook(() => useConfigData(), { wrapper });
       expect(result.current.updatedAt).toBeDefined();
       expect(new Date(result.current.updatedAt).getTime()).toBeGreaterThan(0);
+    });
+
+    it("locks legacy local data to org-1 when session org comes from API", () => {
+      const { result } = renderHook(() => useConfigData(), {
+        wrapper: authenticatedWrapper,
+      });
+
+      expect(result.current.activeOrgId).toBe("org-1");
+      expect(result.current.activeOrganization?.id).toBe("org-1");
+      expect(result.current.organizations).toHaveLength(1);
+      expect(result.current.organizations[0]?.id).toBe("api-org-9");
+      expect(result.current.roles.length).toBeGreaterThan(0);
+      expect(result.current.roles.every((role) => role.orgId === "org-1")).toBe(true);
+      expect(result.current.roleOptions.length).toBeGreaterThan(0);
     });
   });
 
