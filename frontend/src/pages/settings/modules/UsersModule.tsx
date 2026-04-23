@@ -33,7 +33,7 @@ import {
   Trash,
 } from "@phosphor-icons/react";
 import type { UserStatus, Gender } from "@/types";
-import { usePeopleData, type PeopleUserView } from "@/contexts/PeopleDataContext";
+import type { PeopleUserView } from "@/contexts/PeopleDataContext";
 import { useConfigData } from "@/contexts/ConfigDataContext";
 import { createRoleIdForOrg } from "@/lib/people-store";
 import {
@@ -45,6 +45,7 @@ import {
   userErrorToMessage,
   type UserApiResponse,
 } from "@/lib/users-api";
+import { listTeams, type TeamApiResponse } from "@/lib/teams-api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserForm } from "./hooks/useUserForm";
 import { useUsersTable } from "./hooks/useUsersTable";
@@ -65,8 +66,9 @@ const STATUS_BADGE: Record<UserStatus, { label: string; color: "success" | "neut
 
 const DEFAULT_ROLE_SLUG = "colaborador";
 
-function apiUserToView(u: UserApiResponse, orgId: string): PeopleUserView {
+function apiUserToView(u: UserApiResponse, orgId: string, teamNameById?: Map<string, string>): PeopleUserView {
   const roleType = u.role ?? "colaborador";
+  const teamNames = (u.team_ids ?? []).map((id) => teamNameById?.get(id) ?? id);
   return {
     id: u.id,
     orgId,
@@ -93,15 +95,14 @@ function apiUserToView(u: UserApiResponse, orgId: string): PeopleUserView {
     deletedAt: null,
     roleId: createRoleIdForOrg(orgId, roleType),
     roleType,
-    teams: [],
+    teams: teamNames,
   };
 }
 
 export function UsersModule() {
-  const { users: contextUsers, setUsers, teamNameOptions } = usePeopleData();
-  const [pageUsers, setPageUsers] = useState<PeopleUserView[]>(contextUsers);
-  const { activeOrgId, roleOptions, resolveRoleSlug } = useConfigData();
-  const { getToken } = useAuth();
+  const [pageUsers, setPageUsers] = useState<PeopleUserView[]>([]);
+  const { activeOrgId: legacyOrgId, roleOptions, resolveRoleSlug } = useConfigData();
+  const { getToken, activeOrganization } = useAuth();
   const [inviteOpen, setInviteOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -109,6 +110,7 @@ export function UsersModule() {
   const [deactivateUser, setDeactivateUser] = useState<UserView | null>(null);
   const [resetPasswordUser, setResetPasswordUser] = useState<UserView | null>(null);
   const [editUser, setEditUser] = useState<UserView | null>(null);
+  const [apiTeams, setApiTeams] = useState<{ id: string; name: string }[]>([]);
 
   const defaultInviteRole = useMemo(
     () => roleOptions.find((role) => role.isDefault)?.value ?? roleOptions[0]?.value ?? DEFAULT_ROLE_SLUG,
@@ -117,11 +119,35 @@ export function UsersModule() {
 
   const inviteForm = useUserForm(defaultInviteRole);
   const editForm = useUserForm(defaultInviteRole);
+  const apiOrgId = activeOrganization?.id ?? legacyOrgId;
+
+  const teamNameById = useMemo(
+    () => new Map(apiTeams.map((t) => [t.id, t.name])),
+    [apiTeams],
+  );
+
+  const teamIdByName = useMemo(
+    () => new Map(apiTeams.map((t) => [t.name, t.id])),
+    [apiTeams],
+  );
 
   const inviteTeamOptions = useMemo(
-    () => teamNameOptions.map((teamName) => ({ value: teamName, label: teamName })),
-    [teamNameOptions],
+    () => apiTeams.map((t) => ({ value: t.id, label: t.name })),
+    [apiTeams],
   );
+
+  /* load teams from API */
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    let cancelled = false;
+    listTeams(token, { size: 100 })
+      .then((res) => {
+        if (!cancelled) setApiTeams(res.data.map((t: TeamApiResponse) => ({ id: t.id, name: t.name })));
+      })
+      .catch(() => { /* teams are optional, fail silently */ });
+    return () => { cancelled = true; };
+  }, [apiOrgId, getToken]);
 
   const roleSelectionOptions = useMemo(
     () => roleOptions.map((role) => ({ value: role.value, label: role.label, description: role.description || "Sem descrição" })),
@@ -141,6 +167,11 @@ export function UsersModule() {
     [roleSelectionOptions],
   );
 
+  const roleSelectOptions = useMemo(
+    () => roleSelectionOptions.map((role) => ({ value: role.value, label: role.label })),
+    [roleSelectionOptions],
+  );
+
   const table = useUsersTable(pageUsers, resolveRoleSlug);
 
   const [rolePopoverUser, setRolePopoverUser] = useState<string | null>(null);
@@ -154,7 +185,7 @@ export function UsersModule() {
     listUsers(token, { size: 100 })
       .then((res) => {
         if (cancelled) return;
-        setPageUsers(res.data.map((u) => apiUserToView(u, activeOrgId)));
+        setPageUsers(res.data.map((u) => apiUserToView(u, apiOrgId, teamNameById)));
         if (res.total > res.data.length) {
           toast.warning(`Exibindo os primeiros ${res.data.length} de ${res.total} usuários`);
         }
@@ -163,7 +194,7 @@ export function UsersModule() {
         if (!cancelled) toast.error(userErrorToMessage(err));
       });
     return () => { cancelled = true; };
-  }, [activeOrgId, getToken]);
+  }, [apiOrgId, getToken, teamNameById]);
 
   async function handleInvite() {
     const token = getToken();
@@ -182,13 +213,14 @@ export function UsersModule() {
           birth_date: inviteForm.getBirthDateString(),
           language: inviteForm.language,
           gender: inviteForm.gender || undefined,
+          team_ids: inviteForm.teams.length > 0 ? inviteForm.teams : undefined,
         },
         token,
       );
       const now = new Date().toISOString();
       const newUser: UserView = {
         id: created.id,
-        orgId: activeOrgId,
+        orgId: apiOrgId,
         email: created.email,
         firstName: created.first_name,
         lastName: created.last_name,
@@ -210,12 +242,11 @@ export function UsersModule() {
         createdAt: created.created_at,
         updatedAt: created.updated_at,
         deletedAt: null,
-        roleId: createRoleIdForOrg(activeOrgId, resolveRoleSlug(inviteForm.role)),
+        roleId: createRoleIdForOrg(apiOrgId, resolveRoleSlug(inviteForm.role)),
         roleType: resolveRoleSlug(inviteForm.role),
-        teams: inviteForm.teams,
+        teams: inviteForm.teams.map((id) => teamNameById.get(id) ?? id),
       };
       setPageUsers((prev) => [...prev, newUser]);
-      setUsers((prev) => [...prev, newUser]);
       setInviteOpen(false);
       inviteForm.reset();
       toast.success("Convite enviado com sucesso");
@@ -345,7 +376,7 @@ export function UsersModule() {
       nickname: user.nickname,
       email: user.email,
       jobTitle: user.jobTitle,
-      teams: user.teams,
+      teams: user.teams.map((name) => teamIdByName.get(name) ?? name),
       role: resolveRoleSlug(user.roleType),
       birthDate: user.birthDate,
       language: user.language,
@@ -369,6 +400,7 @@ export function UsersModule() {
         birth_date: editForm.getBirthDateString(),
         language: editForm.language,
         gender: editForm.gender || undefined,
+        team_ids: editForm.teams,
       }, token);
     } catch (err) {
       toast.error(userErrorToMessage(err));
@@ -396,7 +428,8 @@ export function UsersModule() {
       birthDate: editForm.getBirthDateString() ?? null,
       gender: (editForm.gender as Gender) || null,
       language: editForm.language,
-      ...(roleUpdated ? { roleId: createRoleIdForOrg(activeOrgId, newRole), roleType: newRole } : {}),
+      teams: editForm.teams.map((id) => teamNameById.get(id) ?? id),
+      ...(roleUpdated ? { roleId: createRoleIdForOrg(apiOrgId, newRole), roleType: newRole } : {}),
       updatedAt: new Date().toISOString(),
     } : u));
     if (!roleUpdated) {
@@ -416,7 +449,7 @@ export function UsersModule() {
     try {
       await updateUserMembership(userId, { role: normalizedRole, status: membershipStatus }, token);
       setPageUsers((prev) => prev.map((u) => u.id === userId
-        ? { ...u, roleType: normalizedRole, roleId: createRoleIdForOrg(activeOrgId, normalizedRole) }
+        ? { ...u, roleType: normalizedRole, roleId: createRoleIdForOrg(apiOrgId, normalizedRole) }
         : u));
       setRolePopoverUser(null);
       toast.success("Tipo de usuário atualizado");
@@ -645,10 +678,7 @@ export function UsersModule() {
         gender={inviteForm.gender} onGenderChange={inviteForm.setGender}
         language={inviteForm.language} onLanguageChange={inviteForm.setLanguage}
         role={inviteForm.role} onRoleChange={inviteForm.setRole}
-        roleOpen={inviteForm.roleOpen} setRoleOpen={inviteForm.setRoleOpen}
-        roleBtnRef={inviteForm.roleBtnRef}
-        roleLabelBySlug={roleLabelBySlug}
-        roleSelectionOptions={roleSelectionOptions}
+        roleOptions={roleSelectOptions}
         onInvite={handleInvite}
         inviteLoading={inviteLoading}
         canSubmit={!!inviteForm.firstName.trim() && !!inviteForm.lastName.trim() && !!inviteForm.email.trim()}
@@ -668,10 +698,7 @@ export function UsersModule() {
         gender={editForm.gender} onGenderChange={editForm.setGender}
         language={editForm.language} onLanguageChange={editForm.setLanguage}
         role={editForm.role} onRoleChange={editForm.setRole}
-        roleOpen={editForm.roleOpen} setRoleOpen={editForm.setRoleOpen}
-        roleBtnRef={editForm.roleBtnRef}
-        roleLabelBySlug={roleLabelBySlug}
-        roleSelectionOptions={roleSelectionOptions}
+        roleOptions={roleSelectOptions}
         onSave={handleEditSave}
         canSubmit={!!editForm.firstName.trim() && !!editForm.lastName.trim() && !!editForm.email.trim()}
       />

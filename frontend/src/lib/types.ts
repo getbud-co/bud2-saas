@@ -353,6 +353,8 @@ export interface paths {
                 /** @description Created */
                 201: {
                     headers: {
+                        /** @description URL do recurso criado */
+                        Location?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -611,10 +613,39 @@ export interface paths {
                 /** @description Created */
                 201: {
                     headers: {
+                        /** @description URL do recurso criado */
+                        Location?: string;
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": components["schemas"]["User"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Not found or inaccessible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
                     };
                 };
             };
@@ -625,7 +656,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/users/{id}": {
+    "/teams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List teams in active organization */
+        get: {
+            parameters: {
+                query?: {
+                    page?: number;
+                    size?: number;
+                    status?: "active" | "archived";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TeamListResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create team in active organization */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateTeamRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        /** @description URL do recurso criado */
+                        Location?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Team"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Team name already in use */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/teams/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -634,7 +767,7 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Get user from active organization */
+        /** Get team from active organization */
         get: {
             parameters: {
                 query?: never;
@@ -652,12 +785,30 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["User"];
+                        "application/json": components["schemas"]["Team"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
                     };
                 };
             };
         };
-        /** Update user in active organization */
+        /** Update team in active organization */
         put: {
             parameters: {
                 query?: never;
@@ -669,26 +820,59 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["UpdateUserRequest"];
+                    "application/json": components["schemas"]["UpdateTeamRequest"];
                 };
             };
             responses: {
-                /** @description OK */
+                /** @description Updated */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["User"];
+                        "application/json": components["schemas"]["Team"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Team name already in use */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
                     };
                 };
             };
         };
         post?: never;
-        /**
-         * Soft delete membership from active organization
-         * @description Soft deletes the user's membership in the active organization.
-         */
+        /** Soft delete team from active organization */
         delete: {
             parameters: {
                 query?: never;
@@ -716,16 +900,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetail"];
                     };
                 };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetail"];
-                    };
-                };
-                /** @description Not found or inaccessible */
+                /** @description Not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -952,6 +1127,7 @@ export interface components {
             role?: "super-admin" | "admin-rh" | "gestor" | "colaborador" | "visualizador";
             /** @enum {string} */
             membership_status?: "invited" | "active" | "inactive";
+            team_ids: string[];
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -999,6 +1175,7 @@ export interface components {
             /** @enum {string} */
             gender?: "feminino" | "masculino" | "nao-binario" | "prefiro-nao-dizer";
             phone?: string;
+            team_ids?: string[];
         };
         UpdateUserRequest: {
             first_name: string;
@@ -1015,12 +1192,79 @@ export interface components {
             /** @enum {string} */
             gender?: "feminino" | "masculino" | "nao-binario" | "prefiro-nao-dizer";
             phone?: string;
+            team_ids?: string[];
         };
         UpdateMembershipRequest: {
             /** @enum {string} */
             role: "super-admin" | "admin-rh" | "gestor" | "colaborador" | "visualizador";
             /** @enum {string} */
             status: "invited" | "active" | "inactive";
+        };
+        TeamMemberUser: {
+            /** Format: uuid */
+            id: string;
+            first_name: string;
+            last_name: string;
+            initials?: string;
+            job_title?: string;
+            avatar_url?: string;
+        };
+        TeamMember: {
+            /** Format: uuid */
+            team_id: string;
+            /** Format: uuid */
+            user_id: string;
+            /** @enum {string} */
+            role_in_team: "leader" | "member" | "observer";
+            /** Format: date-time */
+            joined_at: string;
+            user?: components["schemas"]["TeamMemberUser"];
+        };
+        Team: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            org_id: string;
+            name: string;
+            description?: string;
+            /** @enum {string} */
+            color: "neutral" | "orange" | "wine" | "caramel" | "success" | "warning" | "error";
+            /** @enum {string} */
+            status: "active" | "archived";
+            members: components["schemas"]["TeamMember"][];
+            member_count: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        TeamListResponse: {
+            data: components["schemas"]["Team"][];
+            total: number;
+            page: number;
+            size: number;
+        };
+        TeamMemberInput: {
+            /** Format: uuid */
+            user_id: string;
+            /** @enum {string} */
+            role_in_team: "leader" | "member" | "observer";
+        };
+        CreateTeamRequest: {
+            name: string;
+            description?: string;
+            /** @enum {string} */
+            color: "neutral" | "orange" | "wine" | "caramel" | "success" | "warning" | "error";
+            members?: components["schemas"]["TeamMemberInput"][];
+        };
+        UpdateTeamRequest: {
+            name: string;
+            description?: string;
+            /** @enum {string} */
+            color: "neutral" | "orange" | "wine" | "caramel" | "success" | "warning" | "error";
+            /** @enum {string} */
+            status: "active" | "archived";
+            members?: components["schemas"]["TeamMemberInput"][];
         };
     };
     responses: never;

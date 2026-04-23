@@ -12,6 +12,7 @@ export interface CreateUserParams {
   language?: string;
   gender?: string;
   phone?: string;
+  team_ids?: string[];
 }
 
 export interface UserApiResponse {
@@ -29,6 +30,7 @@ export interface UserApiResponse {
   phone?: string;
   role?: string;
   membership_status?: string;
+  team_ids?: string[];
   created_at: string;
   updated_at: string;
 }
@@ -51,6 +53,7 @@ export interface UpdateUserParams {
   language?: string;
   gender?: string;
   phone?: string;
+  team_ids?: string[];
 }
 
 export interface UpdateMembershipParams {
