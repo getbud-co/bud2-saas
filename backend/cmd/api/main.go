@@ -20,6 +20,7 @@ import (
 	"github.com/getbud-co/bud2/backend/internal/api"
 	apiauth "github.com/getbud-co/bud2/backend/internal/api/auth"
 	apibootstrap "github.com/getbud-co/bud2/backend/internal/api/bootstrap"
+	apicycle "github.com/getbud-co/bud2/backend/internal/api/cycle"
 	apiorg "github.com/getbud-co/bud2/backend/internal/api/organization"
 	apiperm "github.com/getbud-co/bud2/backend/internal/api/permission"
 	apirole "github.com/getbud-co/bud2/backend/internal/api/role"
@@ -27,6 +28,7 @@ import (
 	apiuser "github.com/getbud-co/bud2/backend/internal/api/user"
 	appauth "github.com/getbud-co/bud2/backend/internal/app/auth"
 	appbootstrap "github.com/getbud-co/bud2/backend/internal/app/bootstrap"
+	appcycle "github.com/getbud-co/bud2/backend/internal/app/cycle"
 	apporg "github.com/getbud-co/bud2/backend/internal/app/organization"
 	appperm "github.com/getbud-co/bud2/backend/internal/app/permission"
 	approle "github.com/getbud-co/bud2/backend/internal/app/role"
@@ -95,6 +97,7 @@ func main() {
 	userRepo := postgres.NewUserRepository(queries)
 	teamRepo := postgres.NewTeamRepository(queries)
 	roleRepo := postgres.NewRoleRepository(queries)
+	cycleRepo := postgres.NewCycleRepository(queries)
 	refreshTokenRepo := postgres.NewRefreshTokenRepository(queries)
 	txManager := postgres.NewTxManager(pool)
 	tokenIssuer := infraauth.NewTokenIssuer(cfg.JWTSecret)
@@ -124,6 +127,11 @@ func main() {
 
 	listRole := approle.NewListUseCase(roleRepo, logger)
 	listPermission := appperm.NewListUseCase(logger)
+	createCycle := appcycle.NewCreateUseCase(cycleRepo, logger)
+	getCycle := appcycle.NewGetUseCase(cycleRepo, logger)
+	listCycle := appcycle.NewListUseCase(cycleRepo, logger)
+	updateCycle := appcycle.NewUpdateUseCase(cycleRepo, logger)
+	deleteCycle := appcycle.NewDeleteUseCase(cycleRepo, logger)
 
 	bootstrapUC := appbootstrap.NewUseCase(orgRepo, txManager, tokenIssuer, passwordHasher, logger)
 	loginUC := appauth.NewLoginUseCase(userRepo, orgRepo, tokenIssuer, passwordHasher, refreshTokenRepo, tokenHasher, logger)
@@ -139,7 +147,8 @@ func main() {
 	teamHandler := apiteam.NewHandler(createTeam, getTeam, listTeam, updateTeam, deleteTeam)
 	roleHandler := apirole.NewHandler(listRole)
 	permissionHandler := apiperm.NewHandler(listPermission)
-	router := api.NewRouter(bootstrapHandler, authHandler, orgHandler, userHandler, teamHandler, roleHandler, permissionHandler, api.RouterConfig{
+	cycleHandler := apicycle.NewHandler(createCycle, getCycle, listCycle, updateCycle, deleteCycle)
+	router := api.NewRouter(bootstrapHandler, authHandler, orgHandler, userHandler, teamHandler, roleHandler, permissionHandler, cycleHandler, api.RouterConfig{
 		Env:            cfg.Env,
 		AllowedOrigins: strings.Split(cfg.AllowedOrigins, ","),
 		OpenAPISpec:    apispec.Spec,

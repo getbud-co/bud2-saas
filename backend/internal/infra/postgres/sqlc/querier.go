@@ -12,6 +12,8 @@ import (
 
 type Querier interface {
 	ActivateInvitedMemberships(ctx context.Context, userID uuid.UUID) error
+	CountCycles(ctx context.Context, organizationID uuid.UUID) (int64, error)
+	CountCyclesByStatus(ctx context.Context, arg CountCyclesByStatusParams) (int64, error)
 	CountOrganizationMemberships(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	CountOrganizationUsers(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	CountOrganizationUsersByStatus(ctx context.Context, arg CountOrganizationUsersByStatusParams) (int64, error)
@@ -21,6 +23,7 @@ type Querier interface {
 	CountOrganizationsByUserAndStatus(ctx context.Context, arg CountOrganizationsByUserAndStatusParams) (int64, error)
 	CountTeams(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	CountTeamsByStatus(ctx context.Context, arg CountTeamsByStatusParams) (int64, error)
+	CreateCycle(ctx context.Context, arg CreateCycleParams) (CreateCycleRow, error)
 	CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (CreateOrganizationRow, error)
 	CreateOrganizationMembership(ctx context.Context, arg CreateOrganizationMembershipParams) (CreateOrganizationMembershipRow, error)
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (CreateRefreshTokenRow, error)
@@ -28,6 +31,8 @@ type Querier interface {
 	CreateTeamMember(ctx context.Context, arg CreateTeamMemberParams) (CreateTeamMemberRow, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
 	GetActiveOrganizationMembership(ctx context.Context, arg GetActiveOrganizationMembershipParams) (GetActiveOrganizationMembershipRow, error)
+	GetCycleByID(ctx context.Context, arg GetCycleByIDParams) (GetCycleByIDRow, error)
+	GetCycleByName(ctx context.Context, arg GetCycleByNameParams) (GetCycleByNameRow, error)
 	GetOrganizationByDomain(ctx context.Context, lower string) (GetOrganizationByDomainRow, error)
 	GetOrganizationByID(ctx context.Context, id uuid.UUID) (GetOrganizationByIDRow, error)
 	GetOrganizationByIDForUser(ctx context.Context, arg GetOrganizationByIDForUserParams) (GetOrganizationByIDForUserRow, error)
@@ -38,6 +43,8 @@ type Querier interface {
 	GetTeamMemberByTeamAndUser(ctx context.Context, arg GetTeamMemberByTeamAndUserParams) (GetTeamMemberByTeamAndUserRow, error)
 	GetUserByEmail(ctx context.Context, lower string) (GetUserByEmailRow, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)
+	ListCycles(ctx context.Context, arg ListCyclesParams) ([]ListCyclesRow, error)
+	ListCyclesByStatus(ctx context.Context, arg ListCyclesByStatusParams) ([]ListCyclesByStatusRow, error)
 	ListOrganizationMemberships(ctx context.Context, arg ListOrganizationMembershipsParams) ([]ListOrganizationMembershipsRow, error)
 	ListOrganizationUsers(ctx context.Context, arg ListOrganizationUsersParams) ([]ListOrganizationUsersRow, error)
 	ListOrganizationUsersByStatus(ctx context.Context, arg ListOrganizationUsersByStatusParams) ([]ListOrganizationUsersByStatusRow, error)
@@ -56,6 +63,7 @@ type Querier interface {
 	ListUserMembershipsForOrganization(ctx context.Context, arg ListUserMembershipsForOrganizationParams) ([]ListUserMembershipsForOrganizationRow, error)
 	RevokeAllRefreshTokensByUserID(ctx context.Context, userID uuid.UUID) error
 	RevokeRefreshToken(ctx context.Context, id uuid.UUID) error
+	SoftDeleteCycle(ctx context.Context, arg SoftDeleteCycleParams) error
 	SoftDeleteOrganization(ctx context.Context, id uuid.UUID) error
 	SoftDeleteOrganizationMembership(ctx context.Context, arg SoftDeleteOrganizationMembershipParams) error
 	SoftDeleteOrganizationMembershipsByOrganization(ctx context.Context, organizationID uuid.UUID) error
@@ -63,6 +71,7 @@ type Querier interface {
 	SoftDeleteTeamMember(ctx context.Context, id uuid.UUID) error
 	SoftDeleteTeamMembersByOrganizationUser(ctx context.Context, arg SoftDeleteTeamMembersByOrganizationUserParams) error
 	SoftDeleteTeamMembersByTeam(ctx context.Context, teamID uuid.UUID) error
+	UpdateCycle(ctx context.Context, arg UpdateCycleParams) (UpdateCycleRow, error)
 	UpdateOrganization(ctx context.Context, arg UpdateOrganizationParams) (UpdateOrganizationRow, error)
 	UpdateOrganizationMembership(ctx context.Context, arg UpdateOrganizationMembershipParams) (UpdateOrganizationMembershipRow, error)
 	UpdateTeam(ctx context.Context, arg UpdateTeamParams) (UpdateTeamRow, error)

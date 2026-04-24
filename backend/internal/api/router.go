@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/getbud-co/bud2/backend/internal/api/auth"
+	apicycle "github.com/getbud-co/bud2/backend/internal/api/cycle"
 	"github.com/getbud-co/bud2/backend/internal/api/health"
 	"github.com/getbud-co/bud2/backend/internal/api/middleware"
 	apiorg "github.com/getbud-co/bud2/backend/internal/api/organization"
@@ -35,7 +36,7 @@ type RouterConfig struct {
 	RequestTimeout time.Duration
 }
 
-func NewRouter(bootstrapHandler BootstrapHandler, authHandler *auth.Handler, orgHandler *apiorg.Handler, userHandler *apiuser.Handler, teamHandler *apiteam.Handler, roleHandler *apirole.Handler, permissionHandler *apiperm.Handler, cfg RouterConfig) *chi.Mux {
+func NewRouter(bootstrapHandler BootstrapHandler, authHandler *auth.Handler, orgHandler *apiorg.Handler, userHandler *apiuser.Handler, teamHandler *apiteam.Handler, roleHandler *apirole.Handler, permissionHandler *apiperm.Handler, cycleHandler *apicycle.Handler, cfg RouterConfig) *chi.Mux {
 	r := chi.NewRouter()
 
 	allowedOrigins := cfg.AllowedOrigins
@@ -127,6 +128,17 @@ func NewRouter(bootstrapHandler BootstrapHandler, authHandler *auth.Handler, org
 			r.Use(middleware.TenantMiddleware)
 			r.Use(middleware.ActiveOrganizationMiddleware(cfg.Pool))
 			r.With(middleware.RequirePermission(cfg.Enforcer, "settings", "read")).Get("/", permissionHandler.List)
+		})
+
+		r.Route("/cycles", func(r chi.Router) {
+			r.Use(middleware.AuthMiddleware(middleware.AuthMiddlewareConfig{JWTSecret: cfg.JWTSecret}))
+			r.Use(middleware.TenantMiddleware)
+			r.Use(middleware.ActiveOrganizationMiddleware(cfg.Pool))
+			r.With(middleware.RequirePermission(cfg.Enforcer, "settings", "write")).Post("/", cycleHandler.Create)
+			r.With(middleware.RequirePermission(cfg.Enforcer, "settings", "read")).Get("/", cycleHandler.List)
+			r.With(middleware.RequirePermission(cfg.Enforcer, "settings", "read")).Get("/{id}", cycleHandler.Get)
+			r.With(middleware.RequirePermission(cfg.Enforcer, "settings", "write")).Put("/{id}", cycleHandler.Update)
+			r.With(middleware.RequirePermission(cfg.Enforcer, "settings", "write")).Delete("/{id}", cycleHandler.Delete)
 		})
 	})
 

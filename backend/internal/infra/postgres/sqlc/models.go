@@ -11,6 +11,21 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Cycle struct {
+	ID                    uuid.UUID
+	OrganizationID        uuid.UUID
+	Name                  string
+	Type                  string
+	StartDate             pgtype.Date
+	EndDate               pgtype.Date
+	Status                string
+	OkrDefinitionDeadline pgtype.Date
+	MidReviewDate         pgtype.Date
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	DeletedAt             pgtype.Timestamptz
+}
+
 type Organization struct {
 	ID        uuid.UUID
 	Name      string
