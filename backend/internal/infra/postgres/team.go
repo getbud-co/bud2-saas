@@ -60,6 +60,9 @@ func (r *TeamRepository) Create(ctx context.Context, t *team.Team) (*team.Team, 
 	if err := r.syncMembers(ctx, created); err != nil {
 		return nil, err
 	}
+	if err := r.loadMembers(ctx, created); err != nil {
+		return nil, err
+	}
 	return created, nil
 }
 
@@ -168,6 +171,9 @@ func (r *TeamRepository) Update(ctx context.Context, t *team.Team) (*team.Team, 
 	updated := teamRowToDomain(row.ID, row.OrganizationID, row.Name, row.Description, row.Color, row.Status, row.CreatedAt, row.UpdatedAt)
 	updated.Members = t.Members
 	if err := r.syncMembers(ctx, updated); err != nil {
+		return nil, err
+	}
+	if err := r.loadMembers(ctx, updated); err != nil {
 		return nil, err
 	}
 	return updated, nil

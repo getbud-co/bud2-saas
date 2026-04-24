@@ -39,7 +39,6 @@ import {
 } from "@phosphor-icons/react";
 import type { Team, TeamMember, TeamColor } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
-import { useConfigData } from "@/contexts/ConfigDataContext";
 import {
   listTeams,
   createTeam,
@@ -124,11 +123,10 @@ const STATUS_BADGE: Record<string, { label: string; color: "success" | "neutral"
 
 export function TeamsModule() {
   const { getToken, activeOrganization } = useAuth();
-  const { activeOrgId: legacyOrgId } = useConfigData();
   const [apiUsers, setApiUsers] = useState<UserApiResponse[]>([]);
   const [pageTeams, setPageTeams] = useState<Team[]>([]);
   const [search, setSearch] = useState("");
-  const apiOrgId = activeOrganization?.id ?? legacyOrgId;
+  const apiOrgId = activeOrganization?.id ?? "";
 
   /* sorting */
   type SortKey = "name" | "members" | "status";

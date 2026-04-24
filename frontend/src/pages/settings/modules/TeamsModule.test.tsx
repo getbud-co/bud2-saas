@@ -11,7 +11,6 @@ import { screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "../../../../tests/setup/test-utils";
 import { TeamsModule } from "./TeamsModule";
-import { useConfigData } from "@/contexts/ConfigDataContext";
 import { listTeams } from "@/lib/teams-api";
 import { listUsers } from "@/lib/users-api";
 
@@ -47,17 +46,6 @@ function setup() {
   const user = userEvent.setup();
   const result = renderWithProviders(<TeamsModule />);
   return { user, ...result };
-}
-
-function OrgSwitcher() {
-  const { organizations, setActiveOrgId } = useConfigData();
-  const nextOrgId = organizations[1]?.id;
-
-  return (
-    <button type="button" onClick={() => nextOrgId && setActiveOrgId(nextOrgId)}>
-      Trocar organização
-    </button>
-  );
 }
 
 // ─── Tests ───
@@ -129,28 +117,10 @@ describe("TeamsModule", () => {
       expect(activeBadges.length).toBeGreaterThan(0);
     });
 
-    it("refetches teams when active organization changes", async () => {
-      localStorage.setItem("bud.test.access-token", "test-token");
-      vi.mocked(listTeams)
-        .mockResolvedValueOnce({ data: [], total: 0, page: 1, size: 100 })
-        .mockResolvedValueOnce({ data: [], total: 0, page: 1, size: 100 });
-
-      const user = userEvent.setup();
-      renderWithProviders(
-        <>
-          <OrgSwitcher />
-          <TeamsModule />
-        </>,
-      );
-
+    it("calls listTeams on mount", async () => {
+      setup();
       await waitFor(() => {
         expect(listTeams).toHaveBeenCalledTimes(1);
-      });
-
-      await user.click(screen.getByRole("button", { name: /trocar organização/i }));
-
-      await waitFor(() => {
-        expect(listTeams).toHaveBeenCalledTimes(2);
       });
     });
   });

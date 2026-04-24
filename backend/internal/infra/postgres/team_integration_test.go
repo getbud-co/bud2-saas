@@ -18,6 +18,106 @@ import (
 	"github.com/getbud-co/bud2/backend/internal/test/testutil"
 )
 
+func TestTeamRepository_Create_ReturnsMembersWithUserData(t *testing.T) {
+	env := testutil.NewPostgresIntegrationEnv(t)
+	ctx := context.Background()
+	queries := sqlc.New(env.Pool)
+	orgRepo := NewOrgRepository(queries)
+	userRepo := NewUserRepository(queries)
+	teamRepo := NewTeamRepository(queries)
+
+	org, err := orgRepo.Create(ctx, &organization.Organization{Name: "Gamma", Domain: "gamma.example.com", Workspace: "gamma", Status: organization.StatusActive})
+	require.NoError(t, err)
+
+	leader, err := userRepo.Create(ctx, &user.User{
+		ID:           uuid.New(),
+		FirstName:    "Maria",
+		LastName:     "Silva",
+		Email:        "maria-silva@example.com",
+		PasswordHash: "hashed",
+		Status:       user.StatusActive,
+		Language:     "pt-br",
+		Memberships: []membership.Membership{{
+			OrganizationID: org.ID,
+			Role:           membership.RoleSuperAdmin,
+			Status:         membership.StatusActive,
+		}},
+	})
+	require.NoError(t, err)
+
+	created, err := teamRepo.Create(ctx, &team.Team{
+		ID:             uuid.New(),
+		OrganizationID: org.ID,
+		Name:           "Engineering",
+		Color:          team.ColorNeutral,
+		Status:         team.StatusActive,
+		Members: []team.TeamMember{{
+			UserID:     leader.ID,
+			RoleInTeam: team.RoleLeader,
+		}},
+	})
+	require.NoError(t, err)
+	require.Len(t, created.Members, 1)
+
+	m := created.Members[0]
+	require.NotNil(t, m.UserFirstName, "Create must return member with UserFirstName populated")
+	require.NotNil(t, m.UserLastName, "Create must return member with UserLastName populated")
+	assert.Equal(t, "Maria", *m.UserFirstName)
+	assert.Equal(t, "Silva", *m.UserLastName)
+}
+
+func TestTeamRepository_Update_ReturnsMembersWithUserData(t *testing.T) {
+	env := testutil.NewPostgresIntegrationEnv(t)
+	ctx := context.Background()
+	queries := sqlc.New(env.Pool)
+	orgRepo := NewOrgRepository(queries)
+	userRepo := NewUserRepository(queries)
+	teamRepo := NewTeamRepository(queries)
+
+	org, err := orgRepo.Create(ctx, &organization.Organization{Name: "Delta", Domain: "delta.example.com", Workspace: "delta", Status: organization.StatusActive})
+	require.NoError(t, err)
+
+	member, err := userRepo.Create(ctx, &user.User{
+		ID:           uuid.New(),
+		FirstName:    "João",
+		LastName:     "Santos",
+		Email:        "joao-santos@example.com",
+		PasswordHash: "hashed",
+		Status:       user.StatusActive,
+		Language:     "pt-br",
+		Memberships: []membership.Membership{{
+			OrganizationID: org.ID,
+			Role:           membership.RoleSuperAdmin,
+			Status:         membership.StatusActive,
+		}},
+	})
+	require.NoError(t, err)
+
+	created, err := teamRepo.Create(ctx, &team.Team{
+		ID:             uuid.New(),
+		OrganizationID: org.ID,
+		Name:           "Design",
+		Color:          team.ColorOrange,
+		Status:         team.StatusActive,
+		Members: []team.TeamMember{{
+			UserID:     member.ID,
+			RoleInTeam: team.RoleLeader,
+		}},
+	})
+	require.NoError(t, err)
+
+	created.Name = "Design System"
+	updated, err := teamRepo.Update(ctx, created)
+	require.NoError(t, err)
+	require.Len(t, updated.Members, 1)
+
+	m := updated.Members[0]
+	require.NotNil(t, m.UserFirstName, "Update must return member with UserFirstName populated")
+	require.NotNil(t, m.UserLastName, "Update must return member with UserLastName populated")
+	assert.Equal(t, "João", *m.UserFirstName)
+	assert.Equal(t, "Santos", *m.UserLastName)
+}
+
 func TestTeamRepository_GetByID_ExcludesMembersWithoutActiveOrganizationMembership(t *testing.T) {
 	env := testutil.NewPostgresIntegrationEnv(t)
 	ctx := context.Background()
