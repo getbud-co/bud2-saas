@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/getbud-co/bud2/backend/internal/domain"
-	"github.com/getbud-co/bud2/backend/internal/domain/membership"
+	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 )
 
 type Status string
@@ -37,7 +37,7 @@ type User struct {
 	Language      string
 	Gender        *string
 	Phone         *string
-	Memberships   []membership.Membership
+	Memberships   []organization.Membership
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
@@ -93,22 +93,22 @@ type Repository interface {
 	ActivateInvitedMemberships(ctx context.Context, userID uuid.UUID) error
 }
 
-func (u *User) MembershipForOrganization(organizationID uuid.UUID) (*membership.Membership, error) {
+func (u *User) MembershipForOrganization(organizationID uuid.UUID) (*organization.Membership, error) {
 	for i := range u.Memberships {
 		if u.Memberships[i].OrganizationID == organizationID {
 			return &u.Memberships[i], nil
 		}
 	}
-	return nil, membership.ErrNotFound
+	return nil, organization.ErrMembershipNotFound
 }
 
-func (u *User) ActiveMembershipForOrganization(organizationID uuid.UUID) (*membership.Membership, error) {
+func (u *User) ActiveMembershipForOrganization(organizationID uuid.UUID) (*organization.Membership, error) {
 	m, err := u.MembershipForOrganization(organizationID)
 	if err != nil {
 		return nil, err
 	}
-	if m.Status != membership.StatusActive {
-		return nil, membership.ErrNotFound
+	if m.Status != organization.MembershipStatusActive {
+		return nil, organization.ErrMembershipNotFound
 	}
 	return m, nil
 }
@@ -120,13 +120,13 @@ func (u *User) EnsureAccessibleInOrganization(organizationID uuid.UUID) error {
 	return err
 }
 
-func (u *User) AddMembership(m membership.Membership) error {
+func (u *User) AddMembership(m organization.Membership) error {
 	if m.UserID != uuid.Nil && m.UserID != u.ID {
 		return fmt.Errorf("%w: membership user_id does not match user", domain.ErrValidation)
 	}
 	if _, err := u.MembershipForOrganization(m.OrganizationID); err == nil {
-		return membership.ErrAlreadyExists
-	} else if !errors.Is(err, membership.ErrNotFound) {
+		return organization.ErrMembershipAlreadyExists
+	} else if !errors.Is(err, organization.ErrMembershipNotFound) {
 		return err
 	}
 	m.UserID = u.ID

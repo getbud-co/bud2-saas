@@ -54,6 +54,61 @@ func (o *Organization) Validate() error {
 	return nil
 }
 
+type MembershipRole string
+
+const (
+	MembershipRoleSuperAdmin   MembershipRole = "super-admin"
+	MembershipRoleAdminRH      MembershipRole = "admin-rh"
+	MembershipRoleGestor       MembershipRole = "gestor"
+	MembershipRoleColaborador  MembershipRole = "colaborador"
+	MembershipRoleVisualizador MembershipRole = "visualizador"
+)
+
+func (r MembershipRole) IsValid() bool {
+	return r == MembershipRoleSuperAdmin || r == MembershipRoleAdminRH || r == MembershipRoleGestor ||
+		r == MembershipRoleColaborador || r == MembershipRoleVisualizador
+}
+
+type MembershipStatus string
+
+const (
+	MembershipStatusInvited  MembershipStatus = "invited"
+	MembershipStatusActive   MembershipStatus = "active"
+	MembershipStatusInactive MembershipStatus = "inactive"
+)
+
+func (s MembershipStatus) IsValid() bool {
+	return s == MembershipStatusInvited || s == MembershipStatusActive || s == MembershipStatusInactive
+}
+
+type Membership struct {
+	ID              uuid.UUID
+	OrganizationID  uuid.UUID
+	UserID          uuid.UUID
+	Role            MembershipRole
+	Status          MembershipStatus
+	InvitedByUserID *uuid.UUID
+	JoinedAt        *time.Time
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+func (m *Membership) Validate() error {
+	if m.OrganizationID == uuid.Nil {
+		return fmt.Errorf("%w: organization_id is required", domain.ErrValidation)
+	}
+	if m.UserID == uuid.Nil {
+		return fmt.Errorf("%w: user_id is required", domain.ErrValidation)
+	}
+	if !m.Role.IsValid() {
+		return fmt.Errorf("%w: role must be one of: super-admin, admin-rh, gestor, colaborador, visualizador", domain.ErrValidation)
+	}
+	if !m.Status.IsValid() {
+		return fmt.Errorf("%w: status must be invited, active or inactive", domain.ErrValidation)
+	}
+	return nil
+}
+
 type ListFilter struct {
 	Status *Status
 	Page   int
@@ -79,7 +134,9 @@ type Repository interface {
 }
 
 var (
-	ErrNotFound        = errors.New("organization not found")
-	ErrDomainExists    = errors.New("organization domain already exists")
-	ErrWorkspaceExists = errors.New("organization workspace already exists")
+	ErrNotFound                = errors.New("organization not found")
+	ErrDomainExists            = errors.New("organization domain already exists")
+	ErrWorkspaceExists         = errors.New("organization workspace already exists")
+	ErrMembershipNotFound      = errors.New("membership not found")
+	ErrMembershipAlreadyExists = errors.New("membership already exists")
 )
