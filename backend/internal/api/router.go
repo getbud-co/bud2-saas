@@ -14,6 +14,8 @@ import (
 	"github.com/getbud-co/bud2/backend/internal/api/health"
 	"github.com/getbud-co/bud2/backend/internal/api/middleware"
 	apiorg "github.com/getbud-co/bud2/backend/internal/api/organization"
+	apiperm "github.com/getbud-co/bud2/backend/internal/api/permission"
+	apirole "github.com/getbud-co/bud2/backend/internal/api/role"
 	apiteam "github.com/getbud-co/bud2/backend/internal/api/team"
 	apiuser "github.com/getbud-co/bud2/backend/internal/api/user"
 )
@@ -33,7 +35,7 @@ type RouterConfig struct {
 	RequestTimeout time.Duration
 }
 
-func NewRouter(bootstrapHandler BootstrapHandler, authHandler *auth.Handler, orgHandler *apiorg.Handler, userHandler *apiuser.Handler, teamHandler *apiteam.Handler, cfg RouterConfig) *chi.Mux {
+func NewRouter(bootstrapHandler BootstrapHandler, authHandler *auth.Handler, orgHandler *apiorg.Handler, userHandler *apiuser.Handler, teamHandler *apiteam.Handler, roleHandler *apirole.Handler, permissionHandler *apiperm.Handler, cfg RouterConfig) *chi.Mux {
 	r := chi.NewRouter()
 
 	allowedOrigins := cfg.AllowedOrigins
@@ -111,6 +113,20 @@ func NewRouter(bootstrapHandler BootstrapHandler, authHandler *auth.Handler, org
 			r.With(middleware.RequirePermission(cfg.Enforcer, "teams", "read")).Get("/{id}", teamHandler.Get)
 			r.With(middleware.RequirePermission(cfg.Enforcer, "teams", "write")).Put("/{id}", teamHandler.Update)
 			r.With(middleware.RequirePermission(cfg.Enforcer, "teams", "delete")).Delete("/{id}", teamHandler.Delete)
+		})
+
+		r.Route("/roles", func(r chi.Router) {
+			r.Use(middleware.AuthMiddleware(middleware.AuthMiddlewareConfig{JWTSecret: cfg.JWTSecret}))
+			r.Use(middleware.TenantMiddleware)
+			r.Use(middleware.ActiveOrganizationMiddleware(cfg.Pool))
+			r.With(middleware.RequirePermission(cfg.Enforcer, "settings", "read")).Get("/", roleHandler.List)
+		})
+
+		r.Route("/permissions", func(r chi.Router) {
+			r.Use(middleware.AuthMiddleware(middleware.AuthMiddlewareConfig{JWTSecret: cfg.JWTSecret}))
+			r.Use(middleware.TenantMiddleware)
+			r.Use(middleware.ActiveOrganizationMiddleware(cfg.Pool))
+			r.With(middleware.RequirePermission(cfg.Enforcer, "settings", "read")).Get("/", permissionHandler.List)
 		})
 	})
 

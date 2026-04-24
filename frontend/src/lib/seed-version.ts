@@ -6,7 +6,7 @@
  * from previous sessions overriding updated seeds.
  */
 
-const SEED_VERSION = 5;
+const SEED_VERSION = 6;
 const SEED_VERSION_KEY = "bud.saas.seed-version";
 
 export function clearStaleLocalStorage(): void {

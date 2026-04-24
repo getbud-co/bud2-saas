@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/getbud-co/bud2/backend/internal/domain/membership"
+	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	"github.com/getbud-co/bud2/backend/internal/test/fixtures"
 )
 
@@ -22,8 +22,8 @@ func TestAccessibleOrganizationFromOrganization_DoesNotIncludeMembershipFields(t
 
 func TestAccessibleOrganizationFromMembership_IncludesMembershipFields(t *testing.T) {
 	org := fixtures.NewOrganization()
-	m := fixtures.NewMembershipWithRole(membership.RoleGestor)
-	m.Status = membership.StatusInactive
+	m := fixtures.NewMembershipWithRole(organization.MembershipRoleGestor)
+	m.Status = organization.MembershipStatusInactive
 
 	result := accessibleOrganizationFromMembership(org, m)
 

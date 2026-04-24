@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -22,6 +23,33 @@ import (
 type mockTeamCreateUseCase struct{ mock.Mock }
 
 func (m *mockTeamCreateUseCase) Execute(ctx context.Context, cmd appteam.CreateCommand) (*domainteam.Team, error) {
+	args := m.Called(ctx, cmd)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domainteam.Team), args.Error(1)
+}
+
+type mockTeamGetUseCase struct{ mock.Mock }
+
+func (m *mockTeamGetUseCase) Execute(ctx context.Context, organizationID domain.TenantID, id uuid.UUID) (*domainteam.Team, error) {
+	args := m.Called(ctx, organizationID, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domainteam.Team), args.Error(1)
+}
+
+type mockTeamListUseCase struct{ mock.Mock }
+
+func (m *mockTeamListUseCase) Execute(ctx context.Context, cmd appteam.ListCommand) (domainteam.ListResult, error) {
+	args := m.Called(ctx, cmd)
+	return args.Get(0).(domainteam.ListResult), args.Error(1)
+}
+
+type mockTeamUpdateUseCase struct{ mock.Mock }
+
+func (m *mockTeamUpdateUseCase) Execute(ctx context.Context, cmd appteam.UpdateCommand) (*domainteam.Team, error) {
 	args := m.Called(ctx, cmd)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -106,4 +134,72 @@ func TestHandler_Delete_NotFound_IsIdempotent(t *testing.T) {
 	handler.Delete(rr, req)
 
 	assert.Equal(t, http.StatusNoContent, rr.Code)
+}
+
+func TestHandler_Create_ErrorUsesHandleError(t *testing.T) {
+	createUC := new(mockTeamCreateUseCase)
+	handler := NewHandler(createUC, nil, nil, nil, nil)
+	tenantID := fixtures.NewTestTenantID()
+	createUC.On("Execute", mock.Anything, mock.Anything).Return(nil, domainteam.ErrNameExists)
+
+	req := httptest.NewRequest(http.MethodPost, "/teams", bytes.NewReader([]byte(`{"name":"Engineering","color":"neutral"}`)))
+	req.Header.Set("Content-Type", "application/json")
+	req = req.WithContext(domain.TenantIDToContext(req.Context(), tenantID))
+	rr := httptest.NewRecorder()
+
+	handler.Create(rr, req)
+
+	assert.Equal(t, http.StatusConflict, rr.Code)
+	assert.Equal(t, "application/problem+json", rr.Header().Get("Content-Type"))
+}
+
+func TestHandler_Get_ErrorUsesHandleError(t *testing.T) {
+	getUC := new(mockTeamGetUseCase)
+	handler := NewHandler(nil, getUC, nil, nil, nil)
+	tenantID := fixtures.NewTestTenantID()
+	id := uuid.New()
+	getUC.On("Execute", mock.Anything, tenantID, id).Return(nil, domainteam.ErrNotFound)
+
+	req := httptest.NewRequest(http.MethodGet, "/teams/"+id.String(), nil)
+	req = routeTeamRequest(req, tenantID, id.String())
+	rr := httptest.NewRecorder()
+
+	handler.Get(rr, req)
+
+	assert.Equal(t, http.StatusNotFound, rr.Code)
+	assert.Equal(t, "application/problem+json", rr.Header().Get("Content-Type"))
+}
+
+func TestHandler_Update_ErrorUsesHandleError(t *testing.T) {
+	updateUC := new(mockTeamUpdateUseCase)
+	handler := NewHandler(nil, nil, nil, updateUC, nil)
+	tenantID := fixtures.NewTestTenantID()
+	id := uuid.New()
+	updateUC.On("Execute", mock.Anything, mock.Anything).Return(nil, domainteam.ErrNotFound)
+
+	req := httptest.NewRequest(http.MethodPut, "/teams/"+id.String(), bytes.NewReader([]byte(`{"name":"Engineering","color":"neutral","status":"active"}`)))
+	req.Header.Set("Content-Type", "application/json")
+	req = routeTeamRequest(req, tenantID, id.String())
+	rr := httptest.NewRecorder()
+
+	handler.Update(rr, req)
+
+	assert.Equal(t, http.StatusNotFound, rr.Code)
+	assert.Equal(t, "application/problem+json", rr.Header().Get("Content-Type"))
+}
+
+func TestHandler_List_ErrorReturnsProblem(t *testing.T) {
+	listUC := new(mockTeamListUseCase)
+	handler := NewHandler(nil, nil, listUC, nil, nil)
+	tenantID := fixtures.NewTestTenantID()
+	listUC.On("Execute", mock.Anything, appteam.ListCommand{OrganizationID: tenantID, Page: 1, Size: 20}).Return(domainteam.ListResult{}, errors.New("list failed"))
+
+	req := httptest.NewRequest(http.MethodGet, "/teams", nil)
+	req = req.WithContext(domain.TenantIDToContext(req.Context(), tenantID))
+	rr := httptest.NewRecorder()
+
+	handler.List(rr, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+	assert.Equal(t, "application/problem+json", rr.Header().Get("Content-Type"))
 }

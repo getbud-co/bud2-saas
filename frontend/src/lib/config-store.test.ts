@@ -108,7 +108,7 @@ describe("Store Functions", () => {
     it("returns seed data when localStorage is empty", () => {
       const snapshot = loadConfigSnapshot();
 
-      expect(snapshot.schemaVersion).toBe(2);
+      expect(snapshot.schemaVersion).toBe(3);
       expect(snapshot.activeOrgId).toBe("org-1");
       expect(Object.keys(snapshot.organizationsById).length).toBeGreaterThan(0);
     });
@@ -163,7 +163,7 @@ describe("Store Functions", () => {
       const snapshot = loadConfigSnapshot();
 
       // Should return seed data
-      expect(snapshot.schemaVersion).toBe(2);
+      expect(snapshot.schemaVersion).toBe(3);
       expect(snapshot.activeOrgId).toBe("org-1");
     });
 
@@ -187,7 +187,7 @@ describe("Store Functions", () => {
       localStorage.setItem("bud.saas.config-store", JSON.stringify(oldData));
       const snapshot = loadConfigSnapshot();
 
-      expect(snapshot.schemaVersion).toBe(2);
+      expect(snapshot.schemaVersion).toBe(3);
       // Should have migrated org with new fields
       expect(snapshot.organizationsById["org-1"]?.depth).toBeDefined();
       expect(snapshot.organizationsById["org-1"]?.path).toBeDefined();
@@ -228,7 +228,7 @@ describe("Store Functions", () => {
       const initial = loadConfigSnapshot();
       const saved = saveConfigSnapshot(initial);
 
-      expect(saved.schemaVersion).toBe(2);
+      expect(saved.schemaVersion).toBe(3);
       expect(saved.updatedAt).toBeDefined();
     });
 

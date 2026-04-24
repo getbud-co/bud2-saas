@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/getbud-co/bud2/backend/internal/domain/membership"
+	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	"github.com/getbud-co/bud2/backend/internal/domain/user"
 )
 
@@ -56,6 +56,6 @@ func NewUserList(count int) []user.User {
 
 func NewUserWithMembership() *user.User {
 	u := NewUser()
-	u.Memberships = []membership.Membership{*NewMembership()}
+	u.Memberships = []organization.Membership{*NewMembership()}
 	return u
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	apptx "github.com/getbud-co/bud2/backend/internal/app/tx"
-	"github.com/getbud-co/bud2/backend/internal/domain/membership"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	"github.com/getbud-co/bud2/backend/internal/domain/team"
 	usr "github.com/getbud-co/bud2/backend/internal/domain/user"
@@ -138,7 +137,7 @@ func TestDeleteUseCase_Execute_MembershipNotFound(t *testing.T) {
 
 	targetUser := fixtures.NewUser()
 	organizationID := fixtures.NewTestTenantID()
-	txUsers.On("GetByIDForOrganization", mock.Anything, targetUser.ID, organizationID.UUID()).Return(nil, membership.ErrNotFound)
+	txUsers.On("GetByIDForOrganization", mock.Anything, targetUser.ID, organizationID.UUID()).Return(nil, organization.ErrMembershipNotFound)
 
 	err := uc.Execute(context.Background(), DeleteCommand{
 		OrganizationID:  organizationID,
@@ -146,7 +145,7 @@ func TestDeleteUseCase_Execute_MembershipNotFound(t *testing.T) {
 		TargetUserID:    targetUser.ID,
 	})
 
-	assert.ErrorIs(t, err, membership.ErrNotFound)
+	assert.ErrorIs(t, err, organization.ErrMembershipNotFound)
 }
 
 func TestDeleteUseCase_Execute_StopsWhenRemovingUserFromTeamsFails(t *testing.T) {

@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/getbud-co/bud2/backend/internal/domain/membership"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	"github.com/getbud-co/bud2/backend/internal/domain/team"
 	"github.com/getbud-co/bud2/backend/internal/domain/user"
@@ -37,10 +36,10 @@ func TestTeamRepository_Create_ReturnsMembersWithUserData(t *testing.T) {
 		PasswordHash: "hashed",
 		Status:       user.StatusActive,
 		Language:     "pt-br",
-		Memberships: []membership.Membership{{
+		Memberships: []organization.Membership{{
 			OrganizationID: org.ID,
-			Role:           membership.RoleSuperAdmin,
-			Status:         membership.StatusActive,
+			Role:           organization.MembershipRoleSuperAdmin,
+			Status:         organization.MembershipStatusActive,
 		}},
 	})
 	require.NoError(t, err)
@@ -85,10 +84,10 @@ func TestTeamRepository_Update_ReturnsMembersWithUserData(t *testing.T) {
 		PasswordHash: "hashed",
 		Status:       user.StatusActive,
 		Language:     "pt-br",
-		Memberships: []membership.Membership{{
+		Memberships: []organization.Membership{{
 			OrganizationID: org.ID,
-			Role:           membership.RoleSuperAdmin,
-			Status:         membership.StatusActive,
+			Role:           organization.MembershipRoleSuperAdmin,
+			Status:         organization.MembershipStatusActive,
 		}},
 	})
 	require.NoError(t, err)
@@ -137,10 +136,10 @@ func TestTeamRepository_GetByID_ExcludesMembersWithoutActiveOrganizationMembersh
 		PasswordHash: "hashed",
 		Status:       user.StatusActive,
 		Language:     "pt-br",
-		Memberships: []membership.Membership{{
+		Memberships: []organization.Membership{{
 			OrganizationID: org.ID,
-			Role:           membership.RoleSuperAdmin,
-			Status:         membership.StatusActive,
+			Role:           organization.MembershipRoleSuperAdmin,
+			Status:         organization.MembershipStatusActive,
 		}},
 	})
 	require.NoError(t, err)
@@ -187,16 +186,16 @@ func TestTeamRepository_SoftDeleteMemberByUser_OnlyTouchesTeamsInRequestedOrgani
 		PasswordHash: "hashed",
 		Status:       user.StatusActive,
 		Language:     "pt-br",
-		Memberships: []membership.Membership{
+		Memberships: []organization.Membership{
 			{
 				OrganizationID: orgA.ID,
-				Role:           membership.RoleSuperAdmin,
-				Status:         membership.StatusActive,
+				Role:           organization.MembershipRoleSuperAdmin,
+				Status:         organization.MembershipStatusActive,
 			},
 			{
 				OrganizationID: orgB.ID,
-				Role:           membership.RoleSuperAdmin,
-				Status:         membership.StatusActive,
+				Role:           organization.MembershipRoleSuperAdmin,
+				Status:         organization.MembershipStatusActive,
 			},
 		},
 	})

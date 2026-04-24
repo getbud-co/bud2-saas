@@ -2,17 +2,19 @@
  * Tests for UsersModule
  *
  * This module provides CRUD operations for users within the people section.
- * It uses the PeopleDataContext and ConfigDataContext for data management
+ * It loads users, teams, and roles from API clients
  * and follows the standard Table + Modal CRUD pattern with additional
  * features like filters, bulk actions, and role management.
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { screen, within, waitFor } from "@testing-library/react";
+import { render, screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders } from "../../../../tests/setup/test-utils";
+import { MemoryRouter } from "react-router-dom";
+import { AuthContext } from "@/contexts/AuthContext";
 import { UsersModule } from "./UsersModule";
-import { listUsers } from "@/lib/users-api";
+import { createUser, listUsers, updateUser, updateUserMembership } from "@/lib/users-api";
+import { listRoles } from "@/lib/roles-api";
 
 vi.mock("@/lib/users-api", async () => {
   const actual = await vi.importActual<typeof import("@/lib/users-api")>("@/lib/users-api");
@@ -34,17 +36,58 @@ vi.mock("@/lib/teams-api", async () => {
   };
 });
 
+vi.mock("@/lib/roles-api", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/roles-api")>("@/lib/roles-api");
+  return {
+    ...actual,
+    listRoles: vi.fn().mockResolvedValue({ data: [] }),
+  };
+});
+
 const SEED_USERS = [
   { id: "u1", first_name: "Maria", last_name: "Soares", email: "maria@empresa.com", status: "active", is_system_admin: false, language: "pt-br", role: "super-admin", membership_status: "active", team_ids: [], created_at: "2024-01-01T00:00:00Z", updated_at: "2024-01-01T00:00:00Z" },
   { id: "u2", first_name: "João", last_name: "Silva", email: "joao@empresa.com", status: "active", is_system_admin: false, language: "pt-br", role: "colaborador", membership_status: "active", team_ids: [], created_at: "2024-01-01T00:00:00Z", updated_at: "2024-01-01T00:00:00Z" },
   { id: "u3", first_name: "Ana", last_name: "Costa", email: "ana@empresa.com", status: "inactive", is_system_admin: false, language: "pt-br", role: "gestor", membership_status: "inactive", team_ids: [], created_at: "2024-01-01T00:00:00Z", updated_at: "2024-01-01T00:00:00Z" },
 ];
 
+const API_ROLES = [
+  { id: "role-super-admin", slug: "super-admin", name: "Super Admin", description: "Acesso total ao sistema", type: "system" as const, scope: "org" as const, is_default: false, permission_ids: ["people.view"], users_count: 1, created_at: "2026-04-24T10:00:00Z", updated_at: "2026-04-24T10:00:00Z" },
+  { id: "role-gestor", slug: "gestor", name: "Gestor", description: "Gestao do time direto", type: "system" as const, scope: "team" as const, is_default: false, permission_ids: ["people.view"], users_count: 1, created_at: "2026-04-24T10:01:00Z", updated_at: "2026-04-24T10:01:00Z" },
+  { id: "role-colaborador", slug: "colaborador", name: "Colaborador", description: "Acesso padrao", type: "system" as const, scope: "self" as const, is_default: true, permission_ids: ["people.view"], users_count: 1, created_at: "2026-04-24T10:02:00Z", updated_at: "2026-04-24T10:02:00Z" },
+  { id: "role-lider-projeto", slug: "lider-projeto", name: "Lider de projeto", description: "Coordena projetos especiais", type: "custom" as const, scope: "team" as const, is_default: false, permission_ids: ["people.view"], users_count: 1, created_at: "2026-04-24T10:03:00Z", updated_at: "2026-04-24T10:03:00Z" },
+];
+
 // ─── Test Helpers ───
 
 function setup() {
   const user = userEvent.setup();
-  const result = renderWithProviders(<UsersModule />);
+  const result = render(
+    <MemoryRouter>
+      <AuthContext.Provider
+        value={{
+          isAuthenticated: true,
+          initializing: false,
+          user: null,
+          activeOrganization: {
+            id: "org-1",
+            name: "Org 1",
+            domain: "org-1.example.com",
+            workspace: "org-1",
+            status: "active",
+            membership_role: "super-admin",
+            membership_status: "active",
+          },
+          organizations: [],
+          login: vi.fn().mockResolvedValue(undefined),
+          switchOrganization: vi.fn().mockResolvedValue(undefined),
+          logout: vi.fn(),
+          getToken: vi.fn().mockReturnValue("test-token"),
+        }}
+      >
+        <UsersModule />
+      </AuthContext.Provider>
+    </MemoryRouter>,
+  );
   return { user, ...result };
 }
 
@@ -52,10 +95,25 @@ function setup() {
 
 describe("UsersModule", () => {
   beforeEach(() => {
-    localStorage.clear();
-    localStorage.setItem("bud.test.access-token", "test-token");
     vi.clearAllMocks();
     vi.mocked(listUsers).mockResolvedValue({ data: SEED_USERS, total: SEED_USERS.length, page: 1, size: 100 });
+    vi.mocked(listRoles).mockResolvedValue({ data: API_ROLES });
+    vi.mocked(updateUser).mockResolvedValue(SEED_USERS[0]!);
+    vi.mocked(updateUserMembership).mockResolvedValue({ role: "lider-projeto", status: "active" });
+    vi.mocked(createUser).mockResolvedValue({
+      id: "u4",
+      first_name: "Bruna",
+      last_name: "Lima",
+      email: "bruna@empresa.com",
+      status: "active",
+      is_system_admin: false,
+      language: "pt-br",
+      role: "lider-projeto",
+      membership_status: "invited",
+      team_ids: [],
+      created_at: "2026-04-24T10:04:00Z",
+      updated_at: "2026-04-24T10:04:00Z",
+    });
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -426,6 +484,38 @@ describe("UsersModule", () => {
       expect(cancelButton).toBeInTheDocument();
       expect(cancelButton).not.toBeDisabled();
     });
+
+    it("uses roles from the roles API as invite options", async () => {
+      const { user } = setup();
+
+      await user.click(screen.getByRole("button", { name: /convidar usuário/i }));
+
+      const dialog = await screen.findByRole("dialog");
+      await user.click(within(dialog).getByLabelText(/tipo de usuário/i));
+
+      expect(await screen.findByRole("option", { name: "Lider de projeto" })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "Super Admin" })).toBeInTheDocument();
+    });
+
+    it("sends the selected roles API slug when inviting a user", async () => {
+      const { user } = setup();
+
+      await user.click(screen.getByRole("button", { name: /convidar usuário/i }));
+      const dialog = await screen.findByRole("dialog");
+      await user.type(within(dialog).getByLabelText(/^nome$/i), "Bruna");
+      await user.type(within(dialog).getByLabelText(/sobrenome/i), "Lima");
+      await user.type(within(dialog).getByLabelText(/e-mail/i), "bruna@empresa.com");
+      await user.click(within(dialog).getByLabelText(/tipo de usuário/i));
+      await user.click(await screen.findByRole("option", { name: "Lider de projeto" }));
+      await user.click(within(dialog).getByRole("button", { name: /enviar convite/i }));
+
+      await waitFor(() => {
+        expect(createUser).toHaveBeenCalledWith(
+          expect.objectContaining({ role: "lider-projeto" }),
+          "test-token",
+        );
+      });
+    });
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -553,6 +643,45 @@ describe("UsersModule", () => {
       await screen.findByText("Maria Soares");
       const rows = screen.getAllByRole("row");
       expect(rows.length).toBeGreaterThan(1);
+    });
+
+    it("displays inline role options from the roles API with descriptions", async () => {
+      const { user } = setup();
+
+      await screen.findByText("Maria Soares");
+      await user.click(screen.getByRole("button", { name: "Super Admin" }));
+
+      expect(await screen.findByText("Lider de projeto")).toBeInTheDocument();
+      expect(screen.getByText("Coordena projetos especiais")).toBeInTheDocument();
+    });
+
+    it("updates membership with the selected roles API slug", async () => {
+      const { user } = setup();
+
+      await screen.findByText("Maria Soares");
+      await user.click(screen.getByRole("button", { name: "Super Admin" }));
+      await user.click(await screen.findByText("Lider de projeto"));
+
+      await waitFor(() => {
+        expect(updateUserMembership).toHaveBeenCalledWith(
+          "u1",
+          { role: "lider-projeto", status: "active" },
+          "test-token",
+        );
+      });
+    });
+
+    it("uses roles from the roles API in the edit modal", async () => {
+      const { user } = setup();
+
+      await screen.findByText("Maria Soares");
+      await user.click(screen.getAllByRole("button", { name: /abrir ações de/i })[0]!);
+      await user.click(await screen.findByRole("menuitem", { name: /editar usuário/i }));
+      const dialog = await screen.findByRole("dialog");
+      await user.click(within(dialog).getByLabelText(/tipo de usuário/i));
+
+      expect(await screen.findByRole("option", { name: "Lider de projeto" })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "Gestor" })).toBeInTheDocument();
     });
   });
 

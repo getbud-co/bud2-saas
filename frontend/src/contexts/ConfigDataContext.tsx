@@ -62,6 +62,8 @@ interface CreateRoleInput {
   permissionIds?: string[];
 }
 
+type RolesStatus = "idle" | "loading" | "ready" | "error";
+
 interface ConfigDataContextValue {
   activeOrgId: string;
   organizations: CompanyProfile[];
@@ -71,6 +73,7 @@ interface ConfigDataContextValue {
   cycles: Cycle[];
   roles: ConfigRoleRecord[];
   permissions: Permission[];
+  rolesStatus: RolesStatus;
   roleOptions: RoleOption[];
   tagOptions: TagOption[];
   cyclePresetOptions: CyclePresetOption[];
@@ -188,6 +191,7 @@ export function ConfigDataProvider({ children }: { children: ReactNode }) {
   const [snapshot, setSnapshot] = useState<ConfigStoreSnapshot>(() =>
     loadConfigSnapshot(),
   );
+  const [rolesStatus] = useState<RolesStatus>("idle");
   const authContext = useContext(AuthContext);
   const {
     isAuthenticated,
@@ -884,6 +888,7 @@ export function ConfigDataProvider({ children }: { children: ReactNode }) {
       cycles,
       roles,
       permissions: snapshot.permissions,
+      rolesStatus,
       roleOptions,
       tagOptions,
       cyclePresetOptions,
@@ -924,6 +929,7 @@ export function ConfigDataProvider({ children }: { children: ReactNode }) {
       cycles,
       roles,
       snapshot.permissions,
+      rolesStatus,
       roleOptions,
       tagOptions,
       cyclePresetOptions,

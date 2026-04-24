@@ -12,7 +12,6 @@ import (
 	apptx "github.com/getbud-co/bud2/backend/internal/app/tx"
 	"github.com/getbud-co/bud2/backend/internal/domain"
 	domainauth "github.com/getbud-co/bud2/backend/internal/domain/auth"
-	"github.com/getbud-co/bud2/backend/internal/domain/membership"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	domainteam "github.com/getbud-co/bud2/backend/internal/domain/team"
 	usr "github.com/getbud-co/bud2/backend/internal/domain/user"
@@ -47,7 +46,7 @@ func NewCreateUseCase(users usr.Repository, organizations organization.Repositor
 }
 
 func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*usr.User, []uuid.UUID, error) {
-	role := membership.Role(cmd.Role)
+	role := organization.MembershipRole(cmd.Role)
 	if !role.IsValid() {
 		return nil, nil, domain.ErrValidation
 	}
@@ -94,10 +93,10 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*usr.U
 				Gender:        cmd.Gender,
 				Phone:         cmd.Phone,
 			}
-			if txErr = targetUser.AddMembership(membership.Membership{
+			if txErr = targetUser.AddMembership(organization.Membership{
 				OrganizationID: cmd.OrganizationID.UUID(),
 				Role:           role,
-				Status:         membership.StatusInvited,
+				Status:         organization.MembershipStatusInvited,
 			}); txErr != nil {
 				return txErr
 			}
@@ -107,14 +106,14 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*usr.U
 			}
 		} else {
 			if _, txErr = targetUser.MembershipForOrganization(cmd.OrganizationID.UUID()); txErr == nil {
-				return membership.ErrAlreadyExists
-			} else if !errors.Is(txErr, membership.ErrNotFound) {
+				return organization.ErrMembershipAlreadyExists
+			} else if !errors.Is(txErr, organization.ErrMembershipNotFound) {
 				return txErr
 			}
-			if txErr = targetUser.AddMembership(membership.Membership{
+			if txErr = targetUser.AddMembership(organization.Membership{
 				OrganizationID: cmd.OrganizationID.UUID(),
 				Role:           role,
-				Status:         membership.StatusInvited,
+				Status:         organization.MembershipStatusInvited,
 			}); txErr != nil {
 				return txErr
 			}

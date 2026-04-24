@@ -3,7 +3,6 @@ package auth
 import (
 	"github.com/google/uuid"
 
-	"github.com/getbud-co/bud2/backend/internal/domain/membership"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	"github.com/getbud-co/bud2/backend/internal/domain/user"
 )
@@ -34,7 +33,7 @@ func accessibleOrganizationFromOrganization(org *organization.Organization) Acce
 	}
 }
 
-func accessibleOrganizationFromMembership(org *organization.Organization, m *membership.Membership) AccessibleOrganization {
+func accessibleOrganizationFromMembership(org *organization.Organization, m *organization.Membership) AccessibleOrganization {
 	result := accessibleOrganizationFromOrganization(org)
 	result.MembershipRole = string(m.Role)
 	result.MembershipStatus = string(m.Status)

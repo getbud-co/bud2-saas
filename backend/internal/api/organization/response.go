@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/getbud-co/bud2/backend/internal/domain/organization"
+	org "github.com/getbud-co/bud2/backend/internal/domain/organization"
 )
 
 type Response struct {
@@ -25,7 +25,7 @@ type ListResponse struct {
 	Size  int        `json:"size"`
 }
 
-func toResponse(o *organization.Organization) Response {
+func toResponse(o *org.Organization) Response {
 	return Response{
 		ID:        o.ID,
 		Name:      o.Name,

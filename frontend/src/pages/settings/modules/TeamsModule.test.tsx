@@ -2,16 +2,17 @@
  * Tests for TeamsModule
  *
  * This module provides CRUD operations for teams within the people section.
- * It uses the PeopleDataContext for data management and follows the standard
+ * It loads teams and users from API clients and follows the standard
  * Table + Modal CRUD pattern with additional features like filters and bulk actions.
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { screen, within, waitFor } from "@testing-library/react";
+import { render, screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders } from "../../../../tests/setup/test-utils";
+import { MemoryRouter } from "react-router-dom";
+import { AuthContext } from "@/contexts/AuthContext";
 import { TeamsModule } from "./TeamsModule";
-import { listTeams } from "@/lib/teams-api";
+import { createTeam, deleteTeam, listTeams, updateTeam } from "@/lib/teams-api";
 import { listUsers } from "@/lib/users-api";
 
 vi.mock("@/lib/teams-api", async () => {
@@ -44,7 +45,33 @@ const SEED_TEAMS = [
 
 function setup() {
   const user = userEvent.setup();
-  const result = renderWithProviders(<TeamsModule />);
+  const result = render(
+    <MemoryRouter>
+      <AuthContext.Provider
+        value={{
+          isAuthenticated: true,
+          initializing: false,
+          user: null,
+          activeOrganization: {
+            id: "org-1",
+            name: "Org 1",
+            domain: "org-1.example.com",
+            workspace: "org-1",
+            status: "active",
+            membership_role: "super-admin",
+            membership_status: "active",
+          },
+          organizations: [],
+          login: vi.fn().mockResolvedValue(undefined),
+          switchOrganization: vi.fn().mockResolvedValue(undefined),
+          logout: vi.fn(),
+          getToken: vi.fn().mockReturnValue("test-token"),
+        }}
+      >
+        <TeamsModule />
+      </AuthContext.Provider>
+    </MemoryRouter>,
+  );
   return { user, ...result };
 }
 
@@ -52,12 +79,36 @@ function setup() {
 
 describe("TeamsModule", () => {
   beforeEach(() => {
-    localStorage.clear();
-    localStorage.setItem("bud.test.access-token", "test-token");
     vi.clearAllMocks();
     // Re-apply default mocks after clearAllMocks
     vi.mocked(listTeams).mockResolvedValue({ data: SEED_TEAMS, total: SEED_TEAMS.length, page: 1, size: 100 });
     vi.mocked(listUsers).mockResolvedValue({ data: [], total: 0, page: 1, size: 100 });
+    vi.mocked(createTeam).mockResolvedValue({
+      id: "t5",
+      org_id: "org1",
+      name: "Suporte",
+      description: null,
+      color: "neutral",
+      status: "active",
+      members: [],
+      member_count: 0,
+      created_at: "2026-04-24T10:00:00Z",
+      updated_at: "2026-04-24T10:00:00Z",
+    });
+    vi.mocked(updateTeam).mockImplementation(async (teamId, params) => {
+      const existing = SEED_TEAMS.find((team) => team.id === teamId) ?? SEED_TEAMS[0]!;
+      return {
+        ...existing,
+        name: params.name,
+        description: params.description ?? null,
+        color: params.color,
+        status: params.status,
+        members: [],
+        member_count: 0,
+        updated_at: "2026-04-24T10:01:00Z",
+      };
+    });
+    vi.mocked(deleteTeam).mockResolvedValue(undefined);
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -348,6 +399,22 @@ describe("TeamsModule", () => {
         expect(within(dialog).getByRole("tab", { name: /membros/i })).toBeInTheDocument();
       });
     });
+
+    it("creates a team through the API", async () => {
+      const { user } = setup();
+
+      await user.click(screen.getByRole("button", { name: /novo time/i }));
+      const dialog = await screen.findByRole("dialog");
+      await user.type(within(dialog).getByLabelText(/nome do time/i), "Suporte");
+      await user.click(within(dialog).getByRole("button", { name: /criar time/i }));
+
+      await waitFor(() => {
+        expect(createTeam).toHaveBeenCalledWith(
+          { name: "Suporte", description: null, color: "neutral", members: [] },
+          "test-token",
+        );
+      });
+    });
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -404,6 +471,36 @@ describe("TeamsModule", () => {
 
       await waitFor(() => {
         expect(screen.getByRole("menuitem", { name: /excluir time/i })).toBeInTheDocument();
+      });
+    });
+
+    it("archives a team through the API", async () => {
+      const { user } = setup();
+
+      await screen.findByText("Engenharia");
+      await user.click(screen.getByRole("button", { name: /abrir ações do time engenharia/i }));
+      await user.click(await screen.findByRole("menuitem", { name: /arquivar time/i }));
+
+      await waitFor(() => {
+        expect(updateTeam).toHaveBeenCalledWith(
+          "t1",
+          expect.objectContaining({ status: "archived" }),
+          "test-token",
+        );
+      });
+    });
+
+    it("deletes a team through the API", async () => {
+      const { user } = setup();
+
+      await screen.findByText("Engenharia");
+      await user.click(screen.getByRole("button", { name: /abrir ações do time engenharia/i }));
+      await user.click(await screen.findByRole("menuitem", { name: /excluir time/i }));
+      const dialog = await screen.findByRole("dialog");
+      await user.click(within(dialog).getByRole("button", { name: /^excluir$/i }));
+
+      await waitFor(() => {
+        expect(deleteTeam).toHaveBeenCalledWith("t1", "test-token");
       });
     });
   });

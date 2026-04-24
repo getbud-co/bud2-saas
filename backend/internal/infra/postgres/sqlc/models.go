@@ -45,6 +45,18 @@ type RefreshToken struct {
 	ActiveOrganizationID pgtype.UUID
 }
 
+type Role struct {
+	ID          uuid.UUID
+	Slug        string
+	Name        string
+	Description pgtype.Text
+	Type        string
+	Scope       string
+	IsDefault   bool
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
 type Team struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID

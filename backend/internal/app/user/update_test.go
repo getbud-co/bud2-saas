@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	apptx "github.com/getbud-co/bud2/backend/internal/app/tx"
-	"github.com/getbud-co/bud2/backend/internal/domain/membership"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	"github.com/getbud-co/bud2/backend/internal/domain/team"
 	usr "github.com/getbud-co/bud2/backend/internal/domain/user"
@@ -62,7 +61,7 @@ func TestUpdateUseCase_Execute_Success(t *testing.T) {
 	updatedUser.FirstName = "Updated"
 	updatedUser.LastName = "Name"
 	updatedUser.Memberships[0].OrganizationID = tenantID.UUID()
-	updatedUser.Memberships[0].Role = membership.RoleGestor
+	updatedUser.Memberships[0].Role = organization.MembershipRoleGestor
 
 	txUsers.On("GetByIDForOrganization", mock.Anything, testUser.ID, tenantID.UUID()).Return(testUser, nil)
 	txUsers.On("Update", mock.Anything, mock.Anything).Return(updatedUser, nil)
@@ -98,13 +97,13 @@ func TestUpdateUseCase_Execute_MembershipNotFound(t *testing.T) {
 	tenantID := fixtures.NewTestTenantID()
 	testUser := fixtures.NewUser()
 
-	txUsers.On("GetByIDForOrganization", mock.Anything, testUser.ID, tenantID.UUID()).Return(nil, membership.ErrNotFound)
+	txUsers.On("GetByIDForOrganization", mock.Anything, testUser.ID, tenantID.UUID()).Return(nil, organization.ErrMembershipNotFound)
 
 	result, _, err := uc.Execute(context.Background(), UpdateCommand{
 		OrganizationID: tenantID, ID: testUser.ID, FirstName: "Test", LastName: "User", Email: testUser.Email, Status: "active",
 	})
 
-	assert.ErrorIs(t, err, membership.ErrNotFound)
+	assert.ErrorIs(t, err, organization.ErrMembershipNotFound)
 	assert.Nil(t, result)
 }
 

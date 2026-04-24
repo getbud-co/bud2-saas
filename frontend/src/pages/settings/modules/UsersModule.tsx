@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   Table,
   TableCardHeader,
@@ -34,8 +34,6 @@ import {
 } from "@phosphor-icons/react";
 import type { UserStatus, Gender } from "@/types";
 import type { PeopleUserView } from "@/contexts/PeopleDataContext";
-import { useConfigData } from "@/contexts/ConfigDataContext";
-import { createRoleIdForOrg } from "@/lib/people-store";
 import {
   createUser,
   listUsers,
@@ -45,6 +43,7 @@ import {
   userErrorToMessage,
   type UserApiResponse,
 } from "@/lib/users-api";
+import { listRoles, roleErrorToMessage, type RoleApiResponse } from "@/lib/roles-api";
 import { listTeams, type TeamApiResponse } from "@/lib/teams-api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserForm } from "./hooks/useUserForm";
@@ -65,6 +64,10 @@ const STATUS_BADGE: Record<UserStatus, { label: string; color: "success" | "neut
 };
 
 const DEFAULT_ROLE_SLUG = "colaborador";
+
+function createViewRoleId(orgId: string, roleSlug: string): string {
+  return `role-${orgId}-${roleSlug}`;
+}
 
 function apiUserToView(u: UserApiResponse, orgId: string, teamNameById?: Map<string, string>): PeopleUserView {
   const roleType = u.role ?? "colaborador";
@@ -93,7 +96,7 @@ function apiUserToView(u: UserApiResponse, orgId: string, teamNameById?: Map<str
     createdAt: u.created_at,
     updatedAt: u.updated_at,
     deletedAt: null,
-    roleId: createRoleIdForOrg(orgId, roleType),
+    roleId: createViewRoleId(orgId, roleType),
     roleType,
     teams: teamNames,
   };
@@ -101,7 +104,6 @@ function apiUserToView(u: UserApiResponse, orgId: string, teamNameById?: Map<str
 
 export function UsersModule() {
   const [pageUsers, setPageUsers] = useState<PeopleUserView[]>([]);
-  const { activeOrgId: legacyOrgId, roleOptions, resolveRoleSlug } = useConfigData();
   const { getToken, activeOrganization } = useAuth();
   const [inviteOpen, setInviteOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -111,15 +113,61 @@ export function UsersModule() {
   const [resetPasswordUser, setResetPasswordUser] = useState<UserView | null>(null);
   const [editUser, setEditUser] = useState<UserView | null>(null);
   const [apiTeams, setApiTeams] = useState<{ id: string; name: string }[]>([]);
+  const [apiRoles, setApiRoles] = useState<RoleApiResponse[]>([]);
 
   const defaultInviteRole = useMemo(
-    () => roleOptions.find((role) => role.isDefault)?.value ?? roleOptions[0]?.value ?? DEFAULT_ROLE_SLUG,
-    [roleOptions],
+    () =>
+      apiRoles.find((role) => role.is_default)?.slug ??
+      apiRoles.find((role) => role.slug === DEFAULT_ROLE_SLUG)?.slug ??
+      apiRoles[0]?.slug ??
+      DEFAULT_ROLE_SLUG,
+    [apiRoles],
   );
 
   const inviteForm = useUserForm(defaultInviteRole);
   const editForm = useUserForm(defaultInviteRole);
-  const apiOrgId = activeOrganization?.id ?? legacyOrgId;
+  const inviteRole = inviteForm.role;
+  const setInviteRole = inviteForm.setRole;
+  const previousDefaultInviteRoleRef = useRef(defaultInviteRole);
+  const apiOrgId = activeOrganization?.id ?? "org-1";
+
+  const roleSelectionOptions = useMemo(
+    () => {
+      const roles = apiRoles.length > 0
+        ? apiRoles
+        : [{
+            slug: DEFAULT_ROLE_SLUG,
+            name: "Colaborador",
+            description: "Sem descrição",
+          }];
+      return roles.map((role) => ({
+        value: role.slug,
+        label: role.name,
+        description: role.description ?? "Sem descrição",
+      }));
+    },
+    [apiRoles],
+  );
+
+  const roleSlugs = useMemo(
+    () => new Set(roleSelectionOptions.map((role) => role.value)),
+    [roleSelectionOptions],
+  );
+
+  const resolveRoleSlug = useCallback(
+    (legacyOrCanonical: string) => {
+      if (roleSlugs.has(legacyOrCanonical)) return legacyOrCanonical;
+      const aliases: Record<string, string> = {
+        admin: "super-admin",
+        manager: "gestor",
+        collaborator: DEFAULT_ROLE_SLUG,
+      };
+      const alias = aliases[legacyOrCanonical];
+      if (alias && roleSlugs.has(alias)) return alias;
+      return legacyOrCanonical;
+    },
+    [roleSlugs],
+  );
 
   const teamNameById = useMemo(
     () => new Map(apiTeams.map((t) => [t.id, t.name])),
@@ -136,6 +184,33 @@ export function UsersModule() {
     [apiTeams],
   );
 
+  /* load roles from API */
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    let cancelled = false;
+    listRoles(token)
+      .then((res) => {
+        if (!cancelled) setApiRoles(res.data);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setApiRoles([]);
+          toast.error(roleErrorToMessage(err));
+        }
+      });
+    return () => { cancelled = true; };
+  }, [apiOrgId, getToken]);
+
+  useEffect(() => {
+    const previousDefaultInviteRole = previousDefaultInviteRoleRef.current;
+    if (previousDefaultInviteRole === defaultInviteRole) return;
+    previousDefaultInviteRoleRef.current = defaultInviteRole;
+    if (inviteRole === previousDefaultInviteRole) {
+      setInviteRole(defaultInviteRole);
+    }
+  }, [defaultInviteRole, inviteRole, setInviteRole]);
+
   /* load teams from API */
   useEffect(() => {
     const token = getToken();
@@ -148,11 +223,6 @@ export function UsersModule() {
       .catch(() => { /* teams are optional, fail silently */ });
     return () => { cancelled = true; };
   }, [apiOrgId, getToken]);
-
-  const roleSelectionOptions = useMemo(
-    () => roleOptions.map((role) => ({ value: role.value, label: role.label, description: role.description || "Sem descrição" })),
-    [roleOptions],
-  );
 
   const roleFilterOptions = useMemo(
     () => ([
@@ -242,7 +312,7 @@ export function UsersModule() {
         createdAt: created.created_at,
         updatedAt: created.updated_at,
         deletedAt: null,
-        roleId: createRoleIdForOrg(apiOrgId, resolveRoleSlug(inviteForm.role)),
+        roleId: createViewRoleId(apiOrgId, resolveRoleSlug(inviteForm.role)),
         roleType: resolveRoleSlug(inviteForm.role),
         teams: inviteForm.teams.map((id) => teamNameById.get(id) ?? id),
       };
@@ -429,7 +499,7 @@ export function UsersModule() {
       gender: (editForm.gender as Gender) || null,
       language: editForm.language,
       teams: editForm.teams.map((id) => teamNameById.get(id) ?? id),
-      ...(roleUpdated ? { roleId: createRoleIdForOrg(apiOrgId, newRole), roleType: newRole } : {}),
+      ...(roleUpdated ? { roleId: createViewRoleId(apiOrgId, newRole), roleType: newRole } : {}),
       updatedAt: new Date().toISOString(),
     } : u));
     if (!roleUpdated) {
@@ -449,7 +519,7 @@ export function UsersModule() {
     try {
       await updateUserMembership(userId, { role: normalizedRole, status: membershipStatus }, token);
       setPageUsers((prev) => prev.map((u) => u.id === userId
-        ? { ...u, roleType: normalizedRole, roleId: createRoleIdForOrg(apiOrgId, normalizedRole) }
+        ? { ...u, roleType: normalizedRole, roleId: createViewRoleId(apiOrgId, normalizedRole) }
         : u));
       setRolePopoverUser(null);
       toast.success("Tipo de usuário atualizado");

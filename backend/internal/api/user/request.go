@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/getbud-co/bud2/backend/internal/app/user"
+	appuser "github.com/getbud-co/bud2/backend/internal/app/user"
 	"github.com/getbud-co/bud2/backend/internal/domain"
 )
 
@@ -55,8 +55,8 @@ func parseUUIDs(ids []string) []uuid.UUID {
 	return out
 }
 
-func (r createRequest) toCommand(organizationID domain.TenantID) user.CreateCommand {
-	return user.CreateCommand{
+func (r createRequest) toCommand(organizationID domain.TenantID) appuser.CreateCommand {
+	return appuser.CreateCommand{
 		OrganizationID: organizationID,
 		FirstName:      r.FirstName,
 		LastName:       r.LastName,
@@ -73,8 +73,8 @@ func (r createRequest) toCommand(organizationID domain.TenantID) user.CreateComm
 	}
 }
 
-func (r updateRequest) toCommand(organizationID domain.TenantID, id uuid.UUID) user.UpdateCommand {
-	cmd := user.UpdateCommand{
+func (r updateRequest) toCommand(organizationID domain.TenantID, id uuid.UUID) appuser.UpdateCommand {
+	cmd := appuser.UpdateCommand{
 		OrganizationID: organizationID,
 		ID:             id,
 		FirstName:      r.FirstName,
@@ -95,8 +95,8 @@ func (r updateRequest) toCommand(organizationID domain.TenantID, id uuid.UUID) u
 	return cmd
 }
 
-func (r updateMembershipRequest) toCommand(organizationID domain.TenantID, id uuid.UUID) user.UpdateMembershipCommand {
-	return user.UpdateMembershipCommand{
+func (r updateMembershipRequest) toCommand(organizationID domain.TenantID, id uuid.UUID) appuser.UpdateMembershipCommand {
+	return appuser.UpdateMembershipCommand{
 		OrganizationID: organizationID,
 		ID:             id,
 		Role:           r.Role,

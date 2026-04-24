@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/getbud-co/bud2/backend/internal/domain/membership"
+	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	"github.com/getbud-co/bud2/backend/internal/domain/user"
 	"github.com/getbud-co/bud2/backend/internal/infra/postgres/sqlc"
 )
@@ -222,7 +222,7 @@ func populateUser(
 	language string,
 	gender, phone pgtype.Text,
 	createdAt, updatedAt time.Time,
-	memberships []membership.Membership,
+	memberships []organization.Membership,
 ) *user.User {
 	u := &user.User{
 		ID:            id,
@@ -266,20 +266,20 @@ func getUserByEmailRowToDomain(row sqlc.GetUserByEmailRow) *user.User {
 func listOrganizationUsersRowToDomain(row sqlc.ListOrganizationUsersRow, orgID uuid.UUID) *user.User {
 	return populateUser(row.ID, row.FirstName, row.LastName, row.Email, row.PasswordHash, row.Status,
 		row.IsSystemAdmin, row.Nickname, row.JobTitle, row.BirthDate, row.Language, row.Gender, row.Phone,
-		row.CreatedAt, row.UpdatedAt, []membership.Membership{{
+		row.CreatedAt, row.UpdatedAt, []organization.Membership{{
 			OrganizationID: orgID,
-			Role:           membership.Role(row.MembershipRole),
-			Status:         membership.Status(row.MembershipStatus),
+			Role:           organization.MembershipRole(row.MembershipRole),
+			Status:         organization.MembershipStatus(row.MembershipStatus),
 		}})
 }
 
 func listOrganizationUsersByStatusRowToDomain(row sqlc.ListOrganizationUsersByStatusRow, orgID uuid.UUID) *user.User {
 	return populateUser(row.ID, row.FirstName, row.LastName, row.Email, row.PasswordHash, row.Status,
 		row.IsSystemAdmin, row.Nickname, row.JobTitle, row.BirthDate, row.Language, row.Gender, row.Phone,
-		row.CreatedAt, row.UpdatedAt, []membership.Membership{{
+		row.CreatedAt, row.UpdatedAt, []organization.Membership{{
 			OrganizationID: orgID,
-			Role:           membership.Role(row.MembershipRole),
-			Status:         membership.Status(row.MembershipStatus),
+			Role:           organization.MembershipRole(row.MembershipRole),
+			Status:         organization.MembershipStatus(row.MembershipStatus),
 		}})
 }
 
@@ -335,7 +335,7 @@ func (r *UserRepository) loadMemberships(ctx context.Context, u *user.User) erro
 	if err != nil {
 		return err
 	}
-	u.Memberships = make([]membership.Membership, len(rows))
+	u.Memberships = make([]organization.Membership, len(rows))
 	for i := range rows {
 		u.Memberships[i] = *listUserMembershipsRowToMembership(rows[i])
 	}
@@ -350,7 +350,7 @@ func (r *UserRepository) loadMembershipsForOrganization(ctx context.Context, u *
 	if err != nil {
 		return err
 	}
-	u.Memberships = make([]membership.Membership, len(rows))
+	u.Memberships = make([]organization.Membership, len(rows))
 	for i := range rows {
 		u.Memberships[i] = *listUserMembershipsForOrganizationRowToMembership(rows[i])
 	}
@@ -390,29 +390,29 @@ func (r *UserRepository) syncMemberships(ctx context.Context, u *user.User) erro
 	return nil
 }
 
-func createOrganizationMembershipRowToMembership(row sqlc.CreateOrganizationMembershipRow) *membership.Membership {
+func createOrganizationMembershipRowToMembership(row sqlc.CreateOrganizationMembershipRow) *organization.Membership {
 	return membershipRowToDomain(row.ID, row.OrganizationID, row.UserID, row.Role, row.Status, row.InvitedByUserID, row.JoinedAt, row.CreatedAt, row.UpdatedAt)
 }
 
-func listUserMembershipsRowToMembership(row sqlc.ListUserMembershipsRow) *membership.Membership {
+func listUserMembershipsRowToMembership(row sqlc.ListUserMembershipsRow) *organization.Membership {
 	return membershipRowToDomain(row.ID, row.OrganizationID, row.UserID, row.Role, row.Status, row.InvitedByUserID, row.JoinedAt, row.CreatedAt, row.UpdatedAt)
 }
 
-func listUserMembershipsForOrganizationRowToMembership(row sqlc.ListUserMembershipsForOrganizationRow) *membership.Membership {
+func listUserMembershipsForOrganizationRowToMembership(row sqlc.ListUserMembershipsForOrganizationRow) *organization.Membership {
 	return membershipRowToDomain(row.ID, row.OrganizationID, row.UserID, row.Role, row.Status, row.InvitedByUserID, row.JoinedAt, row.CreatedAt, row.UpdatedAt)
 }
 
-func updateOrganizationMembershipRowToMembership(row sqlc.UpdateOrganizationMembershipRow) *membership.Membership {
+func updateOrganizationMembershipRowToMembership(row sqlc.UpdateOrganizationMembershipRow) *organization.Membership {
 	return membershipRowToDomain(row.ID, row.OrganizationID, row.UserID, row.Role, row.Status, row.InvitedByUserID, row.JoinedAt, row.CreatedAt, row.UpdatedAt)
 }
 
-func membershipRowToDomain(id, organizationID, userID uuid.UUID, role, status string, invitedByUserID pgtype.UUID, joinedAt pgtype.Timestamptz, createdAt, updatedAt time.Time) *membership.Membership {
-	result := &membership.Membership{
+func membershipRowToDomain(id, organizationID, userID uuid.UUID, role, status string, invitedByUserID pgtype.UUID, joinedAt pgtype.Timestamptz, createdAt, updatedAt time.Time) *organization.Membership {
+	result := &organization.Membership{
 		ID:             id,
 		OrganizationID: organizationID,
 		UserID:         userID,
-		Role:           membership.Role(role),
-		Status:         membership.Status(status),
+		Role:           organization.MembershipRole(role),
+		Status:         organization.MembershipStatus(status),
 		CreatedAt:      createdAt,
 		UpdatedAt:      updatedAt,
 	}

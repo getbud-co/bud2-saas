@@ -21,11 +21,15 @@ import (
 	apiauth "github.com/getbud-co/bud2/backend/internal/api/auth"
 	apibootstrap "github.com/getbud-co/bud2/backend/internal/api/bootstrap"
 	apiorg "github.com/getbud-co/bud2/backend/internal/api/organization"
+	apiperm "github.com/getbud-co/bud2/backend/internal/api/permission"
+	apirole "github.com/getbud-co/bud2/backend/internal/api/role"
 	apiteam "github.com/getbud-co/bud2/backend/internal/api/team"
 	apiuser "github.com/getbud-co/bud2/backend/internal/api/user"
 	appauth "github.com/getbud-co/bud2/backend/internal/app/auth"
 	appbootstrap "github.com/getbud-co/bud2/backend/internal/app/bootstrap"
 	apporg "github.com/getbud-co/bud2/backend/internal/app/organization"
+	appperm "github.com/getbud-co/bud2/backend/internal/app/permission"
+	approle "github.com/getbud-co/bud2/backend/internal/app/role"
 	appteam "github.com/getbud-co/bud2/backend/internal/app/team"
 	appuser "github.com/getbud-co/bud2/backend/internal/app/user"
 	"github.com/getbud-co/bud2/backend/internal/config"
@@ -90,6 +94,7 @@ func main() {
 	orgRepo := postgres.NewOrgRepository(queries)
 	userRepo := postgres.NewUserRepository(queries)
 	teamRepo := postgres.NewTeamRepository(queries)
+	roleRepo := postgres.NewRoleRepository(queries)
 	refreshTokenRepo := postgres.NewRefreshTokenRepository(queries)
 	txManager := postgres.NewTxManager(pool)
 	tokenIssuer := infraauth.NewTokenIssuer(cfg.JWTSecret)
@@ -117,6 +122,9 @@ func main() {
 	updateTeam := appteam.NewUpdateUseCase(teamRepo, userRepo, txManager, logger)
 	deleteTeam := appteam.NewDeleteUseCase(txManager, logger)
 
+	listRole := approle.NewListUseCase(roleRepo, logger)
+	listPermission := appperm.NewListUseCase(logger)
+
 	bootstrapUC := appbootstrap.NewUseCase(orgRepo, txManager, tokenIssuer, passwordHasher, logger)
 	loginUC := appauth.NewLoginUseCase(userRepo, orgRepo, tokenIssuer, passwordHasher, refreshTokenRepo, tokenHasher, logger)
 	getSessionUC := appauth.NewGetSessionUseCase(userRepo, orgRepo, tokenIssuer, passwordHasher, logger)
@@ -129,7 +137,9 @@ func main() {
 	orgHandler := apiorg.NewHandler(createOrg, getOrg, listOrg, updateOrg, deleteOrg)
 	userHandler := apiuser.NewHandler(createUser, getUser, listUser, updateUser, deleteUser, getUserMembership, updateUserMembership, teamRepo)
 	teamHandler := apiteam.NewHandler(createTeam, getTeam, listTeam, updateTeam, deleteTeam)
-	router := api.NewRouter(bootstrapHandler, authHandler, orgHandler, userHandler, teamHandler, api.RouterConfig{
+	roleHandler := apirole.NewHandler(listRole)
+	permissionHandler := apiperm.NewHandler(listPermission)
+	router := api.NewRouter(bootstrapHandler, authHandler, orgHandler, userHandler, teamHandler, roleHandler, permissionHandler, api.RouterConfig{
 		Env:            cfg.Env,
 		AllowedOrigins: strings.Split(cfg.AllowedOrigins, ","),
 		OpenAPISpec:    apispec.Spec,

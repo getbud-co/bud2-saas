@@ -3,7 +3,7 @@ package organization
 import (
 	"github.com/google/uuid"
 
-	"github.com/getbud-co/bud2/backend/internal/app/organization"
+	apporg "github.com/getbud-co/bud2/backend/internal/app/organization"
 )
 
 type createRequest struct {
@@ -20,8 +20,8 @@ type updateRequest struct {
 	Status    string `json:"status" validate:"required,oneof=active inactive"`
 }
 
-func (r createRequest) toCommand() organization.CreateCommand {
-	return organization.CreateCommand{
+func (r createRequest) toCommand() apporg.CreateCommand {
+	return apporg.CreateCommand{
 		Name:      r.Name,
 		Domain:    r.Domain,
 		Workspace: r.Workspace,
@@ -29,8 +29,8 @@ func (r createRequest) toCommand() organization.CreateCommand {
 	}
 }
 
-func (r updateRequest) toCommand(id uuid.UUID) organization.UpdateCommand {
-	return organization.UpdateCommand{
+func (r updateRequest) toCommand(id uuid.UUID) apporg.UpdateCommand {
+	return apporg.UpdateCommand{
 		ID:        id,
 		Name:      r.Name,
 		Domain:    r.Domain,
