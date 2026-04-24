@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/getbud-co/bud2/backend/internal/domain/membership"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	"github.com/getbud-co/bud2/backend/internal/domain/user"
 	"github.com/getbud-co/bud2/backend/internal/infra/postgres/sqlc"
@@ -37,10 +36,10 @@ func TestUserRepository_ListByOrganization_ReturnsOnlyUsersInOrganization(t *tes
 		PasswordHash: "hashed",
 		Status:       user.StatusActive,
 		Language:     "pt-br",
-		Memberships: []membership.Membership{{
+		Memberships: []organization.Membership{{
 			OrganizationID: orgA.ID,
-			Role:           membership.RoleSuperAdmin,
-			Status:         membership.StatusActive,
+			Role:           organization.MembershipRoleSuperAdmin,
+			Status:         organization.MembershipStatusActive,
 		}},
 	})
 	require.NoError(t, err)
@@ -53,10 +52,10 @@ func TestUserRepository_ListByOrganization_ReturnsOnlyUsersInOrganization(t *tes
 		PasswordHash: "hashed",
 		Status:       user.StatusActive,
 		Language:     "pt-br",
-		Memberships: []membership.Membership{{
+		Memberships: []organization.Membership{{
 			OrganizationID: orgB.ID,
-			Role:           membership.RoleSuperAdmin,
-			Status:         membership.StatusActive,
+			Role:           organization.MembershipRoleSuperAdmin,
+			Status:         organization.MembershipStatusActive,
 		}},
 	})
 	require.NoError(t, err)

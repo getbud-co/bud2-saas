@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/getbud-co/bud2/backend/internal/domain/membership"
+	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	"github.com/getbud-co/bud2/backend/internal/domain/user"
 	"github.com/getbud-co/bud2/backend/internal/infra/postgres/sqlc"
 )
@@ -49,8 +49,8 @@ func TestMembershipRowToDomain_MapsOptionalFields(t *testing.T) {
 		uuid.New(),
 		uuid.New(),
 		uuid.New(),
-		string(membership.RoleGestor),
-		string(membership.StatusInactive),
+		string(organization.MembershipRoleGestor),
+		string(organization.MembershipStatusInactive),
 		pgtype.UUID{Bytes: invitedBy, Valid: true},
 		pgtype.Timestamptz{Time: joinedAt, Valid: true},
 		now,
@@ -61,6 +61,6 @@ func TestMembershipRowToDomain_MapsOptionalFields(t *testing.T) {
 	require.NotNil(t, result.JoinedAt)
 	assert.Equal(t, invitedBy, *result.InvitedByUserID)
 	assert.Equal(t, joinedAt, *result.JoinedAt)
-	assert.Equal(t, membership.RoleGestor, result.Role)
-	assert.Equal(t, membership.StatusInactive, result.Status)
+	assert.Equal(t, organization.MembershipRoleGestor, result.Role)
+	assert.Equal(t, organization.MembershipStatusInactive, result.Status)
 }
