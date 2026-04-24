@@ -25,7 +25,6 @@ import (
 	apiuser "github.com/getbud-co/bud2/backend/internal/api/user"
 	appuser "github.com/getbud-co/bud2/backend/internal/app/user"
 	"github.com/getbud-co/bud2/backend/internal/domain"
-	"github.com/getbud-co/bud2/backend/internal/domain/membership"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	"github.com/getbud-co/bud2/backend/internal/domain/user"
 	infraauth "github.com/getbud-co/bud2/backend/internal/infra/auth"
@@ -109,10 +108,10 @@ func TestUsersIntegration_ListAndGet_RespectActiveOrganization(t *testing.T) {
 		PasswordHash: "hashed",
 		Status:       user.StatusActive,
 		Language:     "pt-br",
-		Memberships: []membership.Membership{{
+		Memberships: []organization.Membership{{
 			OrganizationID: orgA.ID,
-			Role:           membership.RoleSuperAdmin,
-			Status:         membership.StatusActive,
+			Role:           organization.MembershipRoleSuperAdmin,
+			Status:         organization.MembershipStatusActive,
 		}},
 	})
 	require.NoError(t, err)
@@ -124,10 +123,10 @@ func TestUsersIntegration_ListAndGet_RespectActiveOrganization(t *testing.T) {
 		PasswordHash: "hashed",
 		Status:       user.StatusActive,
 		Language:     "pt-br",
-		Memberships: []membership.Membership{{
+		Memberships: []organization.Membership{{
 			OrganizationID: orgA.ID,
-			Role:           membership.RoleColaborador,
-			Status:         membership.StatusActive,
+			Role:           organization.MembershipRoleColaborador,
+			Status:         organization.MembershipStatusActive,
 		}},
 	})
 	require.NoError(t, err)
@@ -140,10 +139,10 @@ func TestUsersIntegration_ListAndGet_RespectActiveOrganization(t *testing.T) {
 		PasswordHash: "hashed",
 		Status:       user.StatusActive,
 		Language:     "pt-br",
-		Memberships: []membership.Membership{{
+		Memberships: []organization.Membership{{
 			OrganizationID: orgB.ID,
-			Role:           membership.RoleSuperAdmin,
-			Status:         membership.StatusActive,
+			Role:           organization.MembershipRoleSuperAdmin,
+			Status:         organization.MembershipStatusActive,
 		}},
 	})
 	require.NoError(t, err)
@@ -290,10 +289,10 @@ func TestUsersIntegration_CreateIncludesLocation(t *testing.T) {
 		PasswordHash: "hashed",
 		Status:       user.StatusActive,
 		Language:     "pt-br",
-		Memberships: []membership.Membership{{
+		Memberships: []organization.Membership{{
 			OrganizationID: org.ID,
-			Role:           membership.RoleSuperAdmin,
-			Status:         membership.StatusActive,
+			Role:           organization.MembershipRoleSuperAdmin,
+			Status:         organization.MembershipStatusActive,
 		}},
 	})
 	require.NoError(t, err)
@@ -371,10 +370,10 @@ func TestUsersIntegration_DeleteIsIdempotent(t *testing.T) {
 		PasswordHash: "hashed",
 		Status:       user.StatusActive,
 		Language:     "pt-br",
-		Memberships: []membership.Membership{{
+		Memberships: []organization.Membership{{
 			OrganizationID: org.ID,
-			Role:           membership.RoleSuperAdmin,
-			Status:         membership.StatusActive,
+			Role:           organization.MembershipRoleSuperAdmin,
+			Status:         organization.MembershipStatusActive,
 		}},
 	})
 	require.NoError(t, err)
@@ -387,10 +386,10 @@ func TestUsersIntegration_DeleteIsIdempotent(t *testing.T) {
 		PasswordHash: "hashed",
 		Status:       user.StatusActive,
 		Language:     "pt-br",
-		Memberships: []membership.Membership{{
+		Memberships: []organization.Membership{{
 			OrganizationID: org.ID,
-			Role:           membership.RoleColaborador,
-			Status:         membership.StatusActive,
+			Role:           organization.MembershipRoleColaborador,
+			Status:         organization.MembershipStatusActive,
 		}},
 	})
 	require.NoError(t, err)

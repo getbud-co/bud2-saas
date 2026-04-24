@@ -14,7 +14,7 @@ import (
 	"github.com/getbud-co/bud2/backend/internal/api/validator"
 	appuser "github.com/getbud-co/bud2/backend/internal/app/user"
 	"github.com/getbud-co/bud2/backend/internal/domain"
-	"github.com/getbud-co/bud2/backend/internal/domain/membership"
+	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	"github.com/getbud-co/bud2/backend/internal/domain/team"
 	usr "github.com/getbud-co/bud2/backend/internal/domain/user"
 )
@@ -36,11 +36,11 @@ type updateUseCase interface {
 }
 
 type getMembershipUseCase interface {
-	Execute(ctx context.Context, organizationID domain.TenantID, id uuid.UUID) (*membership.Membership, error)
+	Execute(ctx context.Context, organizationID domain.TenantID, id uuid.UUID) (*organization.Membership, error)
 }
 
 type updateMembershipUseCase interface {
-	Execute(ctx context.Context, cmd appuser.UpdateMembershipCommand) (*membership.Membership, error)
+	Execute(ctx context.Context, cmd appuser.UpdateMembershipCommand) (*organization.Membership, error)
 }
 
 type deleteUseCase interface {
@@ -232,7 +232,7 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 		TargetUserID:    id,
 	})
 	if err != nil {
-		if errors.Is(err, usr.ErrNotFound) || errors.Is(err, membership.ErrNotFound) {
+		if errors.Is(err, usr.ErrNotFound) || errors.Is(err, organization.ErrMembershipNotFound) {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}

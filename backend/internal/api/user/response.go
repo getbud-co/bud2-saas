@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/getbud-co/bud2/backend/internal/domain/membership"
+	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	usr "github.com/getbud-co/bud2/backend/internal/domain/user"
 )
 
@@ -91,7 +91,7 @@ func toResponseWithTeams(u *usr.User, orgID uuid.UUID, teamIDs []uuid.UUID) Resp
 	return resp
 }
 
-func toMembershipResponse(m *membership.Membership) MembershipResponse {
+func toMembershipResponse(m *organization.Membership) MembershipResponse {
 	resp := MembershipResponse{
 		ID:             m.ID.String(),
 		OrganizationID: m.OrganizationID.String(),

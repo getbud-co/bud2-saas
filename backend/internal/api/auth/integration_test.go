@@ -24,7 +24,6 @@ import (
 	apiteam "github.com/getbud-co/bud2/backend/internal/api/team"
 	apiuser "github.com/getbud-co/bud2/backend/internal/api/user"
 	appauth "github.com/getbud-co/bud2/backend/internal/app/auth"
-	"github.com/getbud-co/bud2/backend/internal/domain/membership"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	"github.com/getbud-co/bud2/backend/internal/domain/user"
 	infraauth "github.com/getbud-co/bud2/backend/internal/infra/auth"
@@ -115,9 +114,9 @@ func TestAuthIntegration_LoginSessionSwitchRefresh(t *testing.T) {
 		PasswordHash: hash,
 		Status:       user.StatusActive,
 		Language:     "pt-br",
-		Memberships: []membership.Membership{
-			{OrganizationID: orgAlpha.ID, Role: membership.RoleSuperAdmin, Status: membership.StatusActive},
-			{OrganizationID: orgBeta.ID, Role: membership.RoleGestor, Status: membership.StatusActive},
+		Memberships: []organization.Membership{
+			{OrganizationID: orgAlpha.ID, Role: organization.MembershipRoleSuperAdmin, Status: organization.MembershipStatusActive},
+			{OrganizationID: orgBeta.ID, Role: organization.MembershipRoleGestor, Status: organization.MembershipStatusActive},
 		},
 	})
 	require.NoError(t, err)
@@ -239,8 +238,8 @@ func TestAuthIntegration_InvitedUser_LoginActivatesMemberships(t *testing.T) {
 		PasswordHash: hash,
 		Status:       user.StatusActive,
 		Language:     "pt-br",
-		Memberships: []membership.Membership{
-			{OrganizationID: org.ID, Role: membership.RoleColaborador, Status: membership.StatusInvited},
+		Memberships: []organization.Membership{
+			{OrganizationID: org.ID, Role: organization.MembershipRoleColaborador, Status: organization.MembershipStatusInvited},
 		},
 	})
 	require.NoError(t, err)
@@ -249,7 +248,7 @@ func TestAuthIntegration_InvitedUser_LoginActivatesMemberships(t *testing.T) {
 	reloaded, err := userRepo.GetByID(ctx, invitedUser.ID)
 	require.NoError(t, err)
 	require.Len(t, reloaded.Memberships, 1)
-	assert.Equal(t, membership.StatusInvited, reloaded.Memberships[0].Status)
+	assert.Equal(t, organization.MembershipStatusInvited, reloaded.Memberships[0].Status)
 
 	// First login should succeed and activate the membership
 	loginBody, err := json.Marshal(map[string]string{"email": invitedUser.Email, "password": "invite123"})
@@ -268,7 +267,7 @@ func TestAuthIntegration_InvitedUser_LoginActivatesMemberships(t *testing.T) {
 	reloadedAfter, err := userRepo.GetByID(ctx, invitedUser.ID)
 	require.NoError(t, err)
 	require.Len(t, reloadedAfter.Memberships, 1)
-	assert.Equal(t, membership.StatusActive, reloadedAfter.Memberships[0].Status)
+	assert.Equal(t, organization.MembershipStatusActive, reloadedAfter.Memberships[0].Status)
 }
 
 func doJSONRequest(t *testing.T, baseURL, method, path, token string, body io.Reader) *http.Response {

@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/getbud-co/bud2/backend/internal/domain/membership"
+	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	"github.com/getbud-co/bud2/backend/internal/test/fixtures"
 )
 
@@ -50,8 +50,8 @@ func TestToResponseForOrganization_NoMatchingMembership(t *testing.T) {
 
 func TestToMembershipResponse(t *testing.T) {
 	m := fixtures.NewMembership()
-	m.Role = membership.RoleSuperAdmin
-	m.Status = membership.StatusActive
+	m.Role = organization.MembershipRoleSuperAdmin
+	m.Status = organization.MembershipStatusActive
 
 	resp := toMembershipResponse(m)
 

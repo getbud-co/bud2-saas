@@ -16,7 +16,7 @@ import (
 
 	appuser "github.com/getbud-co/bud2/backend/internal/app/user"
 	"github.com/getbud-co/bud2/backend/internal/domain"
-	"github.com/getbud-co/bud2/backend/internal/domain/membership"
+	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	"github.com/getbud-co/bud2/backend/internal/domain/team"
 	usr "github.com/getbud-co/bud2/backend/internal/domain/user"
 	"github.com/getbud-co/bud2/backend/internal/test/fixtures"
@@ -76,22 +76,22 @@ func (m *mockDeleteUseCase) Execute(ctx context.Context, cmd appuser.DeleteComma
 
 type mockGetMembershipUseCase struct{ mock.Mock }
 
-func (m *mockGetMembershipUseCase) Execute(ctx context.Context, organizationID domain.TenantID, id uuid.UUID) (*membership.Membership, error) {
+func (m *mockGetMembershipUseCase) Execute(ctx context.Context, organizationID domain.TenantID, id uuid.UUID) (*organization.Membership, error) {
 	args := m.Called(ctx, organizationID, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*membership.Membership), args.Error(1)
+	return args.Get(0).(*organization.Membership), args.Error(1)
 }
 
 type mockUpdateMembershipUseCase struct{ mock.Mock }
 
-func (m *mockUpdateMembershipUseCase) Execute(ctx context.Context, cmd appuser.UpdateMembershipCommand) (*membership.Membership, error) {
+func (m *mockUpdateMembershipUseCase) Execute(ctx context.Context, cmd appuser.UpdateMembershipCommand) (*organization.Membership, error) {
 	args := m.Called(ctx, cmd)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*membership.Membership), args.Error(1)
+	return args.Get(0).(*organization.Membership), args.Error(1)
 }
 
 type mockTeamLister struct{ mock.Mock }
@@ -353,7 +353,7 @@ func TestHandler_Create_MembershipConflict(t *testing.T) {
 	handler := NewHandler(createUC, nil, nil, nil, nil, nil, nil, newMockTeamLister())
 
 	tenantID := fixtures.NewTestTenantID()
-	createUC.On("Execute", mock.Anything, mock.Anything).Return(nil, nil, membership.ErrAlreadyExists)
+	createUC.On("Execute", mock.Anything, mock.Anything).Return(nil, nil, organization.ErrMembershipAlreadyExists)
 
 	body, _ := json.Marshal(createRequest{FirstName: "Test", LastName: "User", Email: "test@example.com", Password: "password123", Role: "super-admin"})
 	req := httptest.NewRequest(http.MethodPost, "/users", bytes.NewReader(body))
