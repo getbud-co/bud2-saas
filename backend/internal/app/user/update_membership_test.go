@@ -11,7 +11,7 @@ import (
 
 	apptx "github.com/getbud-co/bud2/backend/internal/app/tx"
 	"github.com/getbud-co/bud2/backend/internal/domain"
-	"github.com/getbud-co/bud2/backend/internal/domain/membership"
+	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	org "github.com/getbud-co/bud2/backend/internal/domain/organization"
 	"github.com/getbud-co/bud2/backend/internal/domain/team"
 	usr "github.com/getbud-co/bud2/backend/internal/domain/user"
@@ -92,25 +92,25 @@ func TestUpdateMembershipUseCase_Execute_Success(t *testing.T) {
 	updated := fixtures.NewUserWithMembership()
 	updated.ID = u.ID
 	updated.Memberships[0].OrganizationID = u.Memberships[0].OrganizationID
-	updated.Memberships[0].Role = membership.RoleGestor
-	updated.Memberships[0].Status = membership.StatusInactive
+	updated.Memberships[0].Role = organization.MembershipRoleGestor
+	updated.Memberships[0].Status = organization.MembershipStatusInactive
 
 	users.On("GetByIDForOrganization", mock.Anything, u.ID, organizationID.UUID()).Return(u, nil)
 	users.On("Update", mock.Anything, mock.MatchedBy(func(target *usr.User) bool {
 		m, err := target.MembershipForOrganization(organizationID.UUID())
-		return err == nil && m.Role == membership.RoleGestor && m.Status == membership.StatusInactive
+		return err == nil && m.Role == organization.MembershipRoleGestor && m.Status == organization.MembershipStatusInactive
 	})).Return(updated, nil)
 
 	result, err := uc.Execute(context.Background(), UpdateMembershipCommand{
 		OrganizationID: organizationID,
 		ID:             u.ID,
-		Role:           string(membership.RoleGestor),
-		Status:         string(membership.StatusInactive),
+		Role:           string(organization.MembershipRoleGestor),
+		Status:         string(organization.MembershipStatusInactive),
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, membership.RoleGestor, result.Role)
-	assert.Equal(t, membership.StatusInactive, result.Status)
+	assert.Equal(t, organization.MembershipRoleGestor, result.Role)
+	assert.Equal(t, organization.MembershipStatusInactive, result.Status)
 	assert.Equal(t, 1, teams.softDeleteMemberByUserCalls)
 	assert.Equal(t, organizationID.UUID(), teams.organizationID)
 	assert.Equal(t, u.ID, teams.userID)
@@ -122,16 +122,16 @@ func TestUpdateMembershipUseCase_Execute_ReturnsNotFoundForOtherOrganization(t *
 
 	u := fixtures.NewUserWithMembership()
 	otherOrgID := domain.TenantID(uuid.New())
-	users.On("GetByIDForOrganization", mock.Anything, u.ID, otherOrgID.UUID()).Return(nil, membership.ErrNotFound)
+	users.On("GetByIDForOrganization", mock.Anything, u.ID, otherOrgID.UUID()).Return(nil, organization.ErrMembershipNotFound)
 
 	result, err := uc.Execute(context.Background(), UpdateMembershipCommand{
 		OrganizationID: otherOrgID,
 		ID:             u.ID,
-		Role:           string(membership.RoleGestor),
-		Status:         string(membership.StatusInactive),
+		Role:           string(organization.MembershipRoleGestor),
+		Status:         string(organization.MembershipStatusInactive),
 	})
 
-	assert.ErrorIs(t, err, membership.ErrNotFound)
+	assert.ErrorIs(t, err, organization.ErrMembershipNotFound)
 	assert.Nil(t, result)
 	users.AssertNotCalled(t, "Update")
 }
@@ -149,7 +149,7 @@ func TestUpdateMembershipUseCase_Execute_ValidationError(t *testing.T) {
 		OrganizationID: organizationID,
 		ID:             u.ID,
 		Role:           "invalid",
-		Status:         string(membership.StatusInactive),
+		Status:         string(organization.MembershipStatusInactive),
 	})
 
 	assert.Error(t, err)
@@ -175,11 +175,11 @@ func TestUpdateMembershipUseCase_Execute_DoesNotCleanupTeamsForActiveMembership(
 	result, err := uc.Execute(context.Background(), UpdateMembershipCommand{
 		OrganizationID: organizationID,
 		ID:             u.ID,
-		Role:           string(membership.RoleSuperAdmin),
-		Status:         string(membership.StatusActive),
+		Role:           string(organization.MembershipRoleSuperAdmin),
+		Status:         string(organization.MembershipStatusActive),
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, membership.StatusActive, result.Status)
+	assert.Equal(t, organization.MembershipStatusActive, result.Status)
 	assert.Equal(t, 0, teams.softDeleteMemberByUserCalls)
 }

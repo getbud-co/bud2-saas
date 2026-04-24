@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/getbud-co/bud2/backend/internal/domain/membership"
+	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	usr "github.com/getbud-co/bud2/backend/internal/domain/user"
 	"github.com/getbud-co/bud2/backend/internal/test/fixtures"
 	"github.com/getbud-co/bud2/backend/internal/test/mocks"
@@ -38,11 +38,11 @@ func TestGetUseCase_Execute_MembershipNotFound(t *testing.T) {
 	tenantID := fixtures.NewTestTenantID()
 	userID := uuid.New()
 
-	users.On("GetByIDForOrganization", t.Context(), userID, tenantID.UUID()).Return(nil, membership.ErrNotFound)
+	users.On("GetByIDForOrganization", t.Context(), userID, tenantID.UUID()).Return(nil, organization.ErrMembershipNotFound)
 
 	result, err := uc.Execute(t.Context(), tenantID, userID)
 
-	assert.ErrorIs(t, err, membership.ErrNotFound)
+	assert.ErrorIs(t, err, organization.ErrMembershipNotFound)
 	assert.Nil(t, result)
 }
 

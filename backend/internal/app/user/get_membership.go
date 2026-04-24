@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/getbud-co/bud2/backend/internal/domain"
-	"github.com/getbud-co/bud2/backend/internal/domain/membership"
+	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	usr "github.com/getbud-co/bud2/backend/internal/domain/user"
 )
 
@@ -20,7 +20,7 @@ func NewGetMembershipUseCase(users usr.Repository, logger *slog.Logger) *GetMemb
 	return &GetMembershipUseCase{users: users, logger: logger}
 }
 
-func (uc *GetMembershipUseCase) Execute(ctx context.Context, organizationID domain.TenantID, id uuid.UUID) (*membership.Membership, error) {
+func (uc *GetMembershipUseCase) Execute(ctx context.Context, organizationID domain.TenantID, id uuid.UUID) (*organization.Membership, error) {
 	u, err := uc.users.GetByIDForOrganization(ctx, id, organizationID.UUID())
 	if err != nil {
 		return nil, err

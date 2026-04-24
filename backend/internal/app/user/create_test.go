@@ -10,7 +10,6 @@ import (
 
 	apptx "github.com/getbud-co/bud2/backend/internal/app/tx"
 	"github.com/getbud-co/bud2/backend/internal/domain"
-	"github.com/getbud-co/bud2/backend/internal/domain/membership"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	"github.com/getbud-co/bud2/backend/internal/domain/team"
 	usr "github.com/getbud-co/bud2/backend/internal/domain/user"
@@ -62,10 +61,10 @@ func TestCreateUseCase_Execute_Success_NewUser(t *testing.T) {
 	tenantID := fixtures.NewTestTenantID()
 	testOrg := fixtures.NewOrganization()
 	createdUser := fixtures.NewUserWithEmail("new@example.com")
-	createdUser.Memberships = []membership.Membership{{
+	createdUser.Memberships = []organization.Membership{{
 		OrganizationID: tenantID.UUID(),
-		Role:           membership.RoleSuperAdmin,
-		Status:         membership.StatusInvited,
+		Role:           organization.MembershipRoleSuperAdmin,
+		Status:         organization.MembershipStatusInvited,
 	}}
 
 	users.On("GetByEmail", mock.Anything, "new@example.com").Return(nil, usr.ErrNotFound)
@@ -96,10 +95,10 @@ func TestCreateUseCase_Execute_Success_ExistingUser(t *testing.T) {
 	tenantID := fixtures.NewTestTenantID()
 	existingUser := fixtures.NewUser()
 	updatedUser := fixtures.NewUser()
-	updatedUser.Memberships = []membership.Membership{{
+	updatedUser.Memberships = []organization.Membership{{
 		OrganizationID: tenantID.UUID(),
-		Role:           membership.RoleSuperAdmin,
-		Status:         membership.StatusInvited,
+		Role:           organization.MembershipRoleSuperAdmin,
+		Status:         organization.MembershipStatusInvited,
 	}}
 
 	users.On("GetByEmail", mock.Anything, existingUser.Email).Return(existingUser, nil)
@@ -136,7 +135,7 @@ func TestCreateUseCase_Execute_MembershipAlreadyExists(t *testing.T) {
 		OrganizationID: tenantID, FirstName: existingUser.FirstName, LastName: existingUser.LastName, Email: existingUser.Email, Password: "password123", Role: "super-admin",
 	})
 
-	assert.ErrorIs(t, err, membership.ErrAlreadyExists)
+	assert.ErrorIs(t, err, organization.ErrMembershipAlreadyExists)
 	assert.Nil(t, result)
 	assert.True(t, txm.called)
 }

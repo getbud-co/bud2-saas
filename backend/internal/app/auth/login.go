@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 
 	domainauth "github.com/getbud-co/bud2/backend/internal/domain/auth"
-	"github.com/getbud-co/bud2/backend/internal/domain/membership"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	"github.com/getbud-co/bud2/backend/internal/domain/user"
 )
@@ -88,8 +87,8 @@ func (uc *LoginUseCase) Execute(ctx context.Context, cmd LoginCommand) (*LoginRe
 	// Reflect the activation in memory so loadSession sees active memberships
 	// without an extra round-trip to the database.
 	for i := range u.Memberships {
-		if u.Memberships[i].Status == membership.StatusInvited {
-			u.Memberships[i].Status = membership.StatusActive
+		if u.Memberships[i].Status == organization.MembershipStatusInvited {
+			u.Memberships[i].Status = organization.MembershipStatusActive
 		}
 	}
 

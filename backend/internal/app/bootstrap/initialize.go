@@ -13,7 +13,6 @@ import (
 	apptx "github.com/getbud-co/bud2/backend/internal/app/tx"
 	"github.com/getbud-co/bud2/backend/internal/domain"
 	domainauth "github.com/getbud-co/bud2/backend/internal/domain/auth"
-	"github.com/getbud-co/bud2/backend/internal/domain/membership"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	"github.com/getbud-co/bud2/backend/internal/domain/user"
 )
@@ -75,7 +74,7 @@ func (uc *UseCase) Execute(ctx context.Context, cmd Command) (*Result, error) {
 
 	var createdOrg *organization.Organization
 	var createdAdmin *user.User
-	var createdMembership *membership.Membership
+	var createdMembership *organization.Membership
 
 	passwordHash, err := uc.passwordHasher.Hash(cmd.AdminPassword)
 	if err != nil {
@@ -106,10 +105,10 @@ func (uc *UseCase) Execute(ctx context.Context, cmd Command) (*Result, error) {
 			IsSystemAdmin: false,
 			Language:      "pt-br",
 		}
-		if txErr = admin.AddMembership(membership.Membership{
+		if txErr = admin.AddMembership(organization.Membership{
 			OrganizationID: createdOrg.ID,
-			Role:           membership.RoleSuperAdmin,
-			Status:         membership.StatusActive,
+			Role:           organization.MembershipRoleSuperAdmin,
+			Status:         organization.MembershipStatusActive,
 		}); txErr != nil {
 			return txErr
 		}

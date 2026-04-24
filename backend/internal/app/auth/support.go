@@ -13,7 +13,6 @@ import (
 
 	"github.com/getbud-co/bud2/backend/internal/domain"
 	domainauth "github.com/getbud-co/bud2/backend/internal/domain/auth"
-	"github.com/getbud-co/bud2/backend/internal/domain/membership"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	"github.com/getbud-co/bud2/backend/internal/domain/user"
 )
@@ -96,9 +95,9 @@ func (s authSupport) loadSession(ctx context.Context, u *user.User) (*Session, e
 		return &Session{User: *u, Organizations: organizations}, nil
 	}
 
-	activeMemberships := make([]membership.Membership, 0, len(u.Memberships))
+	activeMemberships := make([]organization.Membership, 0, len(u.Memberships))
 	for i := range u.Memberships {
-		if u.Memberships[i].Status == membership.StatusActive {
+		if u.Memberships[i].Status == organization.MembershipStatusActive {
 			activeMemberships = append(activeMemberships, u.Memberships[i])
 		}
 	}

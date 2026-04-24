@@ -8,7 +8,7 @@ import (
 
 	apptx "github.com/getbud-co/bud2/backend/internal/app/tx"
 	"github.com/getbud-co/bud2/backend/internal/domain"
-	"github.com/getbud-co/bud2/backend/internal/domain/membership"
+	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 )
 
 type UpdateMembershipCommand struct {
@@ -27,8 +27,8 @@ func NewUpdateMembershipUseCase(txm apptx.Manager, logger *slog.Logger) *UpdateM
 	return &UpdateMembershipUseCase{txm: txm, logger: logger}
 }
 
-func (uc *UpdateMembershipUseCase) Execute(ctx context.Context, cmd UpdateMembershipCommand) (*membership.Membership, error) {
-	var updatedMembership *membership.Membership
+func (uc *UpdateMembershipUseCase) Execute(ctx context.Context, cmd UpdateMembershipCommand) (*organization.Membership, error) {
+	var updatedMembership *organization.Membership
 	err := uc.txm.WithTx(ctx, func(repos apptx.Repositories) error {
 		u, err := repos.Users().GetByIDForOrganization(ctx, cmd.ID, cmd.OrganizationID.UUID())
 		if err != nil {
@@ -40,12 +40,12 @@ func (uc *UpdateMembershipUseCase) Execute(ctx context.Context, cmd UpdateMember
 			return err
 		}
 
-		m.Role = membership.Role(cmd.Role)
-		m.Status = membership.Status(cmd.Status)
+		m.Role = organization.MembershipRole(cmd.Role)
+		m.Status = organization.MembershipStatus(cmd.Status)
 		if err := m.Validate(); err != nil {
 			return err
 		}
-		if m.Status != membership.StatusActive {
+		if m.Status != organization.MembershipStatusActive {
 			if err := repos.Teams().SoftDeleteMemberByUser(ctx, cmd.OrganizationID.UUID(), cmd.ID); err != nil {
 				return err
 			}
