@@ -1,6 +1,6 @@
 package bootstrap
 
-import "github.com/getbud-co/bud2/backend/internal/app/bootstrap"
+import appbootstrap "github.com/getbud-co/bud2/backend/internal/app/bootstrap"
 
 type Response struct {
 	AccessToken  string `json:"access_token"`
@@ -20,7 +20,7 @@ type Response struct {
 	} `json:"admin"`
 }
 
-func createBootstrapResponse(result *bootstrap.Result) Response {
+func createBootstrapResponse(result *appbootstrap.Result) Response {
 	resp := Response{AccessToken: result.AccessToken, TokenType: "Bearer"}
 	resp.Organization.ID = result.Organization.ID.String()
 	resp.Organization.Name = result.Organization.Name

@@ -570,6 +570,58 @@ paths:
               schema:
                 $ref: "#/components/schemas/Membership"
 
+  /roles:
+    get:
+      summary: List roles
+      tags: [Roles]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleListResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
+  /permissions:
+    get:
+      summary: List permission catalog
+      tags: [Roles]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PermissionListResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -908,3 +960,48 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/TeamMemberInput"
+
+    Role:
+      type: object
+      required: [id, slug, name, type, scope, is_default, permission_ids, users_count, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        type: { type: string, enum: [system, custom] }
+        scope: { type: string, enum: [self, team, org] }
+        is_default: { type: boolean }
+        permission_ids:
+          type: array
+          items: { type: string }
+        users_count: { type: integer, minimum: 0 }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    RoleListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Role"
+
+    Permission:
+      type: object
+      required: [id, group, label, description]
+      properties:
+        id: { type: string }
+        group: { type: string, enum: [people, missions, surveys, settings, assistant] }
+        label: { type: string }
+        description: { type: string }
+
+    PermissionListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Permission"

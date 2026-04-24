@@ -1,6 +1,6 @@
 package bootstrap
 
-import "github.com/getbud-co/bud2/backend/internal/app/bootstrap"
+import appbootstrap "github.com/getbud-co/bud2/backend/internal/app/bootstrap"
 
 type createRequest struct {
 	OrganizationName      string `json:"organization_name" validate:"required,min=2,max=100"`
@@ -12,8 +12,8 @@ type createRequest struct {
 	AdminPassword         string `json:"admin_password" validate:"required,min=8"`
 }
 
-func (r createRequest) toCommand() bootstrap.Command {
-	return bootstrap.Command{
+func (r createRequest) toCommand() appbootstrap.Command {
+	return appbootstrap.Command{
 		OrganizationName:      r.OrganizationName,
 		OrganizationDomain:    r.OrganizationDomain,
 		OrganizationWorkspace: r.OrganizationWorkspace,

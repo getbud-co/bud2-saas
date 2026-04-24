@@ -80,3 +80,22 @@ func TestEnforcer_BeforeInit(t *testing.T) {
 	// Should return nil before initialization
 	assert.Nil(t, Enforcer())
 }
+
+// Guards against a regression where a membership role is added without also
+// granting it settings.read — the /roles and /permissions endpoints require it
+// so every logged-in user can resolve role labels in the UI.
+func TestPolicy_EverySystemRoleCanReadSettings(t *testing.T) {
+	repoRoot, err := filepath.Abs(filepath.Join("..", "..", "..", ".."))
+	require.NoError(t, err)
+	modelPath := filepath.Join(repoRoot, "backend", "policies", "model.conf")
+	policyPath := filepath.Join(repoRoot, "backend", "policies", "policy.csv")
+
+	require.NoError(t, InitEnforcer(modelPath, policyPath))
+	t.Cleanup(func() { e = nil })
+
+	for _, role := range []string{"super-admin", "admin-rh", "gestor", "colaborador", "visualizador"} {
+		allowed, err := Enforcer().Enforce(role, "settings", "read")
+		require.NoError(t, err)
+		assert.Truef(t, allowed, "role %q must hold (settings, read)", role)
+	}
+}

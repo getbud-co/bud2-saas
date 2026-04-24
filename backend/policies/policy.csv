@@ -10,12 +10,15 @@ p, admin-rh, users, read
 p, admin-rh, users, delete
 p, admin-rh, org, write
 p, admin-rh, org, read
+p, admin-rh, settings, read
 p, gestor, users, write
 p, gestor, users, read
 p, gestor, org, read
+p, gestor, settings, read
 p, colaborador, users, read
 p, colaborador, settings, read
 p, visualizador, users, read
+p, visualizador, settings, read
 
 p, super-admin, teams, write
 p, super-admin, teams, read
