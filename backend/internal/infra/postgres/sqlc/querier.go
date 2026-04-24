@@ -45,6 +45,7 @@ type Querier interface {
 	ListOrganizationsByStatus(ctx context.Context, arg ListOrganizationsByStatusParams) ([]ListOrganizationsByStatusRow, error)
 	ListOrganizationsByUser(ctx context.Context, arg ListOrganizationsByUserParams) ([]ListOrganizationsByUserRow, error)
 	ListOrganizationsByUserAndStatus(ctx context.Context, arg ListOrganizationsByUserAndStatusParams) ([]ListOrganizationsByUserAndStatusRow, error)
+	ListRoles(ctx context.Context, organizationID uuid.UUID) ([]ListRolesRow, error)
 	ListTeamMembers(ctx context.Context, arg ListTeamMembersParams) ([]ListTeamMembersRow, error)
 	ListTeamMembersByOrganizationUser(ctx context.Context, arg ListTeamMembersByOrganizationUserParams) ([]ListTeamMembersByOrganizationUserRow, error)
 	ListTeamMembersByOrganizationUsers(ctx context.Context, arg ListTeamMembersByOrganizationUsersParams) ([]ListTeamMembersByOrganizationUsersRow, error)
