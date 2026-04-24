@@ -11,7 +11,6 @@ import (
 
 	apptx "github.com/getbud-co/bud2/backend/internal/app/tx"
 	"github.com/getbud-co/bud2/backend/internal/domain"
-	"github.com/getbud-co/bud2/backend/internal/domain/organization"
 	domainorg "github.com/getbud-co/bud2/backend/internal/domain/organization"
 	domainteam "github.com/getbud-co/bud2/backend/internal/domain/team"
 	domainuser "github.com/getbud-co/bud2/backend/internal/domain/user"
@@ -49,7 +48,7 @@ func TestCreateUseCase_Execute_Success(t *testing.T) {
 	activeUser := fixtures.NewUserWithMembership()
 	activeUser.ID = userID
 	activeUser.Memberships[0].OrganizationID = tenantID.UUID()
-	activeUser.Memberships[0].Status = organization.MembershipStatusActive
+	activeUser.Memberships[0].Status = domainorg.MembershipStatusActive
 
 	teamRepo.On("GetByName", mock.Anything, tenantID.UUID(), "Novo Time").Return(nil, domainteam.ErrNotFound)
 	userRepo.On("GetByIDForOrganization", mock.Anything, userID, tenantID.UUID()).Return(activeUser, nil)
@@ -133,7 +132,7 @@ func TestCreateUseCase_Execute_UserWithoutActiveMembership_ReturnsValidationErro
 	inactiveUser := fixtures.NewUserWithMembership()
 	inactiveUser.ID = userID
 	inactiveUser.Memberships[0].OrganizationID = tenantID.UUID()
-	inactiveUser.Memberships[0].Status = organization.MembershipStatusInactive
+	inactiveUser.Memberships[0].Status = domainorg.MembershipStatusInactive
 
 	teamRepo.On("GetByName", mock.Anything, tenantID.UUID(), "Time").Return(nil, domainteam.ErrNotFound)
 	userRepo.On("GetByIDForOrganization", mock.Anything, userID, tenantID.UUID()).Return(inactiveUser, nil)
