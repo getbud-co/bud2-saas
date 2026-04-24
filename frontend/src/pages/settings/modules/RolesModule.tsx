@@ -1,10 +1,9 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Card,
   CardBody,
   Button,
   Input,
-  Textarea,
   Badge,
   Checkbox,
   ChoiceBox,
@@ -13,23 +12,18 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
-  Select,
   Alert,
   Accordion,
   AccordionItem,
-  Breadcrumb,
   toast,
 } from "@getbud-co/buds";
-import type { BreadcrumbItem } from "@getbud-co/buds";
 import {
   Plus,
-  Trash,
   Crown,
   Users,
   UserCircle,
   Eye,
   ShieldCheck,
-  PencilSimple,
   Lock,
   MagnifyingGlass,
   Target,
@@ -40,9 +34,13 @@ import {
 } from "@phosphor-icons/react";
 import type { Icon } from "@phosphor-icons/react";
 import type { Permission, PermissionGroup, DataScope } from "@/types";
-import { useConfigData } from "@/contexts/ConfigDataContext";
-import { usePeopleData } from "@/contexts/PeopleDataContext";
-import type { ConfigRoleRecord } from "@/lib/config-store";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  listPermissions,
+  listRoles,
+  roleErrorToMessage,
+  type RoleApiResponse,
+} from "@/lib/roles-api";
 import styles from "./RolesModule.module.css";
 
 /* ——— Local UI types ——— */
@@ -54,11 +52,23 @@ interface PermissionGroupUI {
   permissions: Permission[];
 }
 
-interface RoleView extends ConfigRoleRecord {
+type RolesStatus = "idle" | "loading" | "ready" | "error";
+
+interface RoleView {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  type: RoleApiResponse["type"];
+  isDefault: boolean;
+  scope: DataScope;
+  permissionIds: string[];
+  createdAt: string;
+  updatedAt: string;
+  usersCount: number;
   icon: Icon;
   iconBg: string;
   iconColor: string;
-  usersCount: number;
   permissionSet: Set<string>;
 }
 
@@ -88,71 +98,24 @@ const SCOPE_BADGE_MAP: Record<DataScope, { label: string; color: "wine" | "orang
   org: { label: "Organização", color: "wine" },
 };
 
-/* ——— Permission groups ——— */
+/* ——— Permission groups (UI metadata merged with API catalog) ——— */
 
-const PERMISSION_GROUPS: PermissionGroupUI[] = [
-  {
-    id: "people",
-    label: "Pessoas",
-    icon: Users,
-    permissions: [
-      { id: "people.view", group: "people", label: "Visualizar", description: "Ver informações de colaboradores" },
-      { id: "people.create", group: "people", label: "Criar", description: "Adicionar novos colaboradores" },
-      { id: "people.edit", group: "people", label: "Editar", description: "Alterar dados de colaboradores" },
-      { id: "people.deactivate", group: "people", label: "Desativar", description: "Desativar contas de colaboradores" },
-    ],
-  },
-  {
-    id: "missions",
-    label: "Missões e OKRs",
-    icon: Target,
-    permissions: [
-      { id: "missions.view", group: "missions", label: "Visualizar", description: "Ver missões e OKRs" },
-      { id: "missions.create", group: "missions", label: "Criar", description: "Criar novas missões e OKRs" },
-      { id: "missions.edit", group: "missions", label: "Editar", description: "Alterar missões e OKRs existentes" },
-      { id: "missions.delete", group: "missions", label: "Excluir", description: "Remover missões e OKRs" },
-      { id: "missions.assign", group: "missions", label: "Atribuir", description: "Atribuir missões a colaboradores" },
-    ],
-  },
-  {
-    id: "surveys",
-    label: "Pesquisas",
-    icon: ClipboardText,
-    permissions: [
-      { id: "surveys.view", group: "surveys", label: "Visualizar", description: "Ver pesquisas disponíveis" },
-      { id: "surveys.create", group: "surveys", label: "Criar", description: "Criar novas pesquisas" },
-      { id: "surveys.edit", group: "surveys", label: "Editar", description: "Alterar pesquisas existentes" },
-      { id: "surveys.publish", group: "surveys", label: "Publicar", description: "Publicar pesquisas para respondentes" },
-      { id: "surveys.results", group: "surveys", label: "Ver resultados", description: "Acessar resultados e análises" },
-    ],
-  },
-  {
-    id: "settings",
-    label: "Configurações",
-    icon: Gear,
-    permissions: [
-      { id: "settings.access", group: "settings", label: "Acessar", description: "Visualizar configurações da plataforma" },
-      { id: "settings.edit", group: "settings", label: "Editar", description: "Alterar configurações da plataforma" },
-    ],
-  },
-  {
-    id: "assistant",
-    label: "Assistente de IA",
-    icon: Lightning,
-    permissions: [
-      { id: "assistant.tone", group: "assistant", label: "Tom de voz", description: "Escolher e criar tons de voz personalizados" },
-      { id: "assistant.language", group: "assistant", label: "Idioma", description: "Alterar idioma do assistente" },
-      { id: "assistant.suggestions", group: "assistant", label: "Sugestões", description: "Configurar nível de proatividade e tipos de sugestão" },
-      { id: "assistant.transparency", group: "assistant", label: "Transparência", description: "Configurar modo de explicação da IA" },
-      { id: "assistant.llm", group: "assistant", label: "LLM própria", description: "Conectar provedores de IA pessoais" },
-    ],
-  },
+const PERMISSION_GROUP_UI: { id: PermissionGroup; label: string; icon: Icon }[] = [
+  { id: "people", label: "Pessoas", icon: Users },
+  { id: "missions", label: "Missões e OKRs", icon: Target },
+  { id: "surveys", label: "Pesquisas", icon: ClipboardText },
+  { id: "settings", label: "Configurações", icon: Gear },
+  { id: "assistant", label: "Assistente de IA", icon: Lightning },
 ];
 
-const ALL_PERMISSION_IDS = PERMISSION_GROUPS.flatMap((g) => g.permissions.map((p) => p.id));
-const TOTAL_PERMISSIONS = ALL_PERMISSION_IDS.length;
+function buildPermissionGroups(permissions: Permission[]): PermissionGroupUI[] {
+  return PERMISSION_GROUP_UI.map((group) => ({
+    ...group,
+    permissions: permissions.filter((permission) => permission.group === group.id),
+  }));
+}
 
-function getRoleVisual(role: ConfigRoleRecord): Pick<RoleView, "icon" | "iconBg" | "iconColor"> {
+function getRoleVisual(role: Pick<RoleView, "slug" | "type">): Pick<RoleView, "icon" | "iconBg" | "iconColor"> {
   switch (role.slug) {
     case "super-admin":
       return { icon: Crown, iconBg: "var(--color-orange-100)", iconColor: "var(--color-orange-700)" };
@@ -170,11 +133,6 @@ function getRoleVisual(role: ConfigRoleRecord): Pick<RoleView, "icon" | "iconBg"
         : { icon: UserCircle, iconBg: "var(--color-orange-100)", iconColor: "var(--color-orange-700)" };
   }
 }
-
-const CREATE_STEPS: BreadcrumbItem[] = [
-  { label: "Informações básicas" },
-  { label: "Configurar permissões" },
-];
 
 /* ——— Scope section sub-component ——— */
 
@@ -220,18 +178,20 @@ function ScopeSection({
 
 function PermissionAccordion({
   permissionSet,
-  isSystem,
+  readOnly,
+  groups,
   onTogglePermission,
   onToggleGroup,
 }: {
   permissionSet: Set<string>;
-  isSystem: boolean;
+  readOnly: boolean;
+  groups: PermissionGroupUI[];
   onTogglePermission: (id: string) => void;
   onToggleGroup: (groupId: string) => void;
 }) {
   return (
     <Accordion>
-      {PERMISSION_GROUPS.map((group) => {
+      {groups.map((group) => {
         const GroupIcon = group.icon;
         const checkedCount = group.permissions.filter((p) => permissionSet.has(p.id)).length;
         const allChecked = checkedCount === group.permissions.length;
@@ -252,7 +212,7 @@ function PermissionAccordion({
             }
           >
             <div className={styles.permGroupContent}>
-              {!isSystem && (
+              {!readOnly && (
                 <label className={styles.selectAll}>
                   <Checkbox
                     checked={allChecked}
@@ -270,7 +230,7 @@ function PermissionAccordion({
                     <Checkbox
                       checked={permissionSet.has(perm.id)}
                       onChange={() => onTogglePermission(perm.id)}
-                      disabled={isSystem}
+                      disabled={readOnly}
                     />
                     <div className={styles.permItemText}>
                       <span className={styles.permItemLabel}>{perm.label}</span>
@@ -290,48 +250,72 @@ function PermissionAccordion({
 /* ——— Component ——— */
 
 export function RolesModule() {
-  const {
-    roles: configRoles,
-    createRole,
-    updateRole,
-    deleteRole: removeRole,
-    resolveRoleSlug,
-  } = useConfigData();
-  const { users } = usePeopleData();
+  const { getToken } = useAuth();
 
   const [editingRole, setEditingRole] = useState<RoleView | null>(null);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [createStep, setCreateStep] = useState(0);
-  const [deletingRole, setDeletingRole] = useState<RoleView | null>(null);
+  const [rolesStatus, setRolesStatus] = useState<RolesStatus>("idle");
+  const [rolesError, setRolesError] = useState<string | null>(null);
+  const [apiRoles, setApiRoles] = useState<RoleApiResponse[]>([]);
+  const [permissions, setPermissions] = useState<Permission[]>([]);
   const [search, setSearch] = useState("");
 
-  /* create form */
-  const [formName, setFormName] = useState("");
-  const [formDesc, setFormDesc] = useState("");
-  const [formTemplate, setFormTemplate] = useState("");
-  const [formScope, setFormScope] = useState<DataScope>("self");
-  const [formPermissions, setFormPermissions] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    const token = getToken();
+    if (!token) {
+      setRolesStatus("error");
+      setRolesError("Sessão expirada. Faça login novamente.");
+      return;
+    }
 
-  const usersCountByRoleSlug = useMemo(() => {
-    const counts = new Map<string, number>();
-    users.forEach((user) => {
-      const slug = resolveRoleSlug(user.roleType);
-      counts.set(slug, (counts.get(slug) ?? 0) + 1);
-    });
-    return counts;
-  }, [users, resolveRoleSlug]);
+    let cancelled = false;
+    setRolesStatus("loading");
+    setRolesError(null);
+
+    Promise.all([listRoles(token), listPermissions(token)])
+      .then(([rolesResponse, permissionsResponse]) => {
+        if (cancelled) return;
+        setApiRoles(rolesResponse.data);
+        setPermissions(permissionsResponse.data);
+        setRolesStatus("ready");
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setRolesError(roleErrorToMessage(err));
+        setRolesStatus("error");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [getToken]);
+
+  const permissionGroups = useMemo(() => buildPermissionGroups(permissions), [permissions]);
+  const allPermissionIds = useMemo(() => permissions.map((p) => p.id), [permissions]);
+  const totalPermissions = allPermissionIds.length;
 
   const roles = useMemo<RoleView[]>(() => {
-    return configRoles.map((role) => {
-      const visual = getRoleVisual(role);
+    return apiRoles.map((role) => {
+      const roleView = {
+        id: role.id,
+        slug: role.slug,
+        name: role.name,
+        description: role.description ?? null,
+        type: role.type,
+        isDefault: role.is_default,
+        scope: role.scope,
+        permissionIds: role.permission_ids,
+        createdAt: role.created_at,
+        updatedAt: role.updated_at,
+        usersCount: role.users_count,
+      };
+      const visual = getRoleVisual(roleView);
       return {
-        ...role,
+        ...roleView,
         ...visual,
-        usersCount: usersCountByRoleSlug.get(role.slug) ?? 0,
-        permissionSet: new Set(role.permissionIds ?? []),
+        permissionSet: new Set(roleView.permissionIds),
       };
     });
-  }, [configRoles, usersCountByRoleSlug]);
+  }, [apiRoles]);
 
   const filtered = useMemo(() => {
     if (!search) return roles;
@@ -342,13 +326,14 @@ export function RolesModule() {
   }, [roles, search]);
 
   function getPermPercent(role: RoleView): number {
-    const knownCount = [...role.permissionSet].filter((permissionId) => ALL_PERMISSION_IDS.includes(permissionId)).length;
-    return Math.round((knownCount / TOTAL_PERMISSIONS) * 100);
+    if (totalPermissions === 0) return 0;
+    const knownCount = [...role.permissionSet].filter((permissionId) => allPermissionIds.includes(permissionId)).length;
+    return Math.round((knownCount / totalPermissions) * 100);
   }
 
   function handleTogglePermission(permId: string) {
     setEditingRole((prev) => {
-      if (!prev || prev.type === "system") return prev;
+      if (!prev) return prev;
       const next = new Set(prev.permissionSet);
       if (next.has(permId)) next.delete(permId);
       else next.add(permId);
@@ -357,10 +342,10 @@ export function RolesModule() {
   }
 
   function handleToggleGroup(groupId: string) {
-    const group = PERMISSION_GROUPS.find((g) => g.id === groupId);
+    const group = permissionGroups.find((g) => g.id === groupId);
     if (!group) return;
     setEditingRole((prev) => {
-      if (!prev || prev.type === "system") return prev;
+      if (!prev) return prev;
       const allChecked = group.permissions.every((permission) => prev.permissionSet.has(permission.id));
       const next = new Set(prev.permissionSet);
       group.permissions.forEach((p) => {
@@ -373,99 +358,14 @@ export function RolesModule() {
 
   function handleScopeChange(scope: DataScope) {
     setEditingRole((prev) => {
-      if (!prev || prev.type === "system") return prev;
+      if (!prev) return prev;
       return { ...prev, scope };
     });
   }
 
-  /* ——— Create helpers ——— */
-
-  function openCreateModal() {
-    setFormName("");
-    setFormDesc("");
-    setFormTemplate("");
-    setFormScope("self");
-    setFormPermissions(new Set());
-    setCreateStep(0);
-    setCreateOpen(true);
+  function handleCreateClick() {
+    toast("Criar tipos customizados estará disponível em breve.");
   }
-
-  function handleContinueToPermissions() {
-    const template = formTemplate ? roles.find((r) => r.id === formTemplate) : null;
-    if (template) {
-      setFormPermissions(new Set(template.permissionSet));
-      setFormScope(template.scope);
-    }
-    setCreateStep(1);
-  }
-
-  function handleCreateTogglePermission(permId: string) {
-    setFormPermissions((prev) => {
-      const next = new Set(prev);
-      if (next.has(permId)) next.delete(permId);
-      else next.add(permId);
-      return next;
-    });
-  }
-
-  function handleCreateToggleGroup(groupId: string) {
-    const group = PERMISSION_GROUPS.find((g) => g.id === groupId);
-    if (!group) return;
-    const allChecked = group.permissions.every((p) => formPermissions.has(p.id));
-    setFormPermissions((prev) => {
-      const next = new Set(prev);
-      group.permissions.forEach((p) => {
-        if (allChecked) next.delete(p.id);
-        else next.add(p.id);
-      });
-      return next;
-    });
-  }
-
-  function handleCreate() {
-    createRole({
-      name: formName.trim(),
-      description: formDesc.trim() || null,
-      type: "custom",
-      scope: formScope,
-      permissionIds: Array.from(formPermissions),
-    });
-    setCreateOpen(false);
-    toast.success("Tipo de usuário criado");
-  }
-
-  function handleDelete() {
-    if (!deletingRole) return;
-    const deleted = removeRole(deletingRole.id);
-    if (!deleted) {
-      toast.error("Não foi possível excluir este tipo de usuário");
-      return;
-    }
-    if (editingRole?.id === deletingRole.id) setEditingRole(null);
-    setDeletingRole(null);
-    toast.success("Tipo de usuário excluído");
-  }
-
-  function handleSavePermissions() {
-    if (!editingRole) return;
-    if (editingRole.type !== "system") {
-      const updated = updateRole(editingRole.id, {
-        scope: editingRole.scope,
-        permissionIds: Array.from(editingRole.permissionSet),
-      });
-      if (!updated) {
-        toast.error("Não foi possível atualizar este tipo de usuário");
-        return;
-      }
-    }
-    setEditingRole(null);
-    toast.success("Permissões atualizadas");
-  }
-
-  const TEMPLATE_OPTIONS = [
-    { value: "", label: "Começar do zero" },
-    ...roles.map((r) => ({ value: r.id, label: r.name })),
-  ];
 
   return (
     <>
@@ -481,13 +381,22 @@ export function RolesModule() {
                 leftIcon={MagnifyingGlass}
               />
             </div>
-            <Button variant="primary" size="md" leftIcon={Plus} onClick={openCreateModal}>
+            <Button variant="primary" size="md" leftIcon={Plus} onClick={handleCreateClick}>
               Novo tipo
             </Button>
           </div>
 
           {/* Role cards grid */}
-          {filtered.length > 0 ? (
+          {rolesStatus === "error" ? (
+            <Alert variant="error" title="Não foi possível carregar os tipos de usuário">
+              {rolesError ?? "Tente recarregar a página em alguns instantes."}
+            </Alert>
+          ) : rolesStatus === "loading" && filtered.length === 0 ? (
+            <div className={styles.emptyState}>
+              <ShieldCheck size={32} />
+              <p className={styles.emptyTitle}>Carregando tipos de usuário…</p>
+            </div>
+          ) : filtered.length > 0 ? (
             <div className={styles.grid}>
               {filtered.map((role) => {
                 const Icon = role.icon;
@@ -536,7 +445,7 @@ export function RolesModule() {
                       </div>
                       <div className={styles.statItem}>
                         <ShieldCheck size={14} />
-                        <span>{role.permissionSet.size}/{TOTAL_PERMISSIONS} permissões</span>
+                        <span>{role.permissionSet.size}/{totalPermissions} permissões</span>
                       </div>
                     </div>
 
@@ -554,21 +463,13 @@ export function RolesModule() {
                     {/* Actions */}
                     <div className={styles.roleCardActions}>
                       <Button
-                        variant={isSystem ? "secondary" : "primary"}
+                        variant="secondary"
                         size="md"
-                        leftIcon={isSystem ? Eye : PencilSimple}
+                        leftIcon={Eye}
                         onClick={() => setEditingRole(role)}
                       >
-                        {isSystem ? "Ver permissões" : "Editar permissões"}
+                        Ver permissões
                       </Button>
-                      {!isSystem && (
-                        <Button
-                          variant="tertiary"
-                          size="md"
-                          leftIcon={Trash}
-                          onClick={() => setDeletingRole(role)}
-                        />
-                      )}
                     </div>
                   </div>
                 );
@@ -592,7 +493,7 @@ export function RolesModule() {
           return (
             <>
               <ModalHeader
-                title={`${isSystem ? "Permissões de" : "Editar permissões de"} ${editingRole.name}`}
+                title={`Permissões de ${editingRole.name}`}
                 onClose={() => setEditingRole(null)}
               />
               <ModalBody>
@@ -612,25 +513,23 @@ export function RolesModule() {
                           {isSystem ? "Sistema" : "Customizado"}
                         </Badge>
                         <span className={styles.editMetaText}>
-                          {editingRole.usersCount} {editingRole.usersCount === 1 ? "usuário" : "usuários"} · {editingRole.permissionSet.size}/{TOTAL_PERMISSIONS} permissões
+                          {editingRole.usersCount} {editingRole.usersCount === 1 ? "usuário" : "usuários"} · {editingRole.permissionSet.size}/{totalPermissions} permissões
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {isSystem && (
-                    <Alert
-                      variant="warning"
-                      title="Tipo de usuário do sistema"
-                    >
-                      Este tipo não pode ser editado. Duplique-o para criar uma versão personalizada com permissões ajustáveis.
-                    </Alert>
-                  )}
+                  <Alert
+                    variant="warning"
+                    title="Tipo de usuário somente leitura"
+                  >
+                    A edição de tipos e permissões estará disponível quando os endpoints de escrita forem ativados.
+                  </Alert>
 
                   {/* Scope selector */}
                   <ScopeSection
                     value={editingRole.scope}
-                    disabled={isSystem}
+                    disabled
                     onChange={handleScopeChange}
                   />
 
@@ -648,7 +547,8 @@ export function RolesModule() {
                   {/* Feature permission groups */}
                   <PermissionAccordion
                     permissionSet={editingRole.permissionSet}
-                    isSystem={isSystem}
+                    readOnly
+                    groups={permissionGroups}
                     onTogglePermission={handleTogglePermission}
                     onToggleGroup={handleToggleGroup}
                   />
@@ -656,137 +556,12 @@ export function RolesModule() {
               </ModalBody>
               <ModalFooter>
                 <Button variant="tertiary" size="md" onClick={() => setEditingRole(null)}>
-                  {isSystem ? "Fechar" : "Cancelar"}
+                  Fechar
                 </Button>
-                {!isSystem && (
-                  <Button variant="primary" size="md" onClick={handleSavePermissions}>
-                    Salvar permissões
-                  </Button>
-                )}
               </ModalFooter>
             </>
           );
         })()}
-      </Modal>
-
-      {/* Create modal (2-step) */}
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} size="lg">
-        <ModalHeader title="Novo tipo de usuário" onClose={() => setCreateOpen(false)} />
-        <Breadcrumb
-          items={CREATE_STEPS.map((step, i) => ({
-            ...step,
-            onClick: i < createStep ? () => setCreateStep(i) : undefined,
-          }))}
-          current={createStep}
-        />
-        <ModalBody>
-          {createStep === 0 && (
-            <div className={styles.formStack}>
-              <Input
-                label="Nome"
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                placeholder="Ex: Líder de projeto"
-              />
-              <Textarea
-                label="Descrição"
-                value={formDesc}
-                onChange={(e) => setFormDesc(e.target.value)}
-                placeholder="Descreva as responsabilidades e o nível de acesso..."
-                rows={3}
-              />
-              <Select
-                label="Copiar permissões de (opcional)"
-                value={formTemplate}
-                onChange={setFormTemplate}
-                options={TEMPLATE_OPTIONS}
-              />
-            </div>
-          )}
-
-          {createStep === 1 && (
-            <div className={styles.editContent}>
-              {/* Scope selector */}
-              <ScopeSection
-                value={formScope}
-                disabled={false}
-                onChange={setFormScope}
-              />
-
-              {/* Feature permissions header */}
-              <div className={styles.featureHeader}>
-                <ShieldCheck size={20} />
-                <div className={styles.scopeHeaderText}>
-                  <span className={styles.scopeTitle}>Permissões de ação</span>
-                  <span className={styles.scopeSubtitle}>
-                    Define o que o usuário pode fazer dentro de cada módulo
-                  </span>
-                </div>
-              </div>
-
-              {/* Feature permissions */}
-              <PermissionAccordion
-                permissionSet={formPermissions}
-                isSystem={false}
-                onTogglePermission={handleCreateTogglePermission}
-                onToggleGroup={handleCreateToggleGroup}
-              />
-            </div>
-          )}
-        </ModalBody>
-        <ModalFooter>
-          {createStep === 0 ? (
-            <>
-              <Button variant="tertiary" size="md" onClick={() => setCreateOpen(false)}>
-                Cancelar
-              </Button>
-              <Button
-                variant="primary"
-                size="md"
-                disabled={!formName.trim()}
-                onClick={handleContinueToPermissions}
-              >
-                Continuar
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button variant="tertiary" size="md" onClick={() => setCreateStep(0)}>
-                Voltar
-              </Button>
-              <Button variant="primary" size="md" onClick={handleCreate}>
-                Criar tipo
-              </Button>
-            </>
-          )}
-        </ModalFooter>
-      </Modal>
-
-      {/* Delete confirmation */}
-      <Modal open={!!deletingRole} onClose={() => setDeletingRole(null)} size="sm">
-        <ModalHeader title="Excluir tipo de usuário" onClose={() => setDeletingRole(null)} />
-        <ModalBody>
-          {deletingRole && (
-            <div className={styles.deleteContent}>
-              <p className={styles.confirmText}>
-                Tem certeza que deseja excluir <strong>{deletingRole.name}</strong>?
-              </p>
-              {deletingRole.usersCount > 0 && (
-                <Alert variant="warning" title={`${deletingRole.usersCount} usuários serão afetados`}>
-                  Os usuários com este tipo precisarão ser reatribuídos a outro tipo após a exclusão.
-                </Alert>
-              )}
-            </div>
-          )}
-        </ModalBody>
-        <ModalFooter>
-          <Button variant="tertiary" size="md" onClick={() => setDeletingRole(null)}>
-            Cancelar
-          </Button>
-          <Button variant="danger" size="md" leftIcon={Trash} onClick={handleDelete}>
-            Excluir tipo
-          </Button>
-        </ModalFooter>
       </Modal>
     </>
   );

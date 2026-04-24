@@ -63,7 +63,7 @@ export interface ConfigStoreSnapshot {
 }
 
 const STORAGE_KEY = "bud.saas.config-store";
-const STORE_SCHEMA_VERSION = 2;
+const STORE_SCHEMA_VERSION = 3;
 
 const DEFAULT_ACTIVE_ORG_ID = "org-1";
 

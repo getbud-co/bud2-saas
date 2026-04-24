@@ -6,23 +6,94 @@
  * It includes permission management with accordion-based permission groups.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
-import { screen, within, waitFor } from "@testing-library/react";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { render, screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders } from "../../../../tests/setup/test-utils";
+import { MemoryRouter } from "react-router-dom";
+import { AuthContext } from "@/contexts/AuthContext";
 import { RolesModule } from "./RolesModule";
+import { listPermissions, listRoles } from "@/lib/roles-api";
+
+vi.mock("@/lib/roles-api", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/roles-api")>("@/lib/roles-api");
+  return {
+    ...actual,
+    listRoles: vi.fn(),
+    listPermissions: vi.fn(),
+  };
+});
+
+const toastMock = vi.fn();
+vi.mock("@getbud-co/buds", async () => {
+  const actual = await vi.importActual<typeof import("@getbud-co/buds")>("@getbud-co/buds");
+  const toastFn = Object.assign((...args: unknown[]) => toastMock(...args), {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    black: vi.fn(),
+    dismiss: vi.fn(),
+  });
+  return { ...actual, toast: toastFn };
+});
+
+const API_ROLES = [
+  { id: "role-super-admin", slug: "super-admin", name: "Super Admin", description: "Acesso total ao sistema", type: "system" as const, scope: "org" as const, is_default: false, permission_ids: ["people.view", "people.create", "missions.view", "surveys.view", "settings.access", "assistant.tone"], users_count: 2, created_at: "2026-04-24T10:00:00Z", updated_at: "2026-04-24T10:00:00Z" },
+  { id: "role-admin-rh", slug: "admin-rh", name: "Admin RH", description: "Gestao de pessoas", type: "system" as const, scope: "org" as const, is_default: false, permission_ids: ["people.view", "people.create", "settings.access"], users_count: 1, created_at: "2026-04-24T10:01:00Z", updated_at: "2026-04-24T10:01:00Z" },
+  { id: "role-gestor", slug: "gestor", name: "Gestor", description: "Gestao do time direto", type: "system" as const, scope: "team" as const, is_default: false, permission_ids: ["people.view", "missions.view"], users_count: 3, created_at: "2026-04-24T10:02:00Z", updated_at: "2026-04-24T10:02:00Z" },
+  { id: "role-colaborador", slug: "colaborador", name: "Colaborador", description: "Acesso padrao", type: "system" as const, scope: "self" as const, is_default: true, permission_ids: ["people.view"], users_count: 12, created_at: "2026-04-24T10:03:00Z", updated_at: "2026-04-24T10:03:00Z" },
+  { id: "role-visualizador", slug: "visualizador", name: "Visualizador", description: "Somente leitura", type: "system" as const, scope: "org" as const, is_default: false, permission_ids: ["people.view"], users_count: 0, created_at: "2026-04-24T10:04:00Z", updated_at: "2026-04-24T10:04:00Z" },
+  { id: "role-lider-projeto", slug: "lider-projeto", name: "Lider de projeto", description: "Coordena projetos especiais", type: "custom" as const, scope: "team" as const, is_default: false, permission_ids: ["people.view", "missions.assign"], users_count: 4, created_at: "2026-04-24T10:05:00Z", updated_at: "2026-04-24T10:05:00Z" },
+];
+
+const API_PERMISSIONS = [
+  { id: "people.view", group: "people" as const, label: "Visualizar", description: "Ver pessoas" },
+  { id: "people.create", group: "people" as const, label: "Criar", description: "Criar pessoas" },
+  { id: "missions.view", group: "missions" as const, label: "Visualizar", description: "Ver missoes" },
+  { id: "missions.assign", group: "missions" as const, label: "Atribuir", description: "Atribuir missoes" },
+  { id: "surveys.view", group: "surveys" as const, label: "Visualizar", description: "Ver pesquisas" },
+  { id: "settings.access", group: "settings" as const, label: "Acessar", description: "Acessar configuracoes" },
+  { id: "assistant.tone", group: "assistant" as const, label: "Tom de voz", description: "Configurar tom" },
+];
 
 // ─── Test Helpers ───
 
-function setup() {
+function setup(options?: { activeOrganizationId?: string }) {
   const user = userEvent.setup();
-  const result = renderWithProviders(<RolesModule />);
+  const activeOrganizationId = options?.activeOrganizationId ?? "org-1";
+  const result = render(
+    <MemoryRouter>
+      <AuthContext.Provider
+        value={{
+          isAuthenticated: true,
+          initializing: false,
+          user: null,
+          activeOrganization: {
+            id: activeOrganizationId,
+            name: "API Org",
+            domain: `${activeOrganizationId}.example.com`,
+            workspace: activeOrganizationId,
+            status: "active",
+            membership_role: "super-admin",
+            membership_status: "active",
+          },
+          organizations: [],
+          login: vi.fn().mockResolvedValue(undefined),
+          switchOrganization: vi.fn().mockResolvedValue(undefined),
+          logout: vi.fn(),
+          getToken: vi.fn().mockReturnValue("test-token"),
+        }}
+      >
+        <RolesModule />
+      </AuthContext.Provider>
+    </MemoryRouter>,
+  );
   return { user, ...result };
 }
 
-async function openCreateModal(user: ReturnType<typeof userEvent.setup>) {
-  const createButton = screen.getByRole("button", { name: /novo tipo/i });
-  await user.click(createButton);
+async function openViewPermissionsModal(user: ReturnType<typeof userEvent.setup>) {
+  await screen.findByText("Lider de projeto");
+  const viewButton = screen.getAllByRole("button", { name: /ver permissões/i })[0]!;
+  await user.click(viewButton);
   await waitFor(() => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
@@ -32,7 +103,10 @@ async function openCreateModal(user: ReturnType<typeof userEvent.setup>) {
 
 describe("RolesModule", () => {
   beforeEach(() => {
-    localStorage.clear();
+    vi.clearAllMocks();
+    toastMock.mockClear();
+    vi.mocked(listRoles).mockResolvedValue({ data: API_ROLES });
+    vi.mocked(listPermissions).mockResolvedValue({ data: API_PERMISSIONS });
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -50,56 +124,63 @@ describe("RolesModule", () => {
       expect(screen.getByRole("button", { name: /novo tipo/i })).toBeInTheDocument();
     });
 
-    it("renders role cards from context", () => {
+    it("renders role cards from API", async () => {
       setup();
-      // Seed has default roles: Super Admin, Admin RH, Gestor, Colaborador, Visualizador
-      expect(screen.getByText("Super Admin")).toBeInTheDocument();
+      expect(await screen.findByText("Super Admin")).toBeInTheDocument();
       expect(screen.getByText("Gestor")).toBeInTheDocument();
       expect(screen.getByText("Colaborador")).toBeInTheDocument();
     });
 
-    it("shows system badge for system roles", () => {
+    it("renders a custom role from API", async () => {
       setup();
+
+      expect(await screen.findByText("Lider de projeto")).toBeInTheDocument();
+      expect(screen.getByText("Customizado")).toBeInTheDocument();
+    });
+
+    it("shows error state when roles or permissions fail to load", async () => {
+      vi.mocked(listPermissions).mockRejectedValueOnce(new Error("boom"));
+
+      setup();
+
+      expect(await screen.findByText("Não foi possível carregar os tipos de usuário")).toBeInTheDocument();
+    });
+
+    it("shows system badge for system roles", async () => {
+      setup();
+      await screen.findByText("Super Admin");
       const systemBadges = screen.getAllByText("Sistema");
       expect(systemBadges.length).toBeGreaterThan(0);
     });
 
-    it("shows user count for each role", () => {
+    it("shows user count for each role", async () => {
       setup();
+      expect(await screen.findByText("12 usuários")).toBeInTheDocument();
       // Should show "X usuários" or "X usuário" for each role
       const userCounts = screen.getAllByText(/\d+ usuários?/);
       expect(userCounts.length).toBeGreaterThan(0);
     });
 
-    it("shows permission count for each role", () => {
+    it("shows permission count for each role", async () => {
       setup();
+      await screen.findByText("Super Admin");
       // Should show "X/Y permissões" for each role
       const permCounts = screen.getAllByText(/\d+\/\d+ permissões/);
       expect(permCounts.length).toBeGreaterThan(0);
     });
 
-    it("shows permission percentage bar", () => {
+    it("shows permission percentage bar", async () => {
       setup();
+      await screen.findByText("Super Admin");
       // Each role card should have a percentage displayed
       const percentages = screen.getAllByText(/%$/);
       expect(percentages.length).toBeGreaterThan(0);
     });
 
-    it("keeps system roles visible when API org differs from legacy local org", () => {
-      localStorage.setItem(
-        "bud.test.organizations",
-        JSON.stringify([
-          {
-            id: "api-org-9",
-            name: "API Org",
-            workspace: "api-org",
-          },
-        ]),
-      );
+    it("keeps system roles visible for the authenticated API organization", async () => {
+      setup({ activeOrganizationId: "api-org-9" });
 
-      setup();
-
-      expect(screen.getByText("Super Admin")).toBeInTheDocument();
+      expect(await screen.findByText("Super Admin")).toBeInTheDocument();
       expect(screen.getAllByText("Sistema").length).toBeGreaterThan(0);
     });
   });
@@ -164,30 +245,24 @@ describe("RolesModule", () => {
   // ═══════════════════════════════════════════════════════════════════════════
 
   describe("role cards", () => {
-    it("shows edit button for custom roles", () => {
+    it("shows view button for all roles", async () => {
       setup();
-      // System roles should have "Ver permissões", custom would have "Editar permissões"
+      await screen.findByText("Lider de projeto");
       const viewButtons = screen.getAllByRole("button", { name: /ver permissões/i });
-      expect(viewButtons.length).toBeGreaterThan(0);
+      expect(viewButtons.length).toBe(API_ROLES.length);
+      expect(screen.queryByRole("button", { name: /editar permissões/i })).not.toBeInTheDocument();
     });
 
-    it("shows delete button only for custom roles", () => {
+    it("does not show delete buttons while roles are read-only", async () => {
       setup();
-      // System roles should NOT have delete button
-      // Check that at least some cards exist but delete may or may not be present
-      const cards = screen.getAllByText(/usuários?$/);
-      expect(cards.length).toBeGreaterThan(0);
+      await screen.findByText("Lider de projeto");
+      expect(screen.queryByRole("button", { name: /excluir tipo/i })).not.toBeInTheDocument();
     });
 
     it("clicking view permissions opens modal", async () => {
       const { user } = setup();
 
-      const viewButton = screen.getAllByRole("button", { name: /ver permissões/i })[0]!;
-      await user.click(viewButton);
-
-      await waitFor(() => {
-        expect(screen.getByRole("dialog")).toBeInTheDocument();
-      });
+      await openViewPermissionsModal(user);
     });
   });
 
@@ -199,9 +274,7 @@ describe("RolesModule", () => {
     it("shows role name in modal title", async () => {
       const { user } = setup();
 
-      // Click on first view permissions button
-      const viewButton = screen.getAllByRole("button", { name: /ver permissões/i })[0]!;
-      await user.click(viewButton);
+      await openViewPermissionsModal(user);
 
       await waitFor(() => {
         const dialog = screen.getByRole("dialog");
@@ -213,8 +286,7 @@ describe("RolesModule", () => {
     it("shows scope section", async () => {
       const { user } = setup();
 
-      const viewButton = screen.getAllByRole("button", { name: /ver permissões/i })[0]!;
-      await user.click(viewButton);
+      await openViewPermissionsModal(user);
 
       await waitFor(() => {
         expect(screen.getByText(/escopo de dados/i)).toBeInTheDocument();
@@ -224,8 +296,7 @@ describe("RolesModule", () => {
     it("shows permission groups", async () => {
       const { user } = setup();
 
-      const viewButton = screen.getAllByRole("button", { name: /ver permissões/i })[0]!;
-      await user.click(viewButton);
+      await openViewPermissionsModal(user);
 
       await waitFor(() => {
         // Should show permission group names
@@ -236,22 +307,20 @@ describe("RolesModule", () => {
       });
     });
 
-    it("shows warning for system roles", async () => {
+    it("shows read-only warning", async () => {
       const { user } = setup();
 
-      const viewButton = screen.getAllByRole("button", { name: /ver permissões/i })[0]!;
-      await user.click(viewButton);
+      await openViewPermissionsModal(user);
 
       await waitFor(() => {
-        expect(screen.getByText(/tipo de usuário do sistema/i)).toBeInTheDocument();
+        expect(screen.getByText(/tipo de usuário somente leitura/i)).toBeInTheDocument();
       });
     });
 
     it("has close button in header", async () => {
       const { user } = setup();
 
-      const viewButton = screen.getAllByRole("button", { name: /ver permissões/i })[0]!;
-      await user.click(viewButton);
+      await openViewPermissionsModal(user);
 
       await waitFor(() => {
         const dialog = screen.getByRole("dialog");
@@ -267,82 +336,15 @@ describe("RolesModule", () => {
   // Create Role Modal
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe("create role modal", () => {
-    it("opens modal when clicking create button", async () => {
+  describe("create role button", () => {
+    it("shows 'em breve' toast when clicked instead of opening a modal", async () => {
       const { user } = setup();
 
-      await openCreateModal(user);
+      const createButton = screen.getByRole("button", { name: /novo tipo/i });
+      await user.click(createButton);
 
-      expect(screen.getByRole("dialog")).toBeInTheDocument();
-      const dialog = screen.getByRole("dialog");
-      expect(within(dialog).getByText(/novo tipo de usuário/i)).toBeInTheDocument();
-    });
-
-    it("shows breadcrumb with steps", async () => {
-      const { user } = setup();
-
-      await openCreateModal(user);
-
-      expect(screen.getByText("Informações básicas")).toBeInTheDocument();
-      expect(screen.getByText("Configurar permissões")).toBeInTheDocument();
-    });
-
-    it("has name input field", async () => {
-      const { user } = setup();
-
-      await openCreateModal(user);
-
-      const dialog = screen.getByRole("dialog");
-      expect(within(dialog).getByLabelText(/nome/i)).toBeInTheDocument();
-    });
-
-    it("has description textarea", async () => {
-      const { user } = setup();
-
-      await openCreateModal(user);
-
-      const dialog = screen.getByRole("dialog");
-      expect(within(dialog).getByLabelText(/descrição/i)).toBeInTheDocument();
-    });
-
-    it("has template select", async () => {
-      const { user } = setup();
-
-      await openCreateModal(user);
-
-      expect(screen.getByText(/copiar permissões de/i)).toBeInTheDocument();
-    });
-
-    it("disables continue button when name is empty", async () => {
-      const { user } = setup();
-
-      await openCreateModal(user);
-
-      const dialog = screen.getByRole("dialog");
-      const continueButton = within(dialog).getByRole("button", { name: /continuar/i });
-      expect(continueButton).toBeDisabled();
-    });
-
-    it("enables continue button when name is filled", async () => {
-      const { user } = setup();
-
-      await openCreateModal(user);
-
-      const dialog = screen.getByRole("dialog");
-      const nameInput = within(dialog).getByLabelText(/nome/i);
-      await user.type(nameInput, "New Role");
-
-      const continueButton = within(dialog).getByRole("button", { name: /continuar/i });
-      expect(continueButton).not.toBeDisabled();
-    });
-
-    it("has cancel button", async () => {
-      const { user } = setup();
-
-      await openCreateModal(user);
-
-      const dialog = screen.getByRole("dialog");
-      expect(within(dialog).getByRole("button", { name: /cancelar/i })).toBeInTheDocument();
+      expect(toastMock).toHaveBeenCalledWith(expect.stringMatching(/em breve/i));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
   });
 
@@ -351,15 +353,17 @@ describe("RolesModule", () => {
   // ═══════════════════════════════════════════════════════════════════════════
 
   describe("edge cases", () => {
-    it("shows default badge for default role", () => {
+    it("shows default badge for default role", async () => {
       setup();
+      await screen.findByText("Colaborador");
       // Colaborador is the default role
       const defaultBadges = screen.getAllByText("Padrão");
       expect(defaultBadges.length).toBeGreaterThan(0);
     });
 
-    it("shows scope badges for non-self scopes", () => {
+    it("shows scope badges for non-self scopes", async () => {
       setup();
+      await screen.findByText("Super Admin");
       // Super Admin and Admin RH should have "Organização" scope
       const orgBadges = screen.queryAllByText("Organização");
       expect(orgBadges.length).toBeGreaterThan(0);
@@ -374,7 +378,7 @@ describe("RolesModule", () => {
     it("modal has proper dialog role and labeling", async () => {
       const { user } = setup();
 
-      await openCreateModal(user);
+      await openViewPermissionsModal(user);
 
       const dialog = screen.getByRole("dialog");
       expect(dialog).toHaveAttribute("aria-modal", "true");
@@ -384,8 +388,7 @@ describe("RolesModule", () => {
     it("checkboxes in permission modal are properly labeled", async () => {
       const { user } = setup();
 
-      const viewButton = screen.getAllByRole("button", { name: /ver permissões/i })[0]!;
-      await user.click(viewButton);
+      await openViewPermissionsModal(user);
 
       await waitFor(() => {
         // Permission checkboxes should exist
@@ -397,8 +400,7 @@ describe("RolesModule", () => {
     it("scope section is displayed in modal", async () => {
       const { user } = setup();
 
-      const viewButton = screen.getAllByRole("button", { name: /ver permissões/i })[0]!;
-      await user.click(viewButton);
+      await openViewPermissionsModal(user);
 
       await waitFor(() => {
         // Should have scope section header

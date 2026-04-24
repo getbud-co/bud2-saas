@@ -6,8 +6,8 @@
  * It wraps the config-store with CRUD operations and legacy ID resolution.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { renderHook, act, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { AuthContext } from "@/contexts/AuthContext";
 import { ConfigDataProvider, useConfigData } from "./ConfigDataContext";
@@ -61,6 +61,8 @@ function authenticatedWrapper({ children }: { children: ReactNode }) {
 describe("ConfigDataContext", () => {
   beforeEach(() => {
     localStorage.clear();
+    localStorage.setItem("bud.test.access-token", "test-token");
+    vi.clearAllMocks();
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -198,6 +200,23 @@ describe("ConfigDataContext", () => {
         expect(option).toHaveProperty("endDate");
         expect(option).toHaveProperty("status");
       }
+    });
+  });
+
+  describe("roles and permissions snapshot", () => {
+    it("keeps roles and permissions local when authenticated", async () => {
+      const { result } = renderHook(() => useConfigData(), {
+        wrapper: authenticatedWrapper,
+      });
+
+      await waitFor(() => {
+        expect(result.current.activeOrgId).toBe("org-1");
+      });
+
+      expect(result.current.rolesStatus).toBe("idle");
+      expect(result.current.roles.map((role) => role.slug)).toContain("super-admin");
+      expect(result.current.roleOptions.map((role) => role.value)).toContain("colaborador");
+      expect(result.current.permissions.map((permission) => permission.id)).toContain("people.view");
     });
   });
 
