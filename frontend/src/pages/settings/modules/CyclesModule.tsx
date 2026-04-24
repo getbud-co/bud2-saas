@@ -30,6 +30,7 @@ import type { PopoverItem, CalendarDate } from "@getbud-co/buds";
 import { Plus, PencilSimple, Trash, Play, Stop, MagnifyingGlass } from "@phosphor-icons/react";
 import type { Cycle, CycleType, CycleStatus } from "@/types";
 import { useConfigData } from "@/contexts/ConfigDataContext";
+import { cycleErrorToMessage } from "@/lib/cycles-api";
 import styles from "./CyclesModule.module.css";
 
 /** Converts an ISO date string (YYYY-MM-DD) to a CalendarDate for the DatePicker */
@@ -64,11 +65,19 @@ const STATUS_BADGE: Partial<Record<CycleStatus, { label: string; color: "success
 };
 
 export function CyclesModule() {
-  const { cycles, createCycle, updateCycle, deleteCycle } = useConfigData();
+  const {
+    cycles,
+    cyclesStatus,
+    cyclesError,
+    createCycle,
+    updateCycle,
+    deleteCycle,
+  } = useConfigData();
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCycle, setEditingCycle] = useState<Cycle | null>(null);
   const [deletingCycle, setDeletingCycle] = useState<Cycle | null>(null);
+  const [saving, setSaving] = useState(false);
   const [actionsPopoverCycle, setActionsPopoverCycle] = useState<string | null>(null);
   const {
     selectedRows,
@@ -87,15 +96,18 @@ export function CyclesModule() {
     () => cycles.filter((c) => !search || c.name.toLowerCase().includes(search.toLowerCase())),
     [cycles, search],
   );
+  const cyclesLoading = cyclesStatus === "loading";
 
   const rowIds = useMemo(() => filtered.map((c) => c.id), [filtered]);
 
-  function handleBulkDelete() {
-    for (const cycleId of selectedRows) {
-      deleteCycle(cycleId);
+  async function handleBulkDelete() {
+    try {
+      await Promise.all([...selectedRows].map((cycleId) => deleteCycle(cycleId)));
+      toast.success(`${selectedRows.size} ciclo(s) excluído(s)`);
+      clearSelection();
+    } catch (err) {
+      toast.error(cycleErrorToMessage(err));
     }
-    toast.success(`${selectedRows.size} ciclo(s) excluído(s)`);
-    clearSelection();
   }
 
   function openCreate() {
@@ -116,44 +128,60 @@ export function CyclesModule() {
     setModalOpen(true);
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!formDates[0] || !formDates[1]) return;
 
-    if (editingCycle) {
-      updateCycle(editingCycle.id, {
-        name: formName,
-        type: formType,
-        startDate: calendarDateToIso(formDates[0]),
-        endDate: calendarDateToIso(formDates[1]),
-        status: formStatus,
-      });
-      toast.success("Ciclo atualizado");
-    } else {
-      createCycle({
-        name: formName,
-        type: formType,
-        startDate: calendarDateToIso(formDates[0]),
-        endDate: calendarDateToIso(formDates[1]),
-        status: formStatus,
-        okrDefinitionDeadline: null,
-        midReviewDate: null,
-      });
-      toast.success("Ciclo criado");
+    setSaving(true);
+    try {
+      if (editingCycle) {
+        await updateCycle(editingCycle.id, {
+          name: formName,
+          type: formType,
+          startDate: calendarDateToIso(formDates[0]),
+          endDate: calendarDateToIso(formDates[1]),
+          status: formStatus,
+        });
+        toast.success("Ciclo atualizado");
+      } else {
+        await createCycle({
+          name: formName,
+          type: formType,
+          startDate: calendarDateToIso(formDates[0]),
+          endDate: calendarDateToIso(formDates[1]),
+          status: formStatus,
+          okrDefinitionDeadline: null,
+          midReviewDate: null,
+        });
+        toast.success("Ciclo criado");
+      }
+      setModalOpen(false);
+    } catch (err) {
+      toast.error(cycleErrorToMessage(err));
+    } finally {
+      setSaving(false);
     }
-    setModalOpen(false);
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!deletingCycle) return;
-    deleteCycle(deletingCycle.id);
-    setDeletingCycle(null);
-    toast.success("Ciclo excluído");
+    try {
+      await deleteCycle(deletingCycle.id);
+      setDeletingCycle(null);
+      toast.success("Ciclo excluído");
+    } catch (err) {
+      toast.error(cycleErrorToMessage(err));
+    }
   }
 
-  function handleToggleStatus(cycle: Cycle) {
+  async function handleToggleStatus(cycle: Cycle) {
     const newStatus: CycleStatus = cycle.status === "active" ? "ended" : "active";
-    updateCycle(cycle.id, { status: newStatus });
-    toast.success(newStatus === "active" ? "Ciclo ativado" : "Ciclo encerrado");
+    setActionsPopoverCycle(null);
+    try {
+      await updateCycle(cycle.id, { status: newStatus });
+      toast.success(newStatus === "active" ? "Ciclo ativado" : "Ciclo encerrado");
+    } catch (err) {
+      toast.error(cycleErrorToMessage(err));
+    }
   }
 
   function getRowActions(cycle: Cycle): PopoverItem[] {
@@ -174,6 +202,18 @@ export function CyclesModule() {
       <Alert variant="info" title="Defina os períodos da sua organização">
         Os ciclos criados aqui ficam disponíveis como períodos pré-definidos nas funcionalidades de missões e pesquisas da plataforma.
       </Alert>
+
+      {cyclesStatus === "error" && (
+        <Alert variant="error" title="Não foi possível carregar os ciclos">
+          {cyclesError ?? "Tente recarregar a página em alguns instantes."}
+        </Alert>
+      )}
+
+      {cyclesStatus === "loading" && cycles.length === 0 && (
+        <Alert variant="info" title="Carregando ciclos">
+          Buscando os ciclos cadastrados para a organização ativa.
+        </Alert>
+      )}
 
       <Table
         variant="divider"
@@ -197,7 +237,7 @@ export function CyclesModule() {
                   leftIcon={MagnifyingGlass}
                 />
               </div>
-              <Button variant="primary" size="md" leftIcon={Plus} onClick={openCreate}>
+              <Button variant="primary" size="md" leftIcon={Plus} disabled={cyclesLoading} onClick={openCreate}>
                 Novo ciclo
               </Button>
             </div>
@@ -242,7 +282,7 @@ export function CyclesModule() {
           </TableBody>
         </TableContent>
         <TableBulkActions count={selectedRows.size} onClear={clearSelection}>
-          <Button variant="danger" size="md" leftIcon={Trash} onClick={handleBulkDelete}>
+          <Button variant="danger" size="md" leftIcon={Trash} disabled={cyclesLoading} onClick={handleBulkDelete}>
             Excluir
           </Button>
         </TableBulkActions>
@@ -280,7 +320,7 @@ export function CyclesModule() {
         </ModalBody>
         <ModalFooter>
           <Button variant="tertiary" size="md" onClick={() => setModalOpen(false)}>Cancelar</Button>
-          <Button variant="primary" size="md" disabled={!formName.trim() || !formDates[0] || !formDates[1]} onClick={handleSave}>
+          <Button variant="primary" size="md" disabled={saving || cyclesLoading || !formName.trim() || !formDates[0] || !formDates[1]} onClick={handleSave}>
             {editingCycle ? "Salvar" : "Criar ciclo"}
           </Button>
         </ModalFooter>
@@ -298,7 +338,7 @@ export function CyclesModule() {
         </ModalBody>
         <ModalFooter>
           <Button variant="tertiary" size="md" onClick={() => setDeletingCycle(null)}>Cancelar</Button>
-          <Button variant="danger" size="md" leftIcon={Trash} onClick={handleDelete}>Excluir</Button>
+          <Button variant="danger" size="md" leftIcon={Trash} disabled={cyclesLoading} onClick={handleDelete}>Excluir</Button>
         </ModalFooter>
       </Modal>
     </>
