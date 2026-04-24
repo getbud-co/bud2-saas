@@ -8,6 +8,7 @@ import (
 
 	apptx "github.com/getbud-co/bud2/backend/internal/app/tx"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
+	"github.com/getbud-co/bud2/backend/internal/domain/team"
 	"github.com/getbud-co/bud2/backend/internal/domain/user"
 	"github.com/getbud-co/bud2/backend/internal/infra/postgres/sqlc"
 )
@@ -22,6 +23,10 @@ func (r txRepositories) Organizations() organization.Repository {
 
 func (r txRepositories) Users() user.Repository {
 	return NewUserRepository(r.queries)
+}
+
+func (r txRepositories) Teams() team.Repository {
+	return NewTeamRepository(r.queries)
 }
 
 type TxManager struct {

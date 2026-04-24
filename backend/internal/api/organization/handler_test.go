@@ -81,6 +81,7 @@ func TestHandler_Create_Success(t *testing.T) {
 	handler.Create(rr, req)
 
 	assert.Equal(t, http.StatusCreated, rr.Code)
+	assert.Equal(t, "/organizations/"+expected.ID.String(), rr.Header().Get("Location"))
 	var resp Response
 	assert.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
 	assert.Equal(t, expected.ID, resp.ID)
@@ -387,7 +388,7 @@ func TestHandler_Delete_Success(t *testing.T) {
 	assert.Equal(t, http.StatusNoContent, rr.Code)
 }
 
-func TestHandler_Delete_NotFound(t *testing.T) {
+func TestHandler_Delete_NotFound_IsIdempotent(t *testing.T) {
 	deleteUC := new(mockDeleteUseCase)
 	handler := NewHandler(nil, nil, nil, nil, deleteUC)
 
@@ -404,5 +405,5 @@ func TestHandler_Delete_NotFound(t *testing.T) {
 
 	handler.Delete(rr, req)
 
-	assert.Equal(t, http.StatusNotFound, rr.Code)
+	assert.Equal(t, http.StatusNoContent, rr.Code)
 }

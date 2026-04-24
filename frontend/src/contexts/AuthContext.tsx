@@ -47,6 +47,7 @@ interface AuthContextValue {
   activeOrganization: AuthOrganization | null;
   organizations: AuthOrganization[];
   login: (email: string, password: string) => Promise<void>;
+  switchOrganization: (organizationId: string) => Promise<void>;
   logout: () => void;
   getToken: () => string | null;
 }
@@ -116,6 +117,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [activeOrganization, setActiveOrganization] = useState<AuthOrganization | null>(null);
   const [organizations, setOrganizations] = useState<AuthOrganization[]>([]);
 
+  const applySession = useCallback((session: LoginResponse) => {
+	setAccessToken(session.access_token);
+	setUser(session.user);
+	setActiveOrganization(session.active_organization ?? null);
+	setOrganizations(session.organizations);
+	saveTokens({ accessToken: session.access_token, refreshToken: session.refresh_token });
+  }, []);
+
   // On mount, restore session from localStorage and validate via GET /auth/session
   useEffect(() => {
     let cancelled = false;
@@ -156,11 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: { email, password },
       });
 
-      saveTokens({ accessToken: result.access_token, refreshToken: result.refresh_token });
-      setAccessToken(result.access_token);
-      setUser(result.user);
-      setActiveOrganization(result.active_organization ?? null);
-      setOrganizations(result.organizations);
+      applySession(result);
     } catch (err) {
       if (err instanceof ApiError) {
         err.message = toUserMessage(err);
@@ -168,7 +173,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       throw new Error(toUserMessage(err));
     }
-  }, []);
+  }, [applySession]);
+
+  const switchOrganization = useCallback(async (organizationId: string) => {
+	if (!accessToken) throw new Error("authentication required");
+	try {
+	  const result = await apiRequest<LoginResponse>("/auth/session", {
+		method: "PUT",
+		body: { organization_id: organizationId },
+		token: accessToken,
+	  });
+	  applySession(result);
+	} catch (err) {
+	  if (err instanceof ApiError) {
+		err.message = toUserMessage(err);
+		throw err;
+	  }
+	  throw new Error(toUserMessage(err));
+	}
+  }, [accessToken, applySession]);
 
   const logout = useCallback(() => {
     clearTokens();
@@ -191,10 +214,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       activeOrganization,
       organizations,
       login,
+      switchOrganization,
       logout,
       getToken,
     }),
-    [isAuthenticated, initializing, user, activeOrganization, organizations, login, logout, getToken],
+    [isAuthenticated, initializing, user, activeOrganization, organizations, login, switchOrganization, logout, getToken],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

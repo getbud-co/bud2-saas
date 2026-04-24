@@ -21,6 +21,7 @@ import (
 	rootapi "github.com/getbud-co/bud2/backend/internal/api"
 	apiauth "github.com/getbud-co/bud2/backend/internal/api/auth"
 	apiorg "github.com/getbud-co/bud2/backend/internal/api/organization"
+	apiteam "github.com/getbud-co/bud2/backend/internal/api/team"
 	apiuser "github.com/getbud-co/bud2/backend/internal/api/user"
 	appauth "github.com/getbud-co/bud2/backend/internal/app/auth"
 	"github.com/getbud-co/bud2/backend/internal/domain/membership"
@@ -86,7 +87,7 @@ func TestAuthIntegration_LoginSessionSwitchRefresh(t *testing.T) {
 	)
 
 	require.NoError(t, rbac.InitEnforcer(filepath.Join(env.BackendRoot, "policies", "model.conf"), filepath.Join(env.BackendRoot, "policies", "policy.csv")))
-	router := rootapi.NewRouter(noopBootstrapHandler{}, authHandler, &apiorg.Handler{}, &apiuser.Handler{}, rootapi.RouterConfig{
+	router := rootapi.NewRouter(noopBootstrapHandler{}, authHandler, &apiorg.Handler{}, &apiuser.Handler{}, &apiteam.Handler{}, rootapi.RouterConfig{
 		Env:            "test",
 		AllowedOrigins: []string{"http://localhost:3000"},
 		OpenAPISpec:    apispec.Spec,
@@ -212,7 +213,7 @@ func TestAuthIntegration_InvitedUser_LoginActivatesMemberships(t *testing.T) {
 	)
 
 	require.NoError(t, rbac.InitEnforcer(filepath.Join(env.BackendRoot, "policies", "model.conf"), filepath.Join(env.BackendRoot, "policies", "policy.csv")))
-	router := rootapi.NewRouter(noopBootstrapHandler{}, authHandler, &apiorg.Handler{}, &apiuser.Handler{}, rootapi.RouterConfig{
+	router := rootapi.NewRouter(noopBootstrapHandler{}, authHandler, &apiorg.Handler{}, &apiuser.Handler{}, &apiteam.Handler{}, rootapi.RouterConfig{
 		Env:            "test",
 		AllowedOrigins: []string{"http://localhost:3000"},
 		OpenAPISpec:    apispec.Spec,

@@ -10,6 +10,7 @@ import (
 
 	apptx "github.com/getbud-co/bud2/backend/internal/app/tx"
 	"github.com/getbud-co/bud2/backend/internal/domain"
+	domainteam "github.com/getbud-co/bud2/backend/internal/domain/team"
 	usr "github.com/getbud-co/bud2/backend/internal/domain/user"
 )
 
@@ -26,6 +27,7 @@ type UpdateCommand struct {
 	Language       string
 	Gender         *string
 	Phone          *string
+	TeamIDs        *[]uuid.UUID
 }
 
 type UpdateUseCase struct {
@@ -38,8 +40,9 @@ func NewUpdateUseCase(users usr.Repository, txm apptx.Manager, logger *slog.Logg
 	return &UpdateUseCase{users: users, txm: txm, logger: logger}
 }
 
-func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*usr.User, error) {
+func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*usr.User, []uuid.UUID, error) {
 	var updatedUser *usr.User
+	var resultTeamIDs []uuid.UUID
 	err := uc.txm.WithTx(ctx, func(repos apptx.Repositories) error {
 		u, txErr := repos.Users().GetByIDForOrganization(ctx, cmd.ID, cmd.OrganizationID.UUID())
 		if txErr != nil {
@@ -74,10 +77,30 @@ func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*usr.U
 		}
 
 		updatedUser, txErr = repos.Users().Update(ctx, u)
-		return txErr
+		if txErr != nil {
+			return txErr
+		}
+
+		if cmd.TeamIDs != nil {
+			if txErr = repos.Teams().SyncMembersByUser(ctx, cmd.OrganizationID.UUID(), cmd.ID, *cmd.TeamIDs, domainteam.RoleMember); txErr != nil {
+				return txErr
+			}
+			resultTeamIDs = *cmd.TeamIDs
+		} else {
+			members, membersErr := repos.Teams().ListMembersByUser(ctx, cmd.OrganizationID.UUID(), cmd.ID)
+			if membersErr != nil {
+				return membersErr
+			}
+			resultTeamIDs = make([]uuid.UUID, len(members))
+			for i, m := range members {
+				resultTeamIDs[i] = m.TeamID
+			}
+		}
+
+		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return updatedUser, nil
+	return updatedUser, resultTeamIDs, nil
 }

@@ -102,6 +102,17 @@ func (u *User) MembershipForOrganization(organizationID uuid.UUID) (*membership.
 	return nil, membership.ErrNotFound
 }
 
+func (u *User) ActiveMembershipForOrganization(organizationID uuid.UUID) (*membership.Membership, error) {
+	m, err := u.MembershipForOrganization(organizationID)
+	if err != nil {
+		return nil, err
+	}
+	if m.Status != membership.StatusActive {
+		return nil, membership.ErrNotFound
+	}
+	return m, nil
+}
+
 // EnsureAccessibleInOrganization makes the tenant-scope check explicit for
 // use cases that return a User but must still enforce organization isolation.
 func (u *User) EnsureAccessibleInOrganization(organizationID uuid.UUID) error {

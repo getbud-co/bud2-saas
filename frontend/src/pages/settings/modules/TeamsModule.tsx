@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, type ChangeEvent, type RefObject } from "react";
+import { useState, useRef, useMemo, useEffect, type ChangeEvent, type RefObject } from "react";
 import {
   Table,
   TableCardHeader,
@@ -38,11 +38,58 @@ import {
   ArrowCounterClockwise,
 } from "@phosphor-icons/react";
 import type { Team, TeamMember, TeamColor } from "@/types";
-import { usePeopleData } from "@/contexts/PeopleDataContext";
-import { useConfigData } from "@/contexts/ConfigDataContext";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  listTeams,
+  createTeam,
+  updateTeam,
+  deleteTeam as deleteTeamApi,
+  teamErrorToMessage,
+  type TeamApiResponse,
+} from "@/lib/teams-api";
+import { listUsers, type UserApiResponse } from "@/lib/users-api";
 import { TeamModal } from "./TeamModal";
 import type { PersonView } from "./TeamModal";
 import styles from "./TeamsModule.module.css";
+
+/* ——— Mappers ——— */
+
+/** Maps an API team response to the frontend Team shape. */
+function apiTeamToView(t: TeamApiResponse): Team {
+  const members: TeamMember[] = t.members.map((m) => ({
+    teamId: m.team_id,
+    userId: m.user_id,
+    roleInTeam: m.role_in_team,
+    joinedAt: m.joined_at,
+    user: m.user
+      ? {
+          id: m.user.id,
+          firstName: m.user.first_name,
+          lastName: m.user.last_name,
+          initials: m.user.initials,
+          jobTitle: m.user.job_title,
+          avatarUrl: m.user.avatar_url,
+        }
+      : undefined,
+  }));
+
+  const firstLeader = members.find((m) => m.roleInTeam === "leader");
+
+  return {
+    id: t.id,
+    orgId: t.org_id,
+    name: t.name,
+    description: t.description,
+    color: t.color as TeamColor,
+    leaderId: firstLeader?.userId ?? null,
+    parentTeamId: null,
+    status: t.status,
+    createdAt: t.created_at,
+    updatedAt: t.updated_at,
+    deletedAt: null,
+    members,
+  };
+}
 
 /* ——— View helpers ——— */
 
@@ -75,9 +122,11 @@ const STATUS_BADGE: Record<string, { label: string; color: "success" | "neutral"
 /* ——— Component ——— */
 
 export function TeamsModule() {
-  const { teams, setTeams, orgPeople } = usePeopleData();
-  const { activeOrgId } = useConfigData();
+  const { getToken, activeOrganization } = useAuth();
+  const [apiUsers, setApiUsers] = useState<UserApiResponse[]>([]);
+  const [pageTeams, setPageTeams] = useState<Team[]>([]);
   const [search, setSearch] = useState("");
+  const apiOrgId = activeOrganization?.id ?? "";
 
   /* sorting */
   type SortKey = "name" | "members" | "status";
@@ -116,6 +165,35 @@ export function TeamsModule() {
 
   const FILTER_OPTIONS = [{ id: "status", label: "Status" }];
 
+  /* load from API for active organization */
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    let cancelled = false;
+    listTeams(token, { size: 100 })
+      .then((res) => {
+        if (cancelled) return;
+        setPageTeams(res.data.map(apiTeamToView));
+      })
+      .catch((err) => {
+        if (!cancelled) toast.error(teamErrorToMessage(err));
+      });
+    return () => { cancelled = true; };
+  }, [apiOrgId, getToken]);
+
+  /* load users from API for people pool */
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    let cancelled = false;
+    listUsers(token, { size: 100 })
+      .then((res) => {
+        if (!cancelled) setApiUsers(res.data);
+      })
+      .catch(() => { /* fail silently — peoplePool will be empty */ });
+    return () => { cancelled = true; };
+  }, [apiOrgId, getToken]);
+
   /* actions popover */
   const [actionsPopoverTeam, setActionsPopoverTeam] = useState<string | null>(null);
 
@@ -131,7 +209,7 @@ export function TeamsModule() {
   /* ——— Derived ——— */
 
   const filtered = useMemo(() =>
-    teams
+    pageTeams
       .filter((t) => {
         if (search && !t.name.toLowerCase().includes(search.toLowerCase()) && !(t.description ?? "").toLowerCase().includes(search.toLowerCase())) return false;
         if (activeFilters.includes("status") && filterStatus !== "all" && t.status !== filterStatus) return false;
@@ -147,26 +225,20 @@ export function TeamsModule() {
           default: return 0;
         }
       }),
-    [teams, search, activeFilters, filterStatus, sortKey, sortDir],
+    [pageTeams, search, activeFilters, filterStatus, sortKey, sortDir],
   );
 
   const rowIds = useMemo(() => filtered.map((t) => t.id), [filtered]);
-  const teamIdByName = useMemo(
-    () => new Map(teams.map((team) => [team.name, team.id])),
-    [teams],
-  );
   const peoplePool = useMemo(() => {
-    return orgPeople.map((person) => ({
-      id: person.id,
-      firstName: person.firstName,
-      lastName: person.lastName,
-      jobTitle: person.jobTitle ?? "",
-      initials: person.initials ?? `${person.firstName[0] ?? ""}${person.lastName[0] ?? ""}`.toUpperCase(),
-      teamIds: person.teams
-        .map((teamName) => teamIdByName.get(teamName))
-        .filter((teamId): teamId is string => !!teamId),
+    return apiUsers.map((u) => ({
+      id: u.id,
+      firstName: u.first_name,
+      lastName: u.last_name,
+      jobTitle: u.job_title ?? "",
+      initials: `${u.first_name[0] ?? ""}${u.last_name[0] ?? ""}`.toUpperCase(),
+      teamIds: u.team_ids ?? [],
     }));
-  }, [orgPeople, teamIdByName]);
+  }, [apiUsers]);
 
   /* ——— Filter helpers ——— */
 
@@ -193,80 +265,134 @@ export function TeamsModule() {
 
   /* ——— Save from TeamModal ——— */
 
-  function handleTeamModalSave(data: {
+  async function handleTeamModalSave(data: {
     name: string;
     description: string;
     color: TeamColor;
     members: TeamMember[];
   }) {
-    const leader = data.members.find((m) => m.roleInTeam === "leader");
-    const leaderId = leader?.userId ?? null;
+    const token = getToken();
+    if (!token) return;
+
+    const apiMembers = data.members.map((m) => ({
+      user_id: m.userId,
+      role_in_team: m.roleInTeam as "leader" | "member" | "observer",
+    }));
+
     const editingTeam = teamModalState?.team;
 
-    if (editingTeam) {
-      setTeams((prev) => prev.map((t) => t.id === editingTeam.id ? {
-        ...t,
-        name: data.name,
-        description: data.description,
-        color: data.color,
-        leaderId,
-        members: data.members,
-      } : t));
-      toast.success(`Time "${data.name}" atualizado`);
-    } else {
-      const newId = String(Date.now());
-      const now = new Date().toISOString();
-      const members = data.members.map((m) => ({ ...m, teamId: newId }));
-      const newTeam: Team = {
-        id: newId,
-        orgId: activeOrgId,
-        name: data.name,
-        description: data.description || null,
-        color: data.color,
-        leaderId,
-        parentTeamId: null,
-        status: "active",
-        createdAt: now,
-        updatedAt: now,
-        deletedAt: null,
-        members,
-      };
-      setTeams((prev) => [...prev, newTeam]);
-      toast.success(`Time "${data.name}" criado`);
+    try {
+      if (editingTeam) {
+        const updated = await updateTeam(editingTeam.id, {
+          name: data.name,
+          description: data.description || null,
+          color: data.color,
+          status: editingTeam.status,
+          members: apiMembers,
+        }, token);
+        setPageTeams((prev) => prev.map((t) => t.id === editingTeam.id ? apiTeamToView(updated) : t));
+        toast.success(`Time "${data.name}" atualizado`);
+      } else {
+        const created = await createTeam({
+          name: data.name,
+          description: data.description || null,
+          color: data.color,
+          members: apiMembers,
+        }, token);
+        setPageTeams((prev) => [...prev, apiTeamToView(created)]);
+        toast.success(`Time "${data.name}" criado`);
+      }
+      setTeamModalState(null);
+    } catch (err) {
+      toast.error(teamErrorToMessage(err));
     }
-
-    setTeamModalState(null);
   }
 
   /* ——— Status toggle ——— */
 
-  function handleToggleStatus(team: Team) {
+  async function handleToggleStatus(team: Team) {
+    const token = getToken();
+    if (!token) return;
     const newStatus = team.status === "active" ? "archived" as const : "active" as const;
-    setTeams((prev) => prev.map((t) => t.id === team.id ? { ...t, status: newStatus } : t));
+    const apiMembers = (team.members ?? []).map((m) => ({
+      user_id: m.userId,
+      role_in_team: m.roleInTeam as "leader" | "member" | "observer",
+    }));
     setActionsPopoverTeam(null);
-    toast.success(newStatus === "active" ? `"${team.name}" ativado` : `"${team.name}" arquivado`);
+    try {
+      const updated = await updateTeam(team.id, {
+        name: team.name,
+        description: team.description,
+        color: team.color,
+        status: newStatus,
+        members: apiMembers,
+      }, token);
+      setPageTeams((prev) => prev.map((t) => t.id === team.id ? apiTeamToView(updated) : t));
+      toast.success(newStatus === "active" ? `"${team.name}" ativado` : `"${team.name}" arquivado`);
+    } catch (err) {
+      toast.error(teamErrorToMessage(err));
+    }
   }
 
   /* ——— Delete ——— */
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!deleteTeam) return;
-    setTeams((prev) => prev.filter((t) => t.id !== deleteTeam.id));
+    const token = getToken();
+    if (!token) return;
+    const name = deleteTeam.name;
+    const id = deleteTeam.id;
     setDeleteTeam(null);
-    toast.success(`Time "${deleteTeam.name}" excluído`);
+    try {
+      await deleteTeamApi(id, token);
+      setPageTeams((prev) => prev.filter((t) => t.id !== id));
+      toast.success(`Time "${name}" excluído`);
+    } catch (err) {
+      toast.error(teamErrorToMessage(err));
+    }
   }
 
   /* ——— Bulk actions ——— */
 
-  function handleBulkArchive() {
-    setTeams((prev) => prev.map((t) => selectedRows.has(t.id) ? { ...t, status: "archived" } : t));
-    toast.success(`${selectedRows.size} time(s) arquivado(s)`);
+  async function handleBulkArchive() {
+    const token = getToken();
+    if (!token) return;
+    const toArchive = pageTeams.filter((t) => selectedRows.has(t.id) && t.status === "active");
+    try {
+      const updated = await Promise.all(
+        toArchive.map((t) =>
+          updateTeam(t.id, {
+            name: t.name,
+            description: t.description,
+            color: t.color,
+            status: "archived",
+            members: (t.members ?? []).map((m) => ({
+              user_id: m.userId,
+              role_in_team: m.roleInTeam as "leader" | "member" | "observer",
+            })),
+          }, token),
+        ),
+      );
+      const updatedMap = new Map(updated.map((u) => [u.id, apiTeamToView(u)]));
+      setPageTeams((prev) => prev.map((t) => updatedMap.get(t.id) ?? t));
+      toast.success(`${toArchive.length} time(s) arquivado(s)`);
+    } catch (err) {
+      toast.error(teamErrorToMessage(err));
+    }
     clearSelection();
   }
 
-  function handleBulkDelete() {
-    setTeams((prev) => prev.filter((t) => !selectedRows.has(t.id)));
-    toast.success(`${selectedRows.size} time(s) excluído(s)`);
+  async function handleBulkDelete() {
+    const token = getToken();
+    if (!token) return;
+    const ids = [...selectedRows];
+    try {
+      await Promise.all(ids.map((id) => deleteTeamApi(id, token)));
+      setPageTeams((prev) => prev.filter((t) => !selectedRows.has(t.id)));
+      toast.success(`${ids.length} time(s) excluído(s)`);
+    } catch (err) {
+      toast.error(teamErrorToMessage(err));
+    }
     clearSelection();
   }
 
@@ -461,7 +587,7 @@ export function TeamsModule() {
         team={teamModalState?.team ?? null}
         initialTab={teamModalState?.tab ?? "details"}
         peoplePool={peoplePool}
-        allTeams={teams.map((t) => ({ id: t.id, name: t.name }))}
+        allTeams={pageTeams.map((t) => ({ id: t.id, name: t.name }))}
         onClose={() => setTeamModalState(null)}
         onSave={handleTeamModalSave}
       />

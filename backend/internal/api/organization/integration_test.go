@@ -21,6 +21,7 @@ import (
 	rootapi "github.com/getbud-co/bud2/backend/internal/api"
 	apiauth "github.com/getbud-co/bud2/backend/internal/api/auth"
 	apiorg "github.com/getbud-co/bud2/backend/internal/api/organization"
+	apiteam "github.com/getbud-co/bud2/backend/internal/api/team"
 	apiuser "github.com/getbud-co/bud2/backend/internal/api/user"
 	apporg "github.com/getbud-co/bud2/backend/internal/app/organization"
 	appuser "github.com/getbud-co/bud2/backend/internal/app/user"
@@ -47,6 +48,7 @@ func TestOrganizationsIntegration_UserScopedAccessAndSystemAdminCreate(t *testin
 	queries := sqlc.New(env.Pool)
 	orgRepo := postgres.NewOrgRepository(queries)
 	userRepo := postgres.NewUserRepository(queries)
+	teamRepo := postgres.NewTeamRepository(queries)
 	txManager := postgres.NewTxManager(env.Pool)
 	logger := testutil.NewDiscardLogger()
 
@@ -65,10 +67,11 @@ func TestOrganizationsIntegration_UserScopedAccessAndSystemAdminCreate(t *testin
 		appuser.NewDeleteUseCase(txManager, logger),
 		appuser.NewGetMembershipUseCase(userRepo, logger),
 		appuser.NewUpdateMembershipUseCase(txManager, logger),
+		teamRepo,
 	)
 
 	require.NoError(t, rbac.InitEnforcer(filepath.Join(env.BackendRoot, "policies", "model.conf"), filepath.Join(env.BackendRoot, "policies", "policy.csv")))
-	router := rootapi.NewRouter(noopBootstrapHandler{}, &apiauth.Handler{}, orgHandler, userHandler, rootapi.RouterConfig{
+	router := rootapi.NewRouter(noopBootstrapHandler{}, &apiauth.Handler{}, orgHandler, userHandler, &apiteam.Handler{}, rootapi.RouterConfig{
 		Env:            "test",
 		AllowedOrigins: []string{"http://localhost:3000"},
 		OpenAPISpec:    apispec.Spec,
@@ -136,7 +139,10 @@ func TestOrganizationsIntegration_UserScopedAccessAndSystemAdminCreate(t *testin
 		require.NoError(t, err)
 		resp = doAuthorizedRequest(t, server.URL, sysAdminToken, http.MethodPost, "/organizations", bytes.NewReader(body))
 		defer resp.Body.Close()
-		assert.Equal(t, http.StatusCreated, resp.StatusCode)
+		require.Equal(t, http.StatusCreated, resp.StatusCode)
+		var created apiorg.Response
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&created))
+		assert.Equal(t, "/organizations/"+created.ID.String(), resp.Header.Get("Location"))
 	})
 
 	t.Run("regular user cannot create organization", func(t *testing.T) {
@@ -169,6 +175,52 @@ func TestOrganizationsIntegration_UserScopedAccessAndSystemAdminCreate(t *testin
 		defer resp.Body.Close()
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	})
+}
+
+func TestOrganizationsIntegration_DeleteIsIdempotent(t *testing.T) {
+	env := testutil.NewPostgresIntegrationEnv(t)
+	ctx := context.Background()
+	queries := sqlc.New(env.Pool)
+	orgRepo := postgres.NewOrgRepository(queries)
+	txManager := postgres.NewTxManager(env.Pool)
+	logger := testutil.NewDiscardLogger()
+
+	orgHandler := apiorg.NewHandler(
+		apporg.NewCreateUseCase(orgRepo, logger),
+		apporg.NewGetUseCase(orgRepo, logger),
+		apporg.NewListUseCase(orgRepo, logger),
+		apporg.NewUpdateUseCase(orgRepo, logger),
+		apporg.NewDeleteUseCase(txManager, logger),
+	)
+
+	require.NoError(t, rbac.InitEnforcer(filepath.Join(env.BackendRoot, "policies", "model.conf"), filepath.Join(env.BackendRoot, "policies", "policy.csv")))
+	router := rootapi.NewRouter(noopBootstrapHandler{}, &apiauth.Handler{}, orgHandler, &apiuser.Handler{}, &apiteam.Handler{}, rootapi.RouterConfig{
+		Env:            "test",
+		AllowedOrigins: []string{"http://localhost:3000"},
+		OpenAPISpec:    apispec.Spec,
+		JWTSecret:      "test-secret",
+		Enforcer:       rbac.Enforcer(),
+		Pool:           env.Pool,
+		MaxBodySize:    1024 * 1024,
+		RequestTimeout: 30 * time.Second,
+	})
+	server := httptest.NewServer(router)
+	t.Cleanup(server.Close)
+
+	org, err := orgRepo.Create(ctx, &organization.Organization{Name: "Gamma", Domain: "gamma.example.com", Workspace: "gamma", Status: organization.StatusActive})
+	require.NoError(t, err)
+
+	issuer := infraauth.NewTokenIssuer("test-secret")
+	sysAdminToken, err := issuer.IssueToken(domain.UserClaims{UserID: domain.UserID(uuid.New()), IsSystemAdmin: true}, time.Hour)
+	require.NoError(t, err)
+
+	resp := doAuthorizedRequest(t, server.URL, sysAdminToken, http.MethodDelete, "/organizations/"+org.ID.String(), nil)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+	resp2 := doAuthorizedRequest(t, server.URL, sysAdminToken, http.MethodDelete, "/organizations/"+org.ID.String(), nil)
+	defer resp2.Body.Close()
+	assert.Equal(t, http.StatusNoContent, resp2.StatusCode)
 }
 
 func doAuthorizedRequest(t *testing.T, baseURL, token, method, path string, body io.Reader) *http.Response {

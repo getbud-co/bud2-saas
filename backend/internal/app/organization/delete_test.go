@@ -11,6 +11,7 @@ import (
 
 	apptx "github.com/getbud-co/bud2/backend/internal/app/tx"
 	org "github.com/getbud-co/bud2/backend/internal/domain/organization"
+	"github.com/getbud-co/bud2/backend/internal/domain/team"
 	usr "github.com/getbud-co/bud2/backend/internal/domain/user"
 	"github.com/getbud-co/bud2/backend/internal/test/fixtures"
 	"github.com/getbud-co/bud2/backend/internal/test/mocks"
@@ -23,6 +24,7 @@ type deleteOrgTestTxRepos struct {
 
 func (r deleteOrgTestTxRepos) Organizations() org.Repository { return r.orgRepo }
 func (r deleteOrgTestTxRepos) Users() usr.Repository         { return nil }
+func (r deleteOrgTestTxRepos) Teams() team.Repository        { return nil }
 
 type deleteOrgTestTxManager struct {
 	repos     apptx.Repositories

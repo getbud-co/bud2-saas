@@ -14,6 +14,7 @@ import (
 	"github.com/getbud-co/bud2/backend/internal/api/health"
 	"github.com/getbud-co/bud2/backend/internal/api/middleware"
 	apiorg "github.com/getbud-co/bud2/backend/internal/api/organization"
+	apiteam "github.com/getbud-co/bud2/backend/internal/api/team"
 	apiuser "github.com/getbud-co/bud2/backend/internal/api/user"
 )
 
@@ -32,7 +33,7 @@ type RouterConfig struct {
 	RequestTimeout time.Duration
 }
 
-func NewRouter(bootstrapHandler BootstrapHandler, authHandler *auth.Handler, orgHandler *apiorg.Handler, userHandler *apiuser.Handler, cfg RouterConfig) *chi.Mux {
+func NewRouter(bootstrapHandler BootstrapHandler, authHandler *auth.Handler, orgHandler *apiorg.Handler, userHandler *apiuser.Handler, teamHandler *apiteam.Handler, cfg RouterConfig) *chi.Mux {
 	r := chi.NewRouter()
 
 	allowedOrigins := cfg.AllowedOrigins
@@ -99,6 +100,17 @@ func NewRouter(bootstrapHandler BootstrapHandler, authHandler *auth.Handler, org
 			r.With(middleware.RequirePermission(cfg.Enforcer, "users", "delete")).Delete("/{id}", userHandler.Delete)
 			r.With(middleware.RequirePermission(cfg.Enforcer, "users", "read")).Get("/{id}/membership", userHandler.GetMembership)
 			r.With(middleware.RequirePermission(cfg.Enforcer, "users", "write")).Put("/{id}/membership", userHandler.UpdateMembership)
+		})
+
+		r.Route("/teams", func(r chi.Router) {
+			r.Use(middleware.AuthMiddleware(middleware.AuthMiddlewareConfig{JWTSecret: cfg.JWTSecret}))
+			r.Use(middleware.TenantMiddleware)
+			r.Use(middleware.ActiveOrganizationMiddleware(cfg.Pool))
+			r.With(middleware.RequirePermission(cfg.Enforcer, "teams", "write")).Post("/", teamHandler.Create)
+			r.With(middleware.RequirePermission(cfg.Enforcer, "teams", "read")).Get("/", teamHandler.List)
+			r.With(middleware.RequirePermission(cfg.Enforcer, "teams", "read")).Get("/{id}", teamHandler.Get)
+			r.With(middleware.RequirePermission(cfg.Enforcer, "teams", "write")).Put("/{id}", teamHandler.Update)
+			r.With(middleware.RequirePermission(cfg.Enforcer, "teams", "delete")).Delete("/{id}", teamHandler.Delete)
 		})
 	})
 

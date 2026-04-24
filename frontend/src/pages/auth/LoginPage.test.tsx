@@ -30,6 +30,7 @@ vi.mock("@/contexts/AuthContext", async () => {
       activeOrganization: null,
       organizations: [],
       login: authState.login,
+      switchOrganization: vi.fn(),
       logout: vi.fn(),
       getToken: () => null,
     }),

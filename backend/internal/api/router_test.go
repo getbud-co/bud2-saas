@@ -13,6 +13,7 @@ import (
 
 	apiauth "github.com/getbud-co/bud2/backend/internal/api/auth"
 	apiorg "github.com/getbud-co/bud2/backend/internal/api/organization"
+	apiteam "github.com/getbud-co/bud2/backend/internal/api/team"
 	apiuser "github.com/getbud-co/bud2/backend/internal/api/user"
 	apporg "github.com/getbud-co/bud2/backend/internal/app/organization"
 	"github.com/getbud-co/bud2/backend/internal/domain"
@@ -50,7 +51,8 @@ func TestNewRouter_OrganizationsDoNotRequireActiveTenantForSystemAdmin(t *testin
 		stubBootstrapHandler{},
 		&apiauth.Handler{},
 		apiorg.NewHandler(nil, nil, stubListUseCase{}, nil, nil),
-		apiuser.NewHandler(nil, nil, nil, nil, nil, nil, nil),
+		apiuser.NewHandler(nil, nil, nil, nil, nil, nil, nil, nil),
+		apiteam.NewHandler(nil, nil, nil, nil, nil),
 		RouterConfig{JWTSecret: "test-secret", Enforcer: stubPermissionChecker{}, MaxBodySize: 1024, RequestTimeout: time.Second},
 	)
 
@@ -72,7 +74,8 @@ func TestNewRouter_UsersStillRequireActiveTenant(t *testing.T) {
 		stubBootstrapHandler{},
 		&apiauth.Handler{},
 		apiorg.NewHandler(nil, nil, stubListUseCase{}, nil, nil),
-		apiuser.NewHandler(nil, nil, nil, nil, nil, nil, nil),
+		apiuser.NewHandler(nil, nil, nil, nil, nil, nil, nil, nil),
+		apiteam.NewHandler(nil, nil, nil, nil, nil),
 		RouterConfig{JWTSecret: "test-secret", Enforcer: stubPermissionChecker{}, MaxBodySize: 1024, RequestTimeout: time.Second},
 	)
 
@@ -95,7 +98,8 @@ func TestNewRouter_OrganizationCreateRequiresSystemAdmin(t *testing.T) {
 		stubBootstrapHandler{},
 		&apiauth.Handler{},
 		apiorg.NewHandler(nil, nil, stubListUseCase{}, nil, nil),
-		apiuser.NewHandler(nil, nil, nil, nil, nil, nil, nil),
+		apiuser.NewHandler(nil, nil, nil, nil, nil, nil, nil, nil),
+		apiteam.NewHandler(nil, nil, nil, nil, nil),
 		RouterConfig{JWTSecret: "test-secret", Enforcer: stubPermissionChecker{}, MaxBodySize: 1024, RequestTimeout: time.Second},
 	)
 

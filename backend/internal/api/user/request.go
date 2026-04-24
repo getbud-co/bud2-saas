@@ -21,6 +21,7 @@ type createRequest struct {
 	Language  string     `json:"language,omitempty" validate:"omitempty,min=2,max=10"`
 	Gender    *string    `json:"gender,omitempty" validate:"omitempty,oneof=feminino masculino nao-binario prefiro-nao-dizer"`
 	Phone     *string    `json:"phone,omitempty" validate:"omitempty,min=1,max=30"`
+	TeamIDs   []string   `json:"team_ids,omitempty" validate:"omitempty,dive,uuid"`
 }
 
 type updateRequest struct {
@@ -34,11 +35,24 @@ type updateRequest struct {
 	Language  string     `json:"language,omitempty" validate:"omitempty,min=2,max=10"`
 	Gender    *string    `json:"gender,omitempty" validate:"omitempty,oneof=feminino masculino nao-binario prefiro-nao-dizer"`
 	Phone     *string    `json:"phone,omitempty" validate:"omitempty,min=1,max=30"`
+	TeamIDs   *[]string  `json:"team_ids,omitempty" validate:"omitempty,dive,uuid"`
 }
 
 type updateMembershipRequest struct {
 	Role   string `json:"role" validate:"required,oneof=super-admin admin-rh gestor colaborador visualizador"`
 	Status string `json:"status" validate:"required,oneof=invited active inactive"`
+}
+
+func parseUUIDs(ids []string) []uuid.UUID {
+	if len(ids) == 0 {
+		return nil
+	}
+	out := make([]uuid.UUID, 0, len(ids))
+	for _, s := range ids {
+		id, _ := uuid.Parse(s) // already validated as uuid
+		out = append(out, id)
+	}
+	return out
 }
 
 func (r createRequest) toCommand(organizationID domain.TenantID) user.CreateCommand {
@@ -55,11 +69,12 @@ func (r createRequest) toCommand(organizationID domain.TenantID) user.CreateComm
 		Language:       r.Language,
 		Gender:         r.Gender,
 		Phone:          r.Phone,
+		TeamIDs:        parseUUIDs(r.TeamIDs),
 	}
 }
 
 func (r updateRequest) toCommand(organizationID domain.TenantID, id uuid.UUID) user.UpdateCommand {
-	return user.UpdateCommand{
+	cmd := user.UpdateCommand{
 		OrganizationID: organizationID,
 		ID:             id,
 		FirstName:      r.FirstName,
@@ -73,6 +88,11 @@ func (r updateRequest) toCommand(organizationID domain.TenantID, id uuid.UUID) u
 		Gender:         r.Gender,
 		Phone:          r.Phone,
 	}
+	if r.TeamIDs != nil {
+		parsed := parseUUIDs(*r.TeamIDs)
+		cmd.TeamIDs = &parsed
+	}
+	return cmd
 }
 
 func (r updateMembershipRequest) toCommand(organizationID domain.TenantID, id uuid.UUID) user.UpdateMembershipCommand {

@@ -84,6 +84,24 @@ describe("RolesModule", () => {
       const percentages = screen.getAllByText(/%$/);
       expect(percentages.length).toBeGreaterThan(0);
     });
+
+    it("keeps system roles visible when API org differs from legacy local org", () => {
+      localStorage.setItem(
+        "bud.test.organizations",
+        JSON.stringify([
+          {
+            id: "api-org-9",
+            name: "API Org",
+            workspace: "api-org",
+          },
+        ]),
+      );
+
+      setup();
+
+      expect(screen.getByText("Super Admin")).toBeInTheDocument();
+      expect(screen.getAllByText("Sistema").length).toBeGreaterThan(0);
+    });
   });
 
   // ═══════════════════════════════════════════════════════════════════════════

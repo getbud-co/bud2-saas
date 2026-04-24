@@ -2,6 +2,8 @@ package organization
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -70,6 +72,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Location", fmt.Sprintf("/organizations/%s", result.ID))
 	httputil.WriteJSON(w, http.StatusCreated, toResponse(result))
 }
 
@@ -201,6 +204,10 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 		ID:                     id,
 	})
 	if err != nil {
+		if errors.Is(err, org.ErrNotFound) {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		handleError(w, err)
 		return
 	}

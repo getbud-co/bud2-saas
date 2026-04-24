@@ -12,6 +12,7 @@ import (
 	apptx "github.com/getbud-co/bud2/backend/internal/app/tx"
 	"github.com/getbud-co/bud2/backend/internal/domain/membership"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
+	"github.com/getbud-co/bud2/backend/internal/domain/team"
 	usr "github.com/getbud-co/bud2/backend/internal/domain/user"
 	"github.com/getbud-co/bud2/backend/internal/test/fixtures"
 	"github.com/getbud-co/bud2/backend/internal/test/mocks"
@@ -20,10 +21,20 @@ import (
 
 type updateTestTxRepos struct {
 	userRepo usr.Repository
+	teamRepo team.Repository
 }
 
 func (r updateTestTxRepos) Organizations() organization.Repository { return nil }
 func (r updateTestTxRepos) Users() usr.Repository                  { return r.userRepo }
+func (r updateTestTxRepos) Teams() team.Repository {
+	if r.teamRepo != nil {
+		return r.teamRepo
+	}
+	// Return a mock that returns empty members by default (for ListMembersByUser calls).
+	m := new(mocks.TeamRepository)
+	m.On("ListMembersByUser", mock.Anything, mock.Anything, mock.Anything).Return([]team.TeamMember{}, nil)
+	return m
+}
 
 type updateTestTxManager struct {
 	repos     apptx.Repositories
@@ -56,7 +67,7 @@ func TestUpdateUseCase_Execute_Success(t *testing.T) {
 	txUsers.On("GetByIDForOrganization", mock.Anything, testUser.ID, tenantID.UUID()).Return(testUser, nil)
 	txUsers.On("Update", mock.Anything, mock.Anything).Return(updatedUser, nil)
 
-	result, err := uc.Execute(context.Background(), UpdateCommand{
+	result, _, err := uc.Execute(context.Background(), UpdateCommand{
 		OrganizationID: tenantID, ID: testUser.ID, FirstName: "Updated", LastName: "Name", Email: testUser.Email, Status: "active",
 	})
 
@@ -71,7 +82,7 @@ func TestUpdateUseCase_Execute_UserNotFound(t *testing.T) {
 
 	userID := uuid.New()
 
-	result, err := uc.Execute(context.Background(), UpdateCommand{
+	result, _, err := uc.Execute(context.Background(), UpdateCommand{
 		OrganizationID: fixtures.NewTestTenantID(), ID: userID, FirstName: "Test", LastName: "User", Email: "test@example.com", Status: "active",
 	})
 
@@ -89,7 +100,7 @@ func TestUpdateUseCase_Execute_MembershipNotFound(t *testing.T) {
 
 	txUsers.On("GetByIDForOrganization", mock.Anything, testUser.ID, tenantID.UUID()).Return(nil, membership.ErrNotFound)
 
-	result, err := uc.Execute(context.Background(), UpdateCommand{
+	result, _, err := uc.Execute(context.Background(), UpdateCommand{
 		OrganizationID: tenantID, ID: testUser.ID, FirstName: "Test", LastName: "User", Email: testUser.Email, Status: "active",
 	})
 
@@ -112,7 +123,7 @@ func TestUpdateUseCase_Execute_EmailConflict(t *testing.T) {
 	txUsers.On("GetByIDForOrganization", mock.Anything, testUser.ID, tenantID.UUID()).Return(testUser, nil)
 	txUsers.On("GetByEmail", mock.Anything, "other@example.com").Return(otherUser, nil)
 
-	result, err := uc.Execute(context.Background(), UpdateCommand{
+	result, _, err := uc.Execute(context.Background(), UpdateCommand{
 		OrganizationID: tenantID, ID: testUser.ID, FirstName: testUser.FirstName, LastName: testUser.LastName, Email: "other@example.com", Status: "active",
 	})
 
@@ -132,7 +143,7 @@ func TestUpdateUseCase_Execute_SameEmailNoConflict(t *testing.T) {
 	txUsers.On("GetByIDForOrganization", mock.Anything, testUser.ID, tenantID.UUID()).Return(testUser, nil)
 	txUsers.On("Update", mock.Anything, mock.Anything).Return(testUser, nil)
 
-	result, err := uc.Execute(context.Background(), UpdateCommand{
+	result, _, err := uc.Execute(context.Background(), UpdateCommand{
 		OrganizationID: tenantID, ID: testUser.ID, FirstName: testUser.FirstName, LastName: testUser.LastName, Email: testUser.Email, Status: "active",
 	})
 
@@ -152,7 +163,7 @@ func TestUpdateUseCase_Execute_InvalidMembershipStatus(t *testing.T) {
 
 	txUsers.On("GetByIDForOrganization", mock.Anything, testUser.ID, tenantID.UUID()).Return(testUser, nil)
 
-	result, err := uc.Execute(context.Background(), UpdateCommand{
+	result, _, err := uc.Execute(context.Background(), UpdateCommand{
 		OrganizationID: tenantID, ID: testUser.ID, FirstName: testUser.FirstName, LastName: testUser.LastName, Email: testUser.Email, Status: "invalid",
 	})
 
@@ -172,7 +183,7 @@ func TestUpdateUseCase_Execute_GetByEmailError(t *testing.T) {
 	txUsers.On("GetByIDForOrganization", mock.Anything, testUser.ID, tenantID.UUID()).Return(testUser, nil)
 	txUsers.On("GetByEmail", mock.Anything, "new@example.com").Return(nil, errors.New("db error"))
 
-	result, err := uc.Execute(context.Background(), UpdateCommand{
+	result, _, err := uc.Execute(context.Background(), UpdateCommand{
 		OrganizationID: tenantID, ID: testUser.ID, FirstName: testUser.FirstName, LastName: testUser.LastName, Email: "new@example.com", Status: "active",
 	})
 
@@ -192,7 +203,7 @@ func TestUpdateUseCase_Execute_UserUpdateError(t *testing.T) {
 	txUsers.On("GetByIDForOrganization", mock.Anything, testUser.ID, tenantID.UUID()).Return(testUser, nil)
 	txUsers.On("Update", mock.Anything, mock.Anything).Return(nil, errors.New("db error"))
 
-	result, err := uc.Execute(context.Background(), UpdateCommand{
+	result, _, err := uc.Execute(context.Background(), UpdateCommand{
 		OrganizationID: tenantID, ID: testUser.ID, FirstName: testUser.FirstName, LastName: testUser.LastName, Email: testUser.Email, Status: "active",
 	})
 
@@ -204,7 +215,7 @@ func TestUpdateUseCase_Execute_TransactionError(t *testing.T) {
 	txm := &updateTestTxManager{returnErr: errors.New("tx error")}
 	uc := NewUpdateUseCase(new(mocks.UserRepository), txm, testutil.NewDiscardLogger())
 
-	result, err := uc.Execute(context.Background(), UpdateCommand{
+	result, _, err := uc.Execute(context.Background(), UpdateCommand{
 		OrganizationID: fixtures.NewTestTenantID(), ID: uuid.New(), FirstName: "Test", LastName: "User", Email: "test@example.com", Status: "active",
 	})
 

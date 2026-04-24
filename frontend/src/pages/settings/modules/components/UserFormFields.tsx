@@ -36,6 +36,9 @@ interface UserFormFieldsProps {
   onGenderChange: (v: string) => void;
   language: string;
   onLanguageChange: (v: string) => void;
+  role: string;
+  onRoleChange: (v: string) => void;
+  roleOptions: { value: string; label: string }[];
 }
 
 export function UserFormFields({
@@ -48,6 +51,7 @@ export function UserFormFields({
   birthDate, onBirthDateChange,
   gender, onGenderChange,
   language, onLanguageChange,
+  role, onRoleChange, roleOptions,
 }: UserFormFieldsProps) {
   return (
     <div className={styles.formStack}>
@@ -70,7 +74,10 @@ export function UserFormFields({
         </div>
         <Select label="Gênero" value={gender} onChange={onGenderChange} options={GENDER_OPTIONS} />
       </div>
-      <Select label="Idioma" value={language} onChange={onLanguageChange} options={LANGUAGE_OPTIONS} />
+      <div className={styles.formRow}>
+        <Select label="Idioma" value={language} onChange={onLanguageChange} options={LANGUAGE_OPTIONS} />
+        <Select label="Tipo de usuário" value={role} onChange={onRoleChange} options={roleOptions} />
+      </div>
     </div>
   );
 }

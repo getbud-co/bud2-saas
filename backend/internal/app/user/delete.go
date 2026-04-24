@@ -40,6 +40,9 @@ func (uc *DeleteUseCase) Execute(ctx context.Context, cmd DeleteCommand) error {
 		if err != nil {
 			return err
 		}
+		if err := repos.Teams().SoftDeleteMemberByUser(ctx, cmd.OrganizationID.UUID(), cmd.TargetUserID); err != nil {
+			return err
+		}
 		return repos.Users().DeleteMembership(ctx, cmd.OrganizationID.UUID(), cmd.TargetUserID)
 	})
 }

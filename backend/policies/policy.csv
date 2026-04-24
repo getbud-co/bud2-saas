@@ -16,3 +16,14 @@ p, gestor, org, read
 p, colaborador, users, read
 p, colaborador, settings, read
 p, visualizador, users, read
+
+p, super-admin, teams, write
+p, super-admin, teams, read
+p, super-admin, teams, delete
+p, admin-rh, teams, write
+p, admin-rh, teams, read
+p, admin-rh, teams, delete
+p, gestor, teams, write
+p, gestor, teams, read
+p, colaborador, teams, read
+p, visualizador, teams, read

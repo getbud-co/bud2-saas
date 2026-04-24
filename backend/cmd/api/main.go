@@ -21,10 +21,12 @@ import (
 	apiauth "github.com/getbud-co/bud2/backend/internal/api/auth"
 	apibootstrap "github.com/getbud-co/bud2/backend/internal/api/bootstrap"
 	apiorg "github.com/getbud-co/bud2/backend/internal/api/organization"
+	apiteam "github.com/getbud-co/bud2/backend/internal/api/team"
 	apiuser "github.com/getbud-co/bud2/backend/internal/api/user"
 	appauth "github.com/getbud-co/bud2/backend/internal/app/auth"
 	appbootstrap "github.com/getbud-co/bud2/backend/internal/app/bootstrap"
 	apporg "github.com/getbud-co/bud2/backend/internal/app/organization"
+	appteam "github.com/getbud-co/bud2/backend/internal/app/team"
 	appuser "github.com/getbud-co/bud2/backend/internal/app/user"
 	"github.com/getbud-co/bud2/backend/internal/config"
 	infraauth "github.com/getbud-co/bud2/backend/internal/infra/auth"
@@ -87,6 +89,7 @@ func main() {
 	queries := sqlc.New(pool)
 	orgRepo := postgres.NewOrgRepository(queries)
 	userRepo := postgres.NewUserRepository(queries)
+	teamRepo := postgres.NewTeamRepository(queries)
 	refreshTokenRepo := postgres.NewRefreshTokenRepository(queries)
 	txManager := postgres.NewTxManager(pool)
 	tokenIssuer := infraauth.NewTokenIssuer(cfg.JWTSecret)
@@ -108,6 +111,12 @@ func main() {
 	getUserMembership := appuser.NewGetMembershipUseCase(userRepo, logger)
 	updateUserMembership := appuser.NewUpdateMembershipUseCase(txManager, logger)
 
+	createTeam := appteam.NewCreateUseCase(teamRepo, userRepo, txManager, logger)
+	getTeam := appteam.NewGetUseCase(teamRepo, logger)
+	listTeam := appteam.NewListUseCase(teamRepo, logger)
+	updateTeam := appteam.NewUpdateUseCase(teamRepo, userRepo, txManager, logger)
+	deleteTeam := appteam.NewDeleteUseCase(txManager, logger)
+
 	bootstrapUC := appbootstrap.NewUseCase(orgRepo, txManager, tokenIssuer, passwordHasher, logger)
 	loginUC := appauth.NewLoginUseCase(userRepo, orgRepo, tokenIssuer, passwordHasher, refreshTokenRepo, tokenHasher, logger)
 	getSessionUC := appauth.NewGetSessionUseCase(userRepo, orgRepo, tokenIssuer, passwordHasher, logger)
@@ -118,8 +127,9 @@ func main() {
 	bootstrapHandler := apibootstrap.NewHandler(bootstrapUC)
 	authHandler := apiauth.NewHandler(loginUC, getSessionUC, switchOrganizationUC, refreshUC)
 	orgHandler := apiorg.NewHandler(createOrg, getOrg, listOrg, updateOrg, deleteOrg)
-	userHandler := apiuser.NewHandler(createUser, getUser, listUser, updateUser, deleteUser, getUserMembership, updateUserMembership)
-	router := api.NewRouter(bootstrapHandler, authHandler, orgHandler, userHandler, api.RouterConfig{
+	userHandler := apiuser.NewHandler(createUser, getUser, listUser, updateUser, deleteUser, getUserMembership, updateUserMembership, teamRepo)
+	teamHandler := apiteam.NewHandler(createTeam, getTeam, listTeam, updateTeam, deleteTeam)
+	router := api.NewRouter(bootstrapHandler, authHandler, orgHandler, userHandler, teamHandler, api.RouterConfig{
 		Env:            cfg.Env,
 		AllowedOrigins: strings.Split(cfg.AllowedOrigins, ","),
 		OpenAPISpec:    apispec.Spec,

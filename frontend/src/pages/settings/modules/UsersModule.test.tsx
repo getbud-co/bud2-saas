@@ -12,9 +12,8 @@ import { screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "../../../../tests/setup/test-utils";
 import { UsersModule } from "./UsersModule";
+import { listUsers } from "@/lib/users-api";
 
-// Mock users-api so API calls don't hit the network.
-// getToken returns null in MockAuthProvider, so calls bail early for most tests.
 vi.mock("@/lib/users-api", async () => {
   const actual = await vi.importActual<typeof import("@/lib/users-api")>("@/lib/users-api");
   return {
@@ -26,6 +25,20 @@ vi.mock("@/lib/users-api", async () => {
     updateUserMembership: vi.fn(),
   };
 });
+
+vi.mock("@/lib/teams-api", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/teams-api")>("@/lib/teams-api");
+  return {
+    ...actual,
+    listTeams: vi.fn().mockResolvedValue({ data: [], total: 0, page: 1, size: 100 }),
+  };
+});
+
+const SEED_USERS = [
+  { id: "u1", first_name: "Maria", last_name: "Soares", email: "maria@empresa.com", status: "active", is_system_admin: false, language: "pt-br", role: "super-admin", membership_status: "active", team_ids: [], created_at: "2024-01-01T00:00:00Z", updated_at: "2024-01-01T00:00:00Z" },
+  { id: "u2", first_name: "João", last_name: "Silva", email: "joao@empresa.com", status: "active", is_system_admin: false, language: "pt-br", role: "colaborador", membership_status: "active", team_ids: [], created_at: "2024-01-01T00:00:00Z", updated_at: "2024-01-01T00:00:00Z" },
+  { id: "u3", first_name: "Ana", last_name: "Costa", email: "ana@empresa.com", status: "inactive", is_system_admin: false, language: "pt-br", role: "gestor", membership_status: "inactive", team_ids: [], created_at: "2024-01-01T00:00:00Z", updated_at: "2024-01-01T00:00:00Z" },
+];
 
 // ─── Test Helpers ───
 
@@ -40,6 +53,9 @@ function setup() {
 describe("UsersModule", () => {
   beforeEach(() => {
     localStorage.clear();
+    localStorage.setItem("bud.test.access-token", "test-token");
+    vi.clearAllMocks();
+    vi.mocked(listUsers).mockResolvedValue({ data: SEED_USERS, total: SEED_USERS.length, page: 1, size: 100 });
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -75,30 +91,31 @@ describe("UsersModule", () => {
       expect(screen.getByRole("button", { name: /ordenar por status/i })).toBeInTheDocument();
     });
 
-    it("renders users from context", async () => {
+    it("renders users from API", async () => {
       setup();
-      const rows = await screen.findAllByRole("row");
-      // Header row + data rows (seed has multiple users)
+      await screen.findByText("Maria Soares");
+      const rows = screen.getAllByRole("row");
+      // Header row + data rows (SEED_USERS has 3 users)
       expect(rows.length).toBeGreaterThan(1);
     });
 
-    it("shows badge with user count", () => {
+    it("shows badge with user count", async () => {
       setup();
-      // Badge shows filtered count
+      await screen.findByText("Maria Soares");
       const badges = screen.getAllByText(/^\d+$/);
       expect(badges.length).toBeGreaterThan(0);
     });
 
-    it("displays user names", () => {
+    it("displays user names", async () => {
       setup();
-      // Seed users should be rendered via AvatarLabelGroup
+      await screen.findByText("Maria Soares");
       const rows = screen.getAllByRole("row");
       expect(rows.length).toBeGreaterThan(1);
     });
 
-    it("displays user statuses as badges", () => {
+    it("displays user statuses as badges", async () => {
       setup();
-      // Users should have status badges
+      await screen.findByText("Maria Soares");
       const statusBadges = screen.queryAllByText(/^(Ativo|Inativo|Convidado|Suspenso)$/);
       expect(statusBadges.length).toBeGreaterThan(0);
     });
@@ -112,6 +129,7 @@ describe("UsersModule", () => {
     it("filters users by search term", async () => {
       const { user } = setup();
 
+      await screen.findByText("Maria Soares");
       const initialRows = screen.getAllByRole("row");
       expect(initialRows.length).toBeGreaterThan(1);
 
@@ -154,6 +172,7 @@ describe("UsersModule", () => {
     it("clears search when input is cleared", async () => {
       const { user } = setup();
 
+      await screen.findByText("Maria Soares");
       const searchInput = screen.getByPlaceholderText("Buscar por nome ou e-mail...");
       const initialRows = screen.getAllByRole("row");
 
@@ -258,6 +277,7 @@ describe("UsersModule", () => {
     it("selects all rows when clicking select all", async () => {
       const { user } = setup();
 
+      await screen.findByText("Maria Soares");
       const selectAllCheckbox = screen.getByRole("checkbox", { name: /selecionar todas/i });
       await user.click(selectAllCheckbox);
 
@@ -483,23 +503,23 @@ describe("UsersModule", () => {
   // ═══════════════════════════════════════════════════════════════════════════
 
   describe("row actions", () => {
-    it("renders action buttons for each row", () => {
+    it("renders action buttons for each row", async () => {
       setup();
-
+      await screen.findByText("Maria Soares");
       const actionButtons = screen.getAllByRole("button", { name: /abrir ações/i });
       expect(actionButtons.length).toBeGreaterThan(0);
     });
 
-    it("has descriptive aria-label for action buttons", () => {
+    it("has descriptive aria-label for action buttons", async () => {
       setup();
-
+      await screen.findByText("Maria Soares");
       const actionButtons = screen.getAllByRole("button", { name: /abrir ações de/i });
       expect(actionButtons.length).toBeGreaterThan(0);
     });
 
     it("opens popover when clicking action button", async () => {
       const { user } = setup();
-
+      await screen.findByText("Maria Soares");
       const actionButtons = screen.getAllByRole("button", { name: /abrir ações de/i });
       await user.click(actionButtons[0]!);
 
@@ -511,8 +531,7 @@ describe("UsersModule", () => {
 
     it("shows deactivate option for active users", async () => {
       const { user } = setup();
-
-      // Find an active user's action button
+      await screen.findByText("Maria Soares");
       const actionButtons = screen.getAllByRole("button", { name: /abrir ações de/i });
       await user.click(actionButtons[0]!);
 
@@ -529,12 +548,10 @@ describe("UsersModule", () => {
   // ═══════════════════════════════════════════════════════════════════════════
 
   describe("role selection", () => {
-    it("displays role buttons for each user", () => {
+    it("displays role buttons for each user", async () => {
       setup();
-
-      // Role buttons should be present (they show role name + caret)
+      await screen.findByText("Maria Soares");
       const rows = screen.getAllByRole("row");
-      // At least one data row should exist
       expect(rows.length).toBeGreaterThan(1);
     });
   });
@@ -546,7 +563,7 @@ describe("UsersModule", () => {
   describe("deactivate/activate confirmation", () => {
     it("opens confirmation when clicking deactivate from row actions", async () => {
       const { user } = setup();
-
+      await screen.findByText("Maria Soares");
       const actionButtons = screen.getAllByRole("button", { name: /abrir ações de/i });
       await user.click(actionButtons[0]!);
 
@@ -573,7 +590,7 @@ describe("UsersModule", () => {
 
     it("confirmation modal has cancel button", async () => {
       const { user } = setup();
-
+      await screen.findByText("Maria Soares");
       const actionButtons = screen.getAllByRole("button", { name: /abrir ações de/i });
       await user.click(actionButtons[0]!);
 
@@ -628,9 +645,9 @@ describe("UsersModule", () => {
       expect(selectAllCheckbox).toBeInTheDocument();
     });
 
-    it("action buttons have descriptive labels", () => {
+    it("action buttons have descriptive labels", async () => {
       setup();
-
+      await screen.findByText("Maria Soares");
       const actionButtons = screen.getAllByRole("button", { name: /abrir ações de/i });
       expect(actionButtons.length).toBeGreaterThan(0);
     });
@@ -643,7 +660,7 @@ describe("UsersModule", () => {
   describe("bulk actions", () => {
     it("shows deactivate button in bulk actions", async () => {
       const { user } = setup();
-
+      await screen.findByText("Maria Soares");
       const selectAllCheckbox = screen.getByRole("checkbox", { name: /selecionar todas/i });
       await user.click(selectAllCheckbox);
 
@@ -657,7 +674,7 @@ describe("UsersModule", () => {
 
     it("shows delete button in bulk actions", async () => {
       const { user } = setup();
-
+      await screen.findByText("Maria Soares");
       const selectAllCheckbox = screen.getByRole("checkbox", { name: /selecionar todas/i });
       await user.click(selectAllCheckbox);
 
@@ -668,6 +685,7 @@ describe("UsersModule", () => {
 
     it("shows selected count in bulk actions", async () => {
       const { user } = setup();
+      await screen.findByText("Maria Soares");
 
       const selectAllCheckbox = screen.getByRole("checkbox", { name: /selecionar todas/i });
       await user.click(selectAllCheckbox);
