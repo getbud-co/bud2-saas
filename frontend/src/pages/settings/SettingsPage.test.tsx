@@ -7,47 +7,24 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { render } from "@testing-library/react";
-import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { SettingsPage } from "./SettingsPage";
-
-import { ConfigDataProvider } from "@/contexts/ConfigDataContext";
-import { ActivityDataProvider } from "@/contexts/ActivityDataContext";
-import { PeopleDataProvider } from "@/contexts/PeopleDataContext";
-import { MissionsDataProvider } from "@/contexts/MissionsDataContext";
-import { SurveysDataProvider } from "@/contexts/SurveysDataContext";
-import { SettingsDataProvider } from "@/contexts/SettingsDataContext";
-import { IntegrationsDataProvider } from "@/contexts/IntegrationsDataContext";
-import { MockAuthProvider } from "../../../tests/setup/MockAuthProvider";
+import {
+  screen,
+  waitFor,
+  renderWithProviders,
+  userEvent,
+} from "../../../tests/setup/test-utils";
 
 // ─── Test Helpers ───
 
 function setup(initialPath = "/settings") {
   const user = userEvent.setup();
-  const result = render(
-    <MemoryRouter initialEntries={[initialPath]}>
-      <MockAuthProvider>
-        <ConfigDataProvider>
-          <ActivityDataProvider>
-            <PeopleDataProvider>
-              <MissionsDataProvider>
-                <SurveysDataProvider>
-                  <SettingsDataProvider>
-                    <IntegrationsDataProvider>
-                      <Routes>
-                        <Route path="/settings/*" element={<SettingsPage />} />
-                      </Routes>
-                    </IntegrationsDataProvider>
-                  </SettingsDataProvider>
-                </SurveysDataProvider>
-              </MissionsDataProvider>
-            </PeopleDataProvider>
-          </ActivityDataProvider>
-        </ConfigDataProvider>
-      </MockAuthProvider>
-    </MemoryRouter>,
+  const result = renderWithProviders(
+    <Routes>
+      <Route path="/settings/*" element={<SettingsPage />} />
+    </Routes>,
+    { initialEntries: [initialPath] },
   );
   return { user, ...result };
 }

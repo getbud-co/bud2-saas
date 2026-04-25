@@ -254,8 +254,8 @@ export function SurveysPage() {
     () => cyclePresetOptions.map((cycle) => ({
       id: cycle.id,
       label: cycle.label,
-      start: isoToCalendarDate(cycle.startDate),
-      end: isoToCalendarDate(cycle.endDate),
+      start: isoToCalendarDate(cycle.start_date),
+      end: isoToCalendarDate(cycle.end_date),
     })),
     [cyclePresetOptions],
   );

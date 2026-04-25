@@ -21,7 +21,7 @@ import {
 import type { SurveyResultData } from "../types";
 import { QuestionResultCard } from "./QuestionResultCard";
 import { usePeopleData } from "@/contexts/PeopleDataContext";
-import { useConfigData } from "@/contexts/ConfigDataContext";
+import { useCycles } from "@/hooks/use-cycles";
 import styles from "./SummaryTab.module.css";
 
 /* ——— Filter options ——— */
@@ -59,7 +59,7 @@ interface SummaryTabProps {
 export function SummaryTab({ data }: SummaryTabProps) {
   /* Get dynamic filter options from contexts */
   const { teamOptions } = usePeopleData();
-  const { cycles } = useConfigData();
+  const { data: cycles = [] } = useCycles();
 
   /* Build department options from teams */
   const departmentOptions = useMemo(() => {

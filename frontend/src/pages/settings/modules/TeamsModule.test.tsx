@@ -7,32 +7,26 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, within, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
-import { AuthContext } from "@/contexts/AuthContext";
+import {
+  screen,
+  within,
+  waitFor,
+  renderMinimal,
+  userEvent,
+} from "../../../../tests/setup/test-utils";
 import { TeamsModule } from "./TeamsModule";
-import { createTeam, deleteTeam, listTeams, updateTeam } from "@/lib/teams-api";
-import { listUsers } from "@/lib/users-api";
+import { useTeams, useCreateTeam, useUpdateTeam, useDeleteTeam } from "@/hooks/use-teams";
+import { useUsers } from "@/hooks/use-users";
 
-vi.mock("@/lib/teams-api", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/teams-api")>("@/lib/teams-api");
-  return {
-    ...actual,
-    listTeams: vi.fn().mockResolvedValue({ data: [], total: 0, page: 1, size: 100 }),
-    createTeam: vi.fn(),
-    updateTeam: vi.fn(),
-    deleteTeam: vi.fn(),
-  };
-});
-
-vi.mock("@/lib/users-api", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/users-api")>("@/lib/users-api");
-  return {
-    ...actual,
-    listUsers: vi.fn().mockResolvedValue({ data: [], total: 0, page: 1, size: 100 }),
-  };
-});
+vi.mock("@/hooks/use-teams", () => ({
+  useTeams: vi.fn(),
+  useCreateTeam: vi.fn(),
+  useUpdateTeam: vi.fn(),
+  useDeleteTeam: vi.fn(),
+}));
+vi.mock("@/hooks/use-users", () => ({
+  useUsers: vi.fn(),
+}));
 
 const SEED_TEAMS = [
   { id: "t1", org_id: "org1", name: "Engenharia", description: null, color: "neutral", status: "active" as const, members: [], member_count: 0, created_at: "2024-01-01T00:00:00Z", updated_at: "2024-01-01T00:00:00Z" },
@@ -41,37 +35,15 @@ const SEED_TEAMS = [
   { id: "t4", org_id: "org1", name: "Design", description: null, color: "caramel", status: "archived" as const, members: [], member_count: 0, created_at: "2024-01-01T00:00:00Z", updated_at: "2024-01-01T00:00:00Z" },
 ];
 
+const mockCreateTeam = vi.fn();
+const mockUpdateTeam = vi.fn();
+const mockDeleteTeam = vi.fn();
+
 // ─── Test Helpers ───
 
 function setup() {
   const user = userEvent.setup();
-  const result = render(
-    <MemoryRouter>
-      <AuthContext.Provider
-        value={{
-          isAuthenticated: true,
-          initializing: false,
-          user: null,
-          activeOrganization: {
-            id: "org-1",
-            name: "Org 1",
-            domain: "org-1.example.com",
-            workspace: "org-1",
-            status: "active",
-            membership_role: "super-admin",
-            membership_status: "active",
-          },
-          organizations: [],
-          login: vi.fn().mockResolvedValue(undefined),
-          switchOrganization: vi.fn().mockResolvedValue(undefined),
-          logout: vi.fn(),
-          getToken: vi.fn().mockReturnValue("test-token"),
-        }}
-      >
-        <TeamsModule />
-      </AuthContext.Provider>
-    </MemoryRouter>,
-  );
+  const result = renderMinimal(<TeamsModule />);
   return { user, ...result };
 }
 
@@ -80,10 +52,8 @@ function setup() {
 describe("TeamsModule", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Re-apply default mocks after clearAllMocks
-    vi.mocked(listTeams).mockResolvedValue({ data: SEED_TEAMS, total: SEED_TEAMS.length, page: 1, size: 100 });
-    vi.mocked(listUsers).mockResolvedValue({ data: [], total: 0, page: 1, size: 100 });
-    vi.mocked(createTeam).mockResolvedValue({
+
+    mockCreateTeam.mockResolvedValue({
       id: "t5",
       org_id: "org1",
       name: "Suporte",
@@ -95,20 +65,17 @@ describe("TeamsModule", () => {
       created_at: "2026-04-24T10:00:00Z",
       updated_at: "2026-04-24T10:00:00Z",
     });
-    vi.mocked(updateTeam).mockImplementation(async (teamId, params) => {
-      const existing = SEED_TEAMS.find((team) => team.id === teamId) ?? SEED_TEAMS[0]!;
-      return {
-        ...existing,
-        name: params.name,
-        description: params.description ?? null,
-        color: params.color,
-        status: params.status,
-        members: [],
-        member_count: 0,
-        updated_at: "2026-04-24T10:01:00Z",
-      };
+    mockUpdateTeam.mockImplementation(async ({ id, body }: { id: string; body: Record<string, unknown> }) => {
+      const existing = SEED_TEAMS.find((team) => team.id === id) ?? SEED_TEAMS[0]!;
+      return { ...existing, ...body, members: [], member_count: 0, updated_at: "2026-04-24T10:01:00Z" };
     });
-    vi.mocked(deleteTeam).mockResolvedValue(undefined);
+    mockDeleteTeam.mockResolvedValue(undefined);
+
+    vi.mocked(useTeams).mockReturnValue({ data: SEED_TEAMS, isLoading: false, error: null, isTruncated: false, total: SEED_TEAMS.length, page: 1, size: 100 } as unknown as ReturnType<typeof useTeams>);
+    vi.mocked(useUsers).mockReturnValue({ data: [], isLoading: false, error: null, isTruncated: false, total: 0, page: 1, size: 100 } as unknown as ReturnType<typeof useUsers>);
+    vi.mocked(useCreateTeam).mockReturnValue({ mutateAsync: mockCreateTeam } as unknown as ReturnType<typeof useCreateTeam>);
+    vi.mocked(useUpdateTeam).mockReturnValue({ mutateAsync: mockUpdateTeam } as unknown as ReturnType<typeof useUpdateTeam>);
+    vi.mocked(useDeleteTeam).mockReturnValue({ mutateAsync: mockDeleteTeam } as unknown as ReturnType<typeof useDeleteTeam>);
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -170,9 +137,7 @@ describe("TeamsModule", () => {
 
     it("calls listTeams on mount", async () => {
       setup();
-      await waitFor(() => {
-        expect(listTeams).toHaveBeenCalledTimes(1);
-      });
+      expect(useTeams).toHaveBeenCalled();
     });
   });
 
@@ -409,10 +374,11 @@ describe("TeamsModule", () => {
       await user.click(within(dialog).getByRole("button", { name: /criar time/i }));
 
       await waitFor(() => {
-        expect(createTeam).toHaveBeenCalledWith(
-          { name: "Suporte", description: null, color: "neutral", members: [] },
-          "test-token",
-        );
+        expect(mockCreateTeam).toHaveBeenCalledWith({
+          name: "Suporte",
+          color: "neutral",
+          members: [],
+        });
       });
     });
   });
@@ -482,11 +448,10 @@ describe("TeamsModule", () => {
       await user.click(await screen.findByRole("menuitem", { name: /arquivar time/i }));
 
       await waitFor(() => {
-        expect(updateTeam).toHaveBeenCalledWith(
-          "t1",
-          expect.objectContaining({ status: "archived" }),
-          "test-token",
-        );
+        expect(mockUpdateTeam).toHaveBeenCalledWith({
+          id: "t1",
+          body: expect.objectContaining({ status: "archived" }),
+        });
       });
     });
 
@@ -500,7 +465,7 @@ describe("TeamsModule", () => {
       await user.click(within(dialog).getByRole("button", { name: /^excluir$/i }));
 
       await waitFor(() => {
-        expect(deleteTeam).toHaveBeenCalledWith("t1", "test-token");
+        expect(mockDeleteTeam).toHaveBeenCalledWith("t1");
       });
     });
   });

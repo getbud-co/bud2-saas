@@ -33,7 +33,7 @@ import {
 } from "recharts";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { usePeopleData } from "@/contexts/PeopleDataContext";
-import { useConfigData } from "@/contexts/ConfigDataContext";
+import { useCycles } from "@/hooks/use-cycles";
 import { useTeamOverviewData, type PeriodFilter } from "@/hooks/useTeamOverviewData";
 import { TeamHealthTable } from "@/pages/my-team/modules/components/TeamHealthTable";
 import { CollaboratorProfileModal } from "@/pages/my-team/modules/components/CollaboratorProfileModal";
@@ -60,7 +60,7 @@ function formatCalendarDate(d: CalendarDate): string {
 
 export function EngagementDetailPage() {
   const { teams: allTeams, currentUserId } = usePeopleData();
-  const { cycles } = useConfigData();
+  const { data: cycles = [] } = useCycles();
 
   // ── Team filter (default = teams led by current user) ───────────────────
   const myTeamIds = useMemo(() => {
@@ -99,15 +99,23 @@ export function EngagementDetailPage() {
   // ── Period filter ───────────────────────────────────────────────────────
   const defaultCycleId = useMemo(
     () => cycles.find((c) => c.status === "active")?.id ?? cycles[0]?.id ?? "",
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    [cycles],
   );
-  const [selectedCycleId, setSelectedCycleId] = useState(defaultCycleId);
+  const [selectedCycleId, setSelectedCycleId] = useState("");
   const [customRange, setCustomRange] = useState<[CalendarDate | null, CalendarDate | null]>([null, null]);
   const periodBtnRef = useRef<HTMLButtonElement>(null);
   const [periodOpen, setPeriodOpen] = useState(false);
   const periodCustomBtnRef = useRef<HTMLButtonElement>(null);
   const [periodCustomOpen, setPeriodCustomOpen] = useState(false);
+
+  useEffect(() => {
+    if (!defaultCycleId) return;
+    setSelectedCycleId((current) => {
+      if (current === CUSTOM_CYCLE_VALUE) return current;
+      if (current && cycles.some((cycle) => cycle.id === current)) return current;
+      return defaultCycleId;
+    });
+  }, [cycles, defaultCycleId]);
 
   function selectCycle(id: string) {
     setSelectedCycleId(id);
@@ -135,7 +143,7 @@ export function EngagementDetailPage() {
     }
     const cycle = cycles.find((c) => c.id === selectedCycleId);
     if (!cycle) return null;
-    return { startDate: cycle.startDate, endDate: cycle.endDate };
+    return { startDate: cycle.start_date, endDate: cycle.end_date };
   }, [selectedCycleId, customRange, cycles]);
 
   // ── Data (same source as Meu Time) ─────────────────────────────────────

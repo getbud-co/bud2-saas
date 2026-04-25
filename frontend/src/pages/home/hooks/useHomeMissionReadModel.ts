@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useMissionsData } from "@/contexts/MissionsDataContext";
-import { useConfigData } from "@/contexts/ConfigDataContext";
-import type { Mission, KeyResult, Cycle } from "@/types";
+import { useCycles, type Cycle } from "@/hooks/use-cycles";
+import type { Mission, KeyResult } from "@/types";
 
 export interface HomeMissionKR {
   id: string;
@@ -69,8 +69,8 @@ function getExpectedProgress(cycle: Cycle | null): number {
   if (!cycle) return 50;
   
   const now = new Date();
-  const start = new Date(cycle.startDate);
-  const end = new Date(cycle.endDate);
+  const start = new Date(cycle.start_date);
+  const end = new Date(cycle.end_date);
   
   if (now < start) return 0;
   if (now > end) return 100;
@@ -100,7 +100,7 @@ function computeAverageProgress(krs: HomeMissionKR[]): number {
 
 export function useHomeMissionReadModel() {
   const { missions } = useMissionsData();
-  const { cycles } = useConfigData();
+  const { data: cycles = [] } = useCycles();
 
   return useMemo(() => {
     // Find active annual and quarterly cycles

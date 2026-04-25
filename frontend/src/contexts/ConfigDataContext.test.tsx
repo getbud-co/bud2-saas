@@ -10,25 +10,12 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { AuthContext } from "@/contexts/AuthContext";
-import type { Cycle } from "@/types";
-import {
-  createCycle as createCycleApi,
-  deleteCycle as deleteCycleApi,
-  listCycles,
-  updateCycle as updateCycleApi,
-} from "@/lib/cycles-api";
+import { useCycles } from "@/hooks/use-cycles";
 import { ConfigDataProvider, useConfigData } from "./ConfigDataContext";
 
-vi.mock("@/lib/cycles-api", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/cycles-api")>("@/lib/cycles-api");
-  return {
-    ...actual,
-    createCycle: vi.fn(),
-    deleteCycle: vi.fn(),
-    listCycles: vi.fn(),
-    updateCycle: vi.fn(),
-  };
-});
+vi.mock("@/hooks/use-cycles", () => ({
+  useCycles: vi.fn(() => ({ data: [], isLoading: false, error: null })),
+}));
 
 // ─── Test Helpers ───
 
@@ -88,17 +75,6 @@ const apiCycle = {
   updated_at: "2026-01-01T00:00:00Z",
 };
 
-const createdApiCycle = {
-  ...apiCycle,
-  id: "22222222-2222-4222-8222-222222222222",
-  name: "Q2 2026",
-  start_date: "2026-04-01",
-  end_date: "2026-06-30",
-  status: "planning" as const,
-  okr_definition_deadline: "2026-04-15",
-  mid_review_date: "2026-05-15",
-};
-
 // ─── Tests ───
 
 describe("ConfigDataContext", () => {
@@ -106,15 +82,7 @@ describe("ConfigDataContext", () => {
     localStorage.clear();
     localStorage.setItem("bud.test.access-token", "test-token");
     vi.clearAllMocks();
-    vi.mocked(listCycles).mockResolvedValue({ data: [apiCycle], total: 1, page: 1, size: 100 });
-    vi.mocked(createCycleApi).mockResolvedValue(createdApiCycle);
-    vi.mocked(updateCycleApi).mockResolvedValue({
-      ...createdApiCycle,
-      name: "Updated Cycle",
-      status: "active",
-      updated_at: "2026-01-02T00:00:00Z",
-    });
-    vi.mocked(deleteCycleApi).mockResolvedValue(undefined);
+    vi.mocked(useCycles).mockReturnValue({ data: [], isLoading: false, error: null } as any);
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -158,12 +126,6 @@ describe("ConfigDataContext", () => {
     it("has tags array", () => {
       const { result } = renderHook(() => useConfigData(), { wrapper });
       expect(Array.isArray(result.current.tags)).toBe(true);
-    });
-
-    it("has cycles array", () => {
-      const { result } = renderHook(() => useConfigData(), { wrapper });
-      expect(Array.isArray(result.current.cycles)).toBe(true);
-      expect(result.current.cycles).toHaveLength(0);
     });
 
     it("has roles array", () => {
@@ -248,8 +210,8 @@ describe("ConfigDataContext", () => {
         const option = result.current.cyclePresetOptions[0]!;
         expect(option).toHaveProperty("id");
         expect(option).toHaveProperty("label");
-        expect(option).toHaveProperty("startDate");
-        expect(option).toHaveProperty("endDate");
+        expect(option).toHaveProperty("start_date");
+        expect(option).toHaveProperty("end_date");
         expect(option).toHaveProperty("status");
       }
     });
@@ -414,142 +376,14 @@ describe("ConfigDataContext", () => {
   // Cycles CRUD
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe("cycles CRUD", () => {
-    it("loads cycles from the API", async () => {
-      const { result } = renderHook(() => useConfigData(), { wrapper: authenticatedWrapper });
-
-      await waitFor(() => expect(result.current.cyclesStatus).toBe("ready"));
-
-      expect(result.current.cycles).toHaveLength(1);
-      expect(result.current.cycles[0]?.id).toBe(apiCycle.id);
-      expect(listCycles).toHaveBeenCalledWith("test-token", { size: 100 });
-    });
-
-    it("creates a cycle", async () => {
-      const { result } = renderHook(() => useConfigData(), { wrapper: authenticatedWrapper });
-
-      await waitFor(() => expect(result.current.cyclesStatus).toBe("ready"));
-
-      const initialCount = result.current.cycles.length;
-
-      let newCycle: Cycle | undefined;
-      await act(async () => {
-        newCycle = await result.current.createCycle({
-          name: "Q2 2026",
-          type: "quarterly",
-          startDate: "2026-04-01",
-          endDate: "2026-06-30",
-          status: "planning",
-          okrDefinitionDeadline: "2026-04-15",
-          midReviewDate: "2026-05-15",
-        });
-      });
-
-      expect(result.current.cycles.length).toBe(initialCount + 1);
-      expect(newCycle!.name).toBe("Q2 2026");
-      expect(newCycle!.type).toBe("quarterly");
-      expect(newCycle!.status).toBe("planning");
-      expect(createCycleApi).toHaveBeenCalledWith(
-        {
-          name: "Q2 2026",
-          type: "quarterly",
-          start_date: "2026-04-01",
-          end_date: "2026-06-30",
-          status: "planning",
-          okr_definition_deadline: "2026-04-15",
-          mid_review_date: "2026-05-15",
-        },
-        "test-token",
-      );
-    });
-
-    it("uses the backend ID when creating a cycle", async () => {
-      const { result } = renderHook(() => useConfigData(), { wrapper: authenticatedWrapper });
-
-      await waitFor(() => expect(result.current.cyclesStatus).toBe("ready"));
-
-      let newCycle: Cycle | undefined;
-      await act(async () => {
-        newCycle = await result.current.createCycle({
-          name: "Custom Cycle",
-          type: "custom",
-          startDate: "2026-01-01",
-          endDate: "2026-12-31",
-          status: "active",
-          okrDefinitionDeadline: null,
-          midReviewDate: null,
-        });
-      });
-
-      expect(newCycle!.id).toBe(createdApiCycle.id);
-    });
-
-    it("updates a cycle", async () => {
-      const { result } = renderHook(() => useConfigData(), { wrapper: authenticatedWrapper });
-
-      await waitFor(() => expect(result.current.cyclesStatus).toBe("ready"));
-
-      let cycleId: string;
-      await act(async () => {
-        const cycle = await result.current.createCycle({
-          name: "Original Cycle",
-          type: "quarterly",
-          startDate: "2026-01-01",
-          endDate: "2026-03-31",
-          status: "planning",
-          okrDefinitionDeadline: null,
-          midReviewDate: null,
-        });
-        cycleId = cycle.id;
-      });
-
-      await act(async () => {
-        await result.current.updateCycle(cycleId!, { name: "Updated Cycle", status: "active" });
-      });
-
-      const updated = result.current.cycles.find((c) => c.id === cycleId);
-      expect(updated?.name).toBe("Updated Cycle");
-      expect(updated?.status).toBe("active");
-    });
-
-    it("deletes a cycle", async () => {
-      const { result } = renderHook(() => useConfigData(), { wrapper: authenticatedWrapper });
-
-      await waitFor(() => expect(result.current.cyclesStatus).toBe("ready"));
-
-      let cycleId: string;
-      await act(async () => {
-        const cycle = await result.current.createCycle({
-          name: "To Delete",
-          type: "quarterly",
-          startDate: "2026-01-01",
-          endDate: "2026-03-31",
-          status: "planning",
-          okrDefinitionDeadline: null,
-          midReviewDate: null,
-        });
-        cycleId = cycle.id;
-      });
-
-      const countBefore = result.current.cycles.length;
-
-      await act(async () => {
-        await result.current.deleteCycle(cycleId!);
-      });
-
-      expect(result.current.cycles.length).toBe(countBefore - 1);
-    });
-
-    it("getCycleById returns cycle", () => {
+  describe("cycles derived data", () => {
+    it("getCycleById returns cycle when data is available", () => {
+      vi.mocked(useCycles).mockReturnValue({ data: [apiCycle], isLoading: false, error: null } as any);
       const { result } = renderHook(() => useConfigData(), { wrapper });
 
-      // Use an existing cycle from seed
-      const firstCycle = result.current.cycles[0];
-      if (firstCycle) {
-        const found = result.current.getCycleById(firstCycle.id);
-        expect(found).not.toBeNull();
-        expect(found?.id).toBe(firstCycle.id);
-      }
+      const found = result.current.getCycleById(apiCycle.id);
+      expect(found).not.toBeNull();
+      expect(found?.id).toBe(apiCycle.id);
     });
   });
 
@@ -825,13 +659,11 @@ describe("ConfigDataContext", () => {
     });
 
     it("resolveCycleId returns canonical ID", () => {
+      vi.mocked(useCycles).mockReturnValue({ data: [apiCycle], isLoading: false, error: null } as any);
       const { result } = renderHook(() => useConfigData(), { wrapper });
 
-      const firstCycle = result.current.cycles[0];
-      if (firstCycle) {
-        const resolved = result.current.resolveCycleId(firstCycle.id);
-        expect(resolved).toBe(firstCycle.id);
-      }
+      const resolved = result.current.resolveCycleId(apiCycle.id);
+      expect(resolved).toBe(apiCycle.id);
     });
 
     it("resolveTagId returns canonical ID", () => {
@@ -891,30 +723,6 @@ describe("ConfigDataContext", () => {
       });
 
       expect(result.current.tags.length).toBe(0);
-    });
-
-    it("setCycles allows direct state setting", () => {
-      const { result } = renderHook(() => useConfigData(), { wrapper });
-
-      act(() => {
-        result.current.setCycles([
-          {
-            id: "local-cycle",
-            orgId: "org-1",
-            name: "Local Cycle",
-            type: "custom",
-            startDate: "2026-01-01",
-            endDate: "2026-12-31",
-            status: "planning",
-            okrDefinitionDeadline: null,
-            midReviewDate: null,
-            createdAt: "2026-01-01T00:00:00Z",
-            updatedAt: "2026-01-01T00:00:00Z",
-          },
-        ]);
-      });
-
-      expect(result.current.cycles.length).toBe(1);
     });
 
     it("setRoles allows direct state setting", () => {

@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { Toaster, LoadingScreen } from "@getbud-co/buds";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { clearStaleLocalStorage } from "@/lib/seed-version";
+import { queryClient } from "@/lib/query-client";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ActivityDataProvider } from "@/contexts/ActivityDataContext";
 import { ConfigDataProvider } from "@/contexts/ConfigDataContext";
@@ -27,24 +30,27 @@ export function App() {
 
   return (
     <AuthProvider>
-      <ConfigDataProvider>
-        <ActivityDataProvider>
-          <PeopleDataProvider>
-            <MissionsDataProvider>
-              <SurveysDataProvider>
-                <SettingsDataProvider>
-                  <IntegrationsDataProvider>
-                    <ConversationsProvider>
-                      <AppRoutes />
-                      <Toaster />
-                    </ConversationsProvider>
-                  </IntegrationsDataProvider>
-                </SettingsDataProvider>
-              </SurveysDataProvider>
-            </MissionsDataProvider>
-          </PeopleDataProvider>
-        </ActivityDataProvider>
-      </ConfigDataProvider>
+      <QueryClientProvider client={queryClient}>
+        <ConfigDataProvider>
+          <ActivityDataProvider>
+            <PeopleDataProvider>
+              <MissionsDataProvider>
+                <SurveysDataProvider>
+                  <SettingsDataProvider>
+                    <IntegrationsDataProvider>
+                      <ConversationsProvider>
+                        <AppRoutes />
+                        <Toaster />
+                      </ConversationsProvider>
+                    </IntegrationsDataProvider>
+                  </SettingsDataProvider>
+                </SurveysDataProvider>
+              </MissionsDataProvider>
+            </PeopleDataProvider>
+          </ActivityDataProvider>
+        </ConfigDataProvider>
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
     </AuthProvider>
   );
 }

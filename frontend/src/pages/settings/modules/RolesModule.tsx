@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Card,
   CardBody,
@@ -33,14 +33,9 @@ import {
   Lightning,
 } from "@phosphor-icons/react";
 import type { Icon } from "@phosphor-icons/react";
-import type { Permission, PermissionGroup, DataScope } from "@/types";
-import { useAuth } from "@/contexts/AuthContext";
-import {
-  listPermissions,
-  listRoles,
-  roleErrorToMessage,
-  type RoleApiResponse,
-} from "@/lib/roles-api";
+import type { PermissionGroup, DataScope } from "@/types";
+import { useRoles, usePermissions, type Role, type Permission } from "@/hooks/use-roles";
+import { apiErrorToMessage } from "@/lib/api-error";
 import styles from "./RolesModule.module.css";
 
 /* ——— Local UI types ——— */
@@ -52,20 +47,18 @@ interface PermissionGroupUI {
   permissions: Permission[];
 }
 
-type RolesStatus = "idle" | "loading" | "ready" | "error";
-
 interface RoleView {
   id: string;
   slug: string;
   name: string;
   description: string | null;
-  type: RoleApiResponse["type"];
-  isDefault: boolean;
+  type: Role["type"];
+  is_default: boolean;
   scope: DataScope;
-  permissionIds: string[];
-  createdAt: string;
-  updatedAt: string;
-  usersCount: number;
+  permission_ids: string[];
+  created_at: string;
+  updated_at: string;
+  users_count: number;
   icon: Icon;
   iconBg: string;
   iconColor: string;
@@ -250,44 +243,11 @@ function PermissionAccordion({
 /* ——— Component ——— */
 
 export function RolesModule() {
-  const { getToken } = useAuth();
+  const { data: apiRoles = [], isLoading: rolesLoading, error: rolesError } = useRoles();
+  const { data: permissions = [] } = usePermissions();
 
   const [editingRole, setEditingRole] = useState<RoleView | null>(null);
-  const [rolesStatus, setRolesStatus] = useState<RolesStatus>("idle");
-  const [rolesError, setRolesError] = useState<string | null>(null);
-  const [apiRoles, setApiRoles] = useState<RoleApiResponse[]>([]);
-  const [permissions, setPermissions] = useState<Permission[]>([]);
   const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    const token = getToken();
-    if (!token) {
-      setRolesStatus("error");
-      setRolesError("Sessão expirada. Faça login novamente.");
-      return;
-    }
-
-    let cancelled = false;
-    setRolesStatus("loading");
-    setRolesError(null);
-
-    Promise.all([listRoles(token), listPermissions(token)])
-      .then(([rolesResponse, permissionsResponse]) => {
-        if (cancelled) return;
-        setApiRoles(rolesResponse.data);
-        setPermissions(permissionsResponse.data);
-        setRolesStatus("ready");
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setRolesError(roleErrorToMessage(err));
-        setRolesStatus("error");
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [getToken]);
 
   const permissionGroups = useMemo(() => buildPermissionGroups(permissions), [permissions]);
   const allPermissionIds = useMemo(() => permissions.map((p) => p.id), [permissions]);
@@ -301,18 +261,18 @@ export function RolesModule() {
         name: role.name,
         description: role.description ?? null,
         type: role.type,
-        isDefault: role.is_default,
+        is_default: role.is_default,
         scope: role.scope,
-        permissionIds: role.permission_ids,
-        createdAt: role.created_at,
-        updatedAt: role.updated_at,
-        usersCount: role.users_count,
+        permission_ids: role.permission_ids,
+        created_at: role.created_at,
+        updated_at: role.updated_at,
+        users_count: role.users_count,
       };
       const visual = getRoleVisual(roleView);
       return {
         ...roleView,
         ...visual,
-        permissionSet: new Set(roleView.permissionIds),
+        permissionSet: new Set(roleView.permission_ids),
       };
     });
   }, [apiRoles]);
@@ -387,11 +347,11 @@ export function RolesModule() {
           </div>
 
           {/* Role cards grid */}
-          {rolesStatus === "error" ? (
+          {rolesError ? (
             <Alert variant="error" title="Não foi possível carregar os tipos de usuário">
-              {rolesError ?? "Tente recarregar a página em alguns instantes."}
+              {apiErrorToMessage(rolesError)}
             </Alert>
-          ) : rolesStatus === "loading" && filtered.length === 0 ? (
+          ) : rolesLoading && filtered.length === 0 ? (
             <div className={styles.emptyState}>
               <ShieldCheck size={32} />
               <p className={styles.emptyTitle}>Carregando tipos de usuário…</p>
@@ -430,7 +390,7 @@ export function RolesModule() {
                     <div className={styles.roleCardInfo}>
                       <h4 className={styles.roleCardName}>
                         {role.name}
-                        {role.isDefault && (
+                        {role.is_default && (
                           <Badge color="success" size="sm">Padrão</Badge>
                         )}
                       </h4>
@@ -441,7 +401,7 @@ export function RolesModule() {
                     <div className={styles.roleCardStats}>
                       <div className={styles.statItem}>
                         <Users size={14} />
-                        <span>{role.usersCount} {role.usersCount === 1 ? "usuário" : "usuários"}</span>
+                        <span>{role.users_count} {role.users_count === 1 ? "usuário" : "usuários"}</span>
                       </div>
                       <div className={styles.statItem}>
                         <ShieldCheck size={14} />
@@ -513,7 +473,7 @@ export function RolesModule() {
                           {isSystem ? "Sistema" : "Customizado"}
                         </Badge>
                         <span className={styles.editMetaText}>
-                          {editingRole.usersCount} {editingRole.usersCount === 1 ? "usuário" : "usuários"} · {editingRole.permissionSet.size}/{totalPermissions} permissões
+                          {editingRole.users_count} {editingRole.users_count === 1 ? "usuário" : "usuários"} · {editingRole.permissionSet.size}/{totalPermissions} permissões
                         </span>
                       </div>
                     </div>

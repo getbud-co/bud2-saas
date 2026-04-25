@@ -1,6 +1,7 @@
 import { ReactElement, ReactNode } from "react";
 import { render, RenderOptions } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { ActivityDataProvider } from "@/contexts/ActivityDataContext";
 import { ConfigDataProvider } from "@/contexts/ConfigDataContext";
@@ -14,11 +15,23 @@ import { MockAuthProvider } from "./MockAuthProvider";
 /**
  * All application providers wrapped together for testing.
  * Use this when testing components that depend on context data.
+ *
+ * @param initialEntries - Optional initial entries for MemoryRouter (defaults to ["/"])
  */
-export function AllProviders({ children }: { children: ReactNode }) {
+export function AllProviders({
+  children,
+  initialEntries,
+}: {
+  children: ReactNode;
+  initialEntries?: string[];
+}) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   return (
-    <MemoryRouter>
+    <MemoryRouter initialEntries={initialEntries}>
       <MockAuthProvider>
+        <QueryClientProvider client={queryClient}>
         <ConfigDataProvider>
           <ActivityDataProvider>
             <PeopleDataProvider>
@@ -34,6 +47,7 @@ export function AllProviders({ children }: { children: ReactNode }) {
             </PeopleDataProvider>
           </ActivityDataProvider>
         </ConfigDataProvider>
+        </QueryClientProvider>
       </MockAuthProvider>
     </MemoryRouter>
   );
@@ -42,11 +56,26 @@ export function AllProviders({ children }: { children: ReactNode }) {
 /**
  * Minimal providers for testing components that only need routing.
  * Use this for simpler components that don't need full context.
+ *
+ * @param initialEntries - Optional initial entries for MemoryRouter (defaults to ["/"])
  */
-export function MinimalProviders({ children }: { children: ReactNode }) {
+export function MinimalProviders({
+  children,
+  initialEntries,
+}: {
+  children: ReactNode;
+  initialEntries?: string[];
+}) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   return (
-    <MemoryRouter>
-      <MockAuthProvider>{children}</MockAuthProvider>
+    <MemoryRouter initialEntries={initialEntries}>
+      <MockAuthProvider>
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      </MockAuthProvider>
     </MemoryRouter>
   );
 }
@@ -67,9 +96,13 @@ export function MinimalProviders({ children }: { children: ReactNode }) {
  */
 export function renderWithProviders(
   ui: ReactElement,
-  options?: Omit<RenderOptions, "wrapper">
+  options?: Omit<RenderOptions, "wrapper"> & { initialEntries?: string[] }
 ) {
-  return render(ui, { wrapper: AllProviders, ...options });
+  const { initialEntries, ...renderOptions } = options ?? {};
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <AllProviders initialEntries={initialEntries}>{children}</AllProviders>
+  );
+  return render(ui, { wrapper: Wrapper, ...renderOptions });
 }
 
 /**
@@ -77,9 +110,13 @@ export function renderWithProviders(
  */
 export function renderMinimal(
   ui: ReactElement,
-  options?: Omit<RenderOptions, "wrapper">
+  options?: Omit<RenderOptions, "wrapper"> & { initialEntries?: string[] }
 ) {
-  return render(ui, { wrapper: MinimalProviders, ...options });
+  const { initialEntries, ...renderOptions } = options ?? {};
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <MinimalProviders initialEntries={initialEntries}>{children}</MinimalProviders>
+  );
+  return render(ui, { wrapper: Wrapper, ...renderOptions });
 }
 
 // Re-export everything from testing-library
