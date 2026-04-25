@@ -12,7 +12,7 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSidebar } from "@/contexts/SidebarContext";
-import { useConfigData } from "@/contexts/ConfigDataContext";
+import { useCycles } from "@/hooks/use-cycles";
 import { useDragToClose } from "@/hooks/useDragToClose";
 import {
   TrendUp,
@@ -85,6 +85,8 @@ const WORKLOAD_LABEL: Record<string, string> = {
   high:     "Alta",
   overload: "Sobrecarga",
 };
+
+const CUSTOM_CYCLE = "__custom__";
 
 // ── Helpers de pulse ───────────────────────────────────────────────────────────
 
@@ -201,6 +203,11 @@ interface CollaboratorProfileModalProps {
   period?: { startDate: string | null; endDate: string | null } | null;
 }
 
+function parseCalendarDate(iso: string): CalendarDate {
+  const [year, month, day] = iso.split("-").map(Number);
+  return { year: year!, month: month!, day: day! };
+}
+
 export function CollaboratorProfileModal({ member, onClose, period }: CollaboratorProfileModalProps) {
   const navigate = useNavigate();
   const { isMobile } = useSidebar();
@@ -238,33 +245,45 @@ export function CollaboratorProfileModal({ member, onClose, period }: Collaborat
   );
 
   // ── Period filter ────────────────────────────────────────────────────────
-  const { cycles } = useConfigData();
-  const CUSTOM_CYCLE = "__custom__";
+  const { data: cycles = [] } = useCycles();
 
   const defaultCycleId = useMemo(() => {
     if (period?.startDate && period?.endDate) {
-      const match = cycles.find((c) => c.startDate === period.startDate && c.endDate === period.endDate);
+      const match = cycles.find((c) => c.start_date === period.startDate && c.end_date === period.endDate);
       if (match) return match.id;
       return CUSTOM_CYCLE;
     }
     return cycles.find((c) => c.status === "active")?.id ?? cycles[0]?.id ?? "";
   }, [cycles, period]);
 
-  const [selectedCycleId, setSelectedCycleId] = useState(defaultCycleId);
-  const [customRange, setCustomRange] = useState<[CalendarDate | null, CalendarDate | null]>(() => {
+  const defaultCustomRange = useMemo<[CalendarDate | null, CalendarDate | null]>(() => {
     if (defaultCycleId === CUSTOM_CYCLE && period?.startDate && period?.endDate) {
-      const parse = (iso: string): CalendarDate => {
-        const [y, m, d] = iso.split("-").map(Number);
-        return { year: y!, month: m!, day: d! };
-      };
-      return [parse(period.startDate), parse(period.endDate)];
+      return [parseCalendarDate(period.startDate), parseCalendarDate(period.endDate)];
     }
     return [null, null];
-  });
+  }, [defaultCycleId, period]);
+
+  const [selectedCycleId, setSelectedCycleId] = useState(defaultCycleId);
+  const [customRange, setCustomRange] = useState<[CalendarDate | null, CalendarDate | null]>(defaultCustomRange);
   const periodBtnRef = useRef<HTMLButtonElement>(null);
   const [periodOpen, setPeriodOpen] = useState(false);
   const periodCustomBtnRef = useRef<HTMLButtonElement>(null);
   const [periodCustomOpen, setPeriodCustomOpen] = useState(false);
+
+  useEffect(() => {
+    if (!defaultCycleId) return;
+    setSelectedCycleId((current) => {
+      if (current === CUSTOM_CYCLE && defaultCycleId === CUSTOM_CYCLE) return current;
+      if (current && current !== CUSTOM_CYCLE && cycles.some((cycle) => cycle.id === current)) return current;
+      return defaultCycleId;
+    });
+  }, [cycles, defaultCycleId]);
+
+  useEffect(() => {
+    if (selectedCycleId === CUSTOM_CYCLE && defaultCycleId === CUSTOM_CYCLE) {
+      setCustomRange(defaultCustomRange);
+    }
+  }, [defaultCustomRange, defaultCycleId, selectedCycleId]);
 
   function selectCycle(id: string) {
     setSelectedCycleId(id);
@@ -464,7 +483,7 @@ export function CollaboratorProfileModal({ member, onClose, period }: Collaborat
       if (s && e) activePeriod = { startDate: toIso(s), endDate: toIso(e) };
     } else {
       const cycle = cycles.find((c) => c.id === selectedCycleId);
-      if (cycle) activePeriod = { startDate: cycle.startDate, endDate: cycle.endDate };
+      if (cycle) activePeriod = { startDate: cycle.start_date, endDate: cycle.end_date };
     }
     navigate(`/missions?filter=${encodeURIComponent(member.name)}`, {
       state: {

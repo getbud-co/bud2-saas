@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useEffect, type ChangeEvent, type RefObject } from "react";
+import { useState, useRef, useMemo, type ChangeEvent, type RefObject } from "react";
 import {
   Table,
   TableCardHeader,
@@ -12,6 +12,7 @@ import {
   Button,
   Input,
   Badge,
+  Alert,
   AvatarLabelGroup,
   AvatarGroup,
   Modal,
@@ -38,25 +39,25 @@ import {
   ArrowCounterClockwise,
 } from "@phosphor-icons/react";
 import type { Team, TeamMember, TeamColor } from "@/types";
-import { useAuth } from "@/contexts/AuthContext";
 import {
-  listTeams,
-  createTeam,
-  updateTeam,
-  deleteTeam as deleteTeamApi,
-  teamErrorToMessage,
-  type TeamApiResponse,
-} from "@/lib/teams-api";
-import { listUsers, type UserApiResponse } from "@/lib/users-api";
+  useTeams,
+  useCreateTeam,
+  useUpdateTeam,
+  useDeleteTeam,
+  type Team as ApiTeam,
+  type TeamMember as ApiTeamMember,
+} from "@/hooks/use-teams";
+import { useUsers } from "@/hooks/use-users";
+import { apiErrorToMessage } from "@/lib/api-error";
 import { TeamModal } from "./TeamModal";
 import type { PersonView } from "./TeamModal";
 import styles from "./TeamsModule.module.css";
 
 /* ——— Mappers ——— */
 
-/** Maps an API team response to the frontend Team shape. */
-function apiTeamToView(t: TeamApiResponse): Team {
-  const members: TeamMember[] = t.members.map((m) => ({
+/** Maps an API team member to the frontend TeamMember shape. */
+function apiMemberToView(m: ApiTeamMember): TeamMember {
+  return {
     teamId: m.team_id,
     userId: m.user_id,
     roleInTeam: m.role_in_team,
@@ -66,20 +67,24 @@ function apiTeamToView(t: TeamApiResponse): Team {
           id: m.user.id,
           firstName: m.user.first_name,
           lastName: m.user.last_name,
-          initials: m.user.initials,
-          jobTitle: m.user.job_title,
-          avatarUrl: m.user.avatar_url,
+          initials: m.user.initials ?? null,
+          jobTitle: m.user.job_title ?? null,
+          avatarUrl: m.user.avatar_url ?? null,
         }
       : undefined,
-  }));
+  };
+}
 
+/** Maps an API team response to the frontend Team shape. */
+function apiTeamToView(t: ApiTeam): Team {
+  const members = t.members.map(apiMemberToView);
   const firstLeader = members.find((m) => m.roleInTeam === "leader");
 
   return {
     id: t.id,
     orgId: t.org_id,
     name: t.name,
-    description: t.description,
+    description: t.description ?? null,
     color: t.color as TeamColor,
     leaderId: firstLeader?.userId ?? null,
     parentTeamId: null,
@@ -119,14 +124,23 @@ const STATUS_BADGE: Record<string, { label: string; color: "success" | "neutral"
   archived: { label: "Arquivado", color: "neutral" },
 };
 
+const TEAM_ERROR_OVERRIDES: Record<number, string> = {
+  409: "Conflito: já existe um time com esse nome.",
+};
+
 /* ——— Component ——— */
 
 export function TeamsModule() {
-  const { getToken, activeOrganization } = useAuth();
-  const [apiUsers, setApiUsers] = useState<UserApiResponse[]>([]);
-  const [pageTeams, setPageTeams] = useState<Team[]>([]);
+  const teamsQuery = useTeams();
+  const usersQuery = useUsers();
+  const apiTeams = teamsQuery.data;
+  const apiUsers = usersQuery.data;
+
+  const createTeamMutation = useCreateTeam();
+  const updateTeamMutation = useUpdateTeam();
+  const deleteTeamMutation = useDeleteTeam();
+
   const [search, setSearch] = useState("");
-  const apiOrgId = activeOrganization?.id ?? "";
 
   /* sorting */
   type SortKey = "name" | "members" | "status";
@@ -165,34 +179,8 @@ export function TeamsModule() {
 
   const FILTER_OPTIONS = [{ id: "status", label: "Status" }];
 
-  /* load from API for active organization */
-  useEffect(() => {
-    const token = getToken();
-    if (!token) return;
-    let cancelled = false;
-    listTeams(token, { size: 100 })
-      .then((res) => {
-        if (cancelled) return;
-        setPageTeams(res.data.map(apiTeamToView));
-      })
-      .catch((err) => {
-        if (!cancelled) toast.error(teamErrorToMessage(err));
-      });
-    return () => { cancelled = true; };
-  }, [apiOrgId, getToken]);
-
-  /* load users from API for people pool */
-  useEffect(() => {
-    const token = getToken();
-    if (!token) return;
-    let cancelled = false;
-    listUsers(token, { size: 100 })
-      .then((res) => {
-        if (!cancelled) setApiUsers(res.data);
-      })
-      .catch(() => { /* fail silently — peoplePool will be empty */ });
-    return () => { cancelled = true; };
-  }, [apiOrgId, getToken]);
+  /* map API teams to view teams */
+  const pageTeams = useMemo(() => apiTeams.map(apiTeamToView), [apiTeams]);
 
   /* actions popover */
   const [actionsPopoverTeam, setActionsPopoverTeam] = useState<string | null>(null);
@@ -271,9 +259,6 @@ export function TeamsModule() {
     color: TeamColor;
     members: TeamMember[];
   }) {
-    const token = getToken();
-    if (!token) return;
-
     const apiMembers = data.members.map((m) => ({
       user_id: m.userId,
       role_in_team: m.roleInTeam as "leader" | "member" | "observer",
@@ -283,36 +268,35 @@ export function TeamsModule() {
 
     try {
       if (editingTeam) {
-        const updated = await updateTeam(editingTeam.id, {
-          name: data.name,
-          description: data.description || null,
-          color: data.color,
-          status: editingTeam.status,
-          members: apiMembers,
-        }, token);
-        setPageTeams((prev) => prev.map((t) => t.id === editingTeam.id ? apiTeamToView(updated) : t));
+        await updateTeamMutation.mutateAsync({
+          id: editingTeam.id,
+          body: {
+            name: data.name,
+            description: data.description || undefined,
+            color: data.color,
+            status: editingTeam.status,
+            members: apiMembers,
+          },
+        });
         toast.success(`Time "${data.name}" atualizado`);
       } else {
-        const created = await createTeam({
+        await createTeamMutation.mutateAsync({
           name: data.name,
-          description: data.description || null,
+          description: data.description || undefined,
           color: data.color,
           members: apiMembers,
-        }, token);
-        setPageTeams((prev) => [...prev, apiTeamToView(created)]);
+        });
         toast.success(`Time "${data.name}" criado`);
       }
       setTeamModalState(null);
     } catch (err) {
-      toast.error(teamErrorToMessage(err));
+      toast.error(apiErrorToMessage(err, TEAM_ERROR_OVERRIDES));
     }
   }
 
   /* ——— Status toggle ——— */
 
   async function handleToggleStatus(team: Team) {
-    const token = getToken();
-    if (!token) return;
     const newStatus = team.status === "active" ? "archived" as const : "active" as const;
     const apiMembers = (team.members ?? []).map((m) => ({
       user_id: m.userId,
@@ -320,17 +304,19 @@ export function TeamsModule() {
     }));
     setActionsPopoverTeam(null);
     try {
-      const updated = await updateTeam(team.id, {
-        name: team.name,
-        description: team.description,
-        color: team.color,
-        status: newStatus,
-        members: apiMembers,
-      }, token);
-      setPageTeams((prev) => prev.map((t) => t.id === team.id ? apiTeamToView(updated) : t));
+      await updateTeamMutation.mutateAsync({
+        id: team.id,
+        body: {
+          name: team.name,
+          description: team.description ?? undefined,
+          color: team.color,
+          status: newStatus,
+          members: apiMembers,
+        },
+      });
       toast.success(newStatus === "active" ? `"${team.name}" ativado` : `"${team.name}" arquivado`);
     } catch (err) {
-      toast.error(teamErrorToMessage(err));
+      toast.error(apiErrorToMessage(err, TEAM_ERROR_OVERRIDES));
     }
   }
 
@@ -338,60 +324,53 @@ export function TeamsModule() {
 
   async function handleDelete() {
     if (!deleteTeam) return;
-    const token = getToken();
-    if (!token) return;
     const name = deleteTeam.name;
     const id = deleteTeam.id;
     setDeleteTeam(null);
     try {
-      await deleteTeamApi(id, token);
-      setPageTeams((prev) => prev.filter((t) => t.id !== id));
+      await deleteTeamMutation.mutateAsync(id);
       toast.success(`Time "${name}" excluído`);
     } catch (err) {
-      toast.error(teamErrorToMessage(err));
+      toast.error(apiErrorToMessage(err, TEAM_ERROR_OVERRIDES));
     }
   }
 
   /* ——— Bulk actions ——— */
 
   async function handleBulkArchive() {
-    const token = getToken();
-    if (!token) return;
     const toArchive = pageTeams.filter((t) => selectedRows.has(t.id) && t.status === "active");
     try {
-      const updated = await Promise.all(
+      await Promise.all(
         toArchive.map((t) =>
-          updateTeam(t.id, {
-            name: t.name,
-            description: t.description,
-            color: t.color,
-            status: "archived",
-            members: (t.members ?? []).map((m) => ({
-              user_id: m.userId,
-              role_in_team: m.roleInTeam as "leader" | "member" | "observer",
-            })),
-          }, token),
+          updateTeamMutation.mutateAsync({
+            id: t.id,
+            body: {
+              name: t.name,
+              description: t.description ?? undefined,
+              color: t.color,
+              status: "archived",
+              members: (t.members ?? []).map((m) => ({
+                user_id: m.userId,
+                role_in_team: m.roleInTeam as "leader" | "member" | "observer",
+              })),
+            },
+          }),
         ),
       );
-      const updatedMap = new Map(updated.map((u) => [u.id, apiTeamToView(u)]));
-      setPageTeams((prev) => prev.map((t) => updatedMap.get(t.id) ?? t));
       toast.success(`${toArchive.length} time(s) arquivado(s)`);
     } catch (err) {
-      toast.error(teamErrorToMessage(err));
+      toast.error(apiErrorToMessage(err, TEAM_ERROR_OVERRIDES));
     }
     clearSelection();
   }
 
   async function handleBulkDelete() {
-    const token = getToken();
-    if (!token) return;
     const ids = [...selectedRows];
     try {
-      await Promise.all(ids.map((id) => deleteTeamApi(id, token)));
-      setPageTeams((prev) => prev.filter((t) => !selectedRows.has(t.id)));
+      await Promise.all(ids.map((id) => deleteTeamMutation.mutateAsync(id)));
       toast.success(`${ids.length} time(s) excluído(s)`);
     } catch (err) {
-      toast.error(teamErrorToMessage(err));
+      toast.error(apiErrorToMessage(err, TEAM_ERROR_OVERRIDES));
     }
     clearSelection();
   }
@@ -416,6 +395,18 @@ export function TeamsModule() {
 
   return (
     <>
+      {teamsQuery.isTruncated && (
+        <Alert variant="warning" title="Lista de times parcial">
+          Mostrando {apiTeams.length} de {teamsQuery.total} times. A paginação completa ainda precisa ser implementada.
+        </Alert>
+      )}
+
+      {usersQuery.isTruncated && (
+        <Alert variant="warning" title="Lista de usuários parcial">
+          Mostrando {apiUsers.length} de {usersQuery.total} usuários. Alguns membros podem não aparecer até a paginação completa ser implementada.
+        </Alert>
+      )}
+
       <Table
         variant="divider"
         elevated={false}

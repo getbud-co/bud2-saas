@@ -9,17 +9,9 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react";
-import type { Cycle, Permission, Tag } from "@/types";
+import type { Permission, Tag } from "@/types";
 import { AuthContext } from "@/contexts/AuthContext";
-import {
-  apiCycleToView,
-  createCycle as createCycleApi,
-  cycleErrorToMessage,
-  deleteCycle as deleteCycleApi,
-  listCycles,
-  updateCycle as updateCycleApi,
-  type CycleParams,
-} from "@/lib/cycles-api";
+import { useCycles, type Cycle } from "@/hooks/use-cycles";
 import {
   createCompanyValueIdFromName,
   createRoleId,
@@ -36,9 +28,6 @@ import {
 
 const LEGACY_LOCAL_ORG_ID = "org-1";
 
-function noToken() {
-  return null;
-}
 
 interface RoleOption {
   id: string;
@@ -59,8 +48,8 @@ interface TagOption {
 interface CyclePresetOption {
   id: string;
   label: string;
-  startDate: string;
-  endDate: string;
+  start_date: string;
+  end_date: string;
   status: Cycle["status"];
 }
 
@@ -75,7 +64,6 @@ interface CreateRoleInput {
 }
 
 type RolesStatus = "idle" | "loading" | "ready" | "error";
-type CyclesStatus = "idle" | "loading" | "ready" | "error";
 
 interface ConfigDataContextValue {
   activeOrgId: string;
@@ -83,9 +71,6 @@ interface ConfigDataContextValue {
   activeOrganization: CompanyProfile | null;
   companyValues: CompanyValueRecord[];
   tags: Tag[];
-  cycles: Cycle[];
-  cyclesStatus: CyclesStatus;
-  cyclesError: string | null;
   roles: ConfigRoleRecord[];
   permissions: Permission[];
   rolesStatus: RolesStatus;
@@ -95,7 +80,6 @@ interface ConfigDataContextValue {
   setActiveOrgId: (orgId: string) => void;
   setCompanyValues: Dispatch<SetStateAction<CompanyValueRecord[]>>;
   setTags: Dispatch<SetStateAction<Tag[]>>;
-  setCycles: Dispatch<SetStateAction<Cycle[]>>;
   setRoles: Dispatch<SetStateAction<ConfigRoleRecord[]>>;
   updateCompanyProfile: (patch: Partial<Omit<CompanyProfile, "id">>) => void;
   createCompanyValue: (input: {
@@ -113,14 +97,6 @@ interface ConfigDataContextValue {
     patch: Partial<Pick<Tag, "name" | "color">>,
   ) => Tag | null;
   deleteTag: (tagId: string) => void;
-  createCycle: (
-    input: Omit<Cycle, "id" | "orgId" | "createdAt" | "updatedAt">,
-  ) => Promise<Cycle>;
-  updateCycle: (
-    cycleId: string,
-    patch: Partial<Omit<Cycle, "id" | "orgId" | "createdAt">>,
-  ) => Promise<Cycle | null>;
-  deleteCycle: (cycleId: string) => Promise<void>;
   createRole: (input: CreateRoleInput) => ConfigRoleRecord;
   updateRole: (
     roleId: string,
@@ -151,37 +127,6 @@ function sortCompanyValues(values: CompanyValueRecord[]): CompanyValueRecord[] {
 
 function sortTags(tags: Tag[]): Tag[] {
   return [...tags].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
-}
-
-function sortCycles(cycles: Cycle[]): Cycle[] {
-  return [...cycles].sort((a, b) => {
-    const startA = new Date(a.startDate).getTime();
-    const startB = new Date(b.startDate).getTime();
-    return startA - startB;
-  });
-}
-
-function cycleToParams(
-  cycle: Pick<
-    Cycle,
-    | "name"
-    | "type"
-    | "startDate"
-    | "endDate"
-    | "status"
-    | "okrDefinitionDeadline"
-    | "midReviewDate"
-  >,
-): CycleParams {
-  return {
-    name: cycle.name,
-    type: cycle.type,
-    start_date: cycle.startDate,
-    end_date: cycle.endDate,
-    status: cycle.status,
-    okr_definition_deadline: cycle.okrDefinitionDeadline,
-    mid_review_date: cycle.midReviewDate,
-  };
 }
 
 function sortRoles(roles: ConfigRoleRecord[]): ConfigRoleRecord[] {
@@ -227,21 +172,17 @@ export function ConfigDataProvider({ children }: { children: ReactNode }) {
   const [snapshot, setSnapshot] = useState<ConfigStoreSnapshot>(() =>
     loadConfigSnapshot(),
   );
-  const [apiCycles, setApiCycles] = useState<Cycle[]>([]);
-  const [cyclesStatus, setCyclesStatus] = useState<CyclesStatus>("idle");
-  const [cyclesError, setCyclesError] = useState<string | null>(null);
+  const { data: apiCycles = [] } = useCycles();
   const [rolesStatus] = useState<RolesStatus>("idle");
   const authContext = useContext(AuthContext);
   const {
     isAuthenticated,
     organizations: sessionOrganizations,
     activeOrganization: sessionActiveOrganization,
-    getToken,
   } = authContext ?? {
     isAuthenticated: false,
     organizations: [],
     activeOrganization: null,
-    getToken: noToken,
   };
 
   const accessibleOrgIds = useMemo(
@@ -364,39 +305,7 @@ export function ConfigDataProvider({ children }: { children: ReactNode }) {
     [snapshot.tagsByOrg, activeOrgId],
   );
 
-  const cycles = useMemo(() => sortCycles(apiCycles), [apiCycles]);
-
-  useEffect(() => {
-    const token = getToken();
-    if (!token) {
-      setApiCycles([]);
-      setCyclesStatus("error");
-      setCyclesError("Sessão expirada. Faça login novamente.");
-      return;
-    }
-
-    let cancelled = false;
-    setApiCycles([]);
-    setCyclesStatus("loading");
-    setCyclesError(null);
-
-    listCycles(token, { size: 100 })
-      .then((response) => {
-        if (cancelled) return;
-        setApiCycles(response.data.map(apiCycleToView));
-        setCyclesStatus("ready");
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setApiCycles([]);
-        setCyclesError(cycleErrorToMessage(err));
-        setCyclesStatus("error");
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [getToken, sessionActiveOrganization?.id]);
+  const cycles = apiCycles;
 
   const roles = useMemo(
     () => sortRoles(snapshot.rolesByOrg[activeOrgId] ?? []),
@@ -428,8 +337,8 @@ export function ConfigDataProvider({ children }: { children: ReactNode }) {
       cycles.map((cycle) => ({
         id: cycle.id,
         label: cycle.name,
-        startDate: cycle.startDate,
-        endDate: cycle.endDate,
+        start_date: cycle.start_date,
+        end_date: cycle.end_date,
         status: cycle.status,
       })),
     [cycles],
@@ -521,14 +430,6 @@ export function ConfigDataProvider({ children }: { children: ReactNode }) {
     },
     [activeOrgId],
   );
-
-  const setCycles = useCallback<Dispatch<SetStateAction<Cycle[]>>>((updater) => {
-    setApiCycles((prev) =>
-      typeof updater === "function"
-        ? (updater as (cycles: Cycle[]) => Cycle[])(cloneDeep(prev))
-        : updater,
-    );
-  }, []);
 
   const setRoles = useCallback<Dispatch<SetStateAction<ConfigRoleRecord[]>>>(
     (updater) => {
@@ -699,47 +600,6 @@ export function ConfigDataProvider({ children }: { children: ReactNode }) {
     [setTags],
   );
 
-  const createCycle = useCallback(
-    async (input: Omit<Cycle, "id" | "orgId" | "createdAt" | "updatedAt">) => {
-      const token = getToken();
-      if (!token) throw new Error("Sessão expirada. Faça login novamente.");
-      const created = apiCycleToView(await createCycleApi(cycleToParams(input), token));
-      setApiCycles((prev) => sortCycles([...prev, created]));
-      return created;
-    },
-    [getToken],
-  );
-
-  const updateCycle = useCallback(
-    async (
-      cycleId: string,
-      patch: Partial<Omit<Cycle, "id" | "orgId" | "createdAt">>,
-    ) => {
-      const token = getToken();
-      if (!token) throw new Error("Sessão expirada. Faça login novamente.");
-      const current = apiCycles.find((cycle) => cycle.id === cycleId);
-      if (!current) return null;
-      const updated = apiCycleToView(
-        await updateCycleApi(cycleId, cycleToParams({ ...current, ...patch }), token),
-      );
-      setApiCycles((prev) =>
-        sortCycles(prev.map((cycle) => (cycle.id === cycleId ? updated : cycle))),
-      );
-      return updated;
-    },
-    [apiCycles, getToken],
-  );
-
-  const deleteCycle = useCallback(
-    async (cycleId: string) => {
-      const token = getToken();
-      if (!token) throw new Error("Sessão expirada. Faça login novamente.");
-      await deleteCycleApi(cycleId, token);
-      setApiCycles((prev) => prev.filter((cycle) => cycle.id !== cycleId));
-    },
-    [getToken],
-  );
-
   const createRole = useCallback(
     (input: CreateRoleInput) => {
       const now = new Date().toISOString();
@@ -906,9 +766,6 @@ export function ConfigDataProvider({ children }: { children: ReactNode }) {
       activeOrganization,
       companyValues,
       tags,
-      cycles,
-      cyclesStatus,
-      cyclesError,
       roles,
       permissions: snapshot.permissions,
       rolesStatus,
@@ -918,7 +775,6 @@ export function ConfigDataProvider({ children }: { children: ReactNode }) {
       setActiveOrgId,
       setCompanyValues,
       setTags,
-      setCycles,
       setRoles,
       updateCompanyProfile,
       createCompanyValue,
@@ -927,9 +783,6 @@ export function ConfigDataProvider({ children }: { children: ReactNode }) {
       createTag,
       updateTag,
       deleteTag,
-      createCycle,
-      updateCycle,
-      deleteCycle,
       createRole,
       updateRole,
       deleteRole,
@@ -949,9 +802,6 @@ export function ConfigDataProvider({ children }: { children: ReactNode }) {
       activeOrganization,
       companyValues,
       tags,
-      cycles,
-      cyclesStatus,
-      cyclesError,
       roles,
       snapshot.permissions,
       rolesStatus,
@@ -961,7 +811,6 @@ export function ConfigDataProvider({ children }: { children: ReactNode }) {
       setActiveOrgId,
       setCompanyValues,
       setTags,
-      setCycles,
       setRoles,
       updateCompanyProfile,
       createCompanyValue,
@@ -970,9 +819,6 @@ export function ConfigDataProvider({ children }: { children: ReactNode }) {
       createTag,
       updateTag,
       deleteTag,
-      createCycle,
-      updateCycle,
-      deleteCycle,
       createRole,
       updateRole,
       deleteRole,

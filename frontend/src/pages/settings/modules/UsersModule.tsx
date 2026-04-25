@@ -12,6 +12,7 @@ import {
   Button,
   Input,
   Badge,
+  Alert,
   AvatarLabelGroup,
   FilterBar,
   FilterChip,
@@ -34,17 +35,10 @@ import {
 } from "@phosphor-icons/react";
 import type { UserStatus, Gender } from "@/types";
 import type { PeopleUserView } from "@/contexts/PeopleDataContext";
-import {
-  createUser,
-  listUsers,
-  updateUser,
-  deleteUserMembership,
-  updateUserMembership,
-  userErrorToMessage,
-  type UserApiResponse,
-} from "@/lib/users-api";
-import { listRoles, roleErrorToMessage, type RoleApiResponse } from "@/lib/roles-api";
-import { listTeams, type TeamApiResponse } from "@/lib/teams-api";
+import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useUpdateMembership, type User } from "@/hooks/use-users";
+import { useRoles } from "@/hooks/use-roles";
+import { useTeams } from "@/hooks/use-teams";
+import { apiErrorToMessage } from "@/lib/api-error";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserForm } from "./hooks/useUserForm";
 import { useUsersTable } from "./hooks/useUsersTable";
@@ -55,6 +49,7 @@ import { ConfirmModal } from "./components/ConfirmModal";
 import styles from "./UsersModule.module.css";
 
 type UserView = PeopleUserView;
+type RoleSlug = "super-admin" | "admin-rh" | "gestor" | "colaborador" | "visualizador";
 
 const STATUS_BADGE: Record<UserStatus, { label: string; color: "success" | "neutral" | "warning" | "error" }> = {
   active: { label: "Ativo", color: "success" },
@@ -69,7 +64,7 @@ function createViewRoleId(orgId: string, roleSlug: string): string {
   return `role-${orgId}-${roleSlug}`;
 }
 
-function apiUserToView(u: UserApiResponse, orgId: string, teamNameById?: Map<string, string>): PeopleUserView {
+function apiUserToView(u: User, orgId: string, teamNameById?: Map<string, string>): PeopleUserView {
   const roleType = u.role ?? "colaborador";
   const teamNames = (u.team_ids ?? []).map((id) => teamNameById?.get(id) ?? id);
   return {
@@ -103,8 +98,30 @@ function apiUserToView(u: UserApiResponse, orgId: string, teamNameById?: Map<str
 }
 
 export function UsersModule() {
-  const [pageUsers, setPageUsers] = useState<PeopleUserView[]>([]);
-  const { getToken, activeOrganization } = useAuth();
+  const { activeOrganization } = useAuth();
+  const apiOrgId = activeOrganization?.id ?? "org-1";
+
+  // --- Data fetching via hooks ---
+  const { data: rolesData } = useRoles();
+  const apiRoles = useMemo(() => rolesData ?? [], [rolesData]);
+
+  const teamsQuery = useTeams();
+  const teamsData = teamsQuery.data;
+  const apiTeams = useMemo(
+    () => (teamsData ?? []).map((t) => ({ id: t.id, name: t.name })),
+    [teamsData],
+  );
+
+  const usersQuery = useUsers();
+  const usersData = usersQuery.data;
+
+  // --- Mutations ---
+  const createUserMutation = useCreateUser();
+  const updateUserMutation = useUpdateUser();
+  const deleteUserMutation = useDeleteUser();
+  const updateMembershipMutation = useUpdateMembership();
+
+  // --- UI state ---
   const [inviteOpen, setInviteOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -112,8 +129,6 @@ export function UsersModule() {
   const [deactivateUser, setDeactivateUser] = useState<UserView | null>(null);
   const [resetPasswordUser, setResetPasswordUser] = useState<UserView | null>(null);
   const [editUser, setEditUser] = useState<UserView | null>(null);
-  const [apiTeams, setApiTeams] = useState<{ id: string; name: string }[]>([]);
-  const [apiRoles, setApiRoles] = useState<RoleApiResponse[]>([]);
 
   const defaultInviteRole = useMemo(
     () =>
@@ -129,7 +144,6 @@ export function UsersModule() {
   const inviteRole = inviteForm.role;
   const setInviteRole = inviteForm.setRole;
   const previousDefaultInviteRoleRef = useRef(defaultInviteRole);
-  const apiOrgId = activeOrganization?.id ?? "org-1";
 
   const roleSelectionOptions = useMemo(
     () => {
@@ -184,24 +198,6 @@ export function UsersModule() {
     [apiTeams],
   );
 
-  /* load roles from API */
-  useEffect(() => {
-    const token = getToken();
-    if (!token) return;
-    let cancelled = false;
-    listRoles(token)
-      .then((res) => {
-        if (!cancelled) setApiRoles(res.data);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setApiRoles([]);
-          toast.error(roleErrorToMessage(err));
-        }
-      });
-    return () => { cancelled = true; };
-  }, [apiOrgId, getToken]);
-
   useEffect(() => {
     const previousDefaultInviteRole = previousDefaultInviteRoleRef.current;
     if (previousDefaultInviteRole === defaultInviteRole) return;
@@ -210,19 +206,6 @@ export function UsersModule() {
       setInviteRole(defaultInviteRole);
     }
   }, [defaultInviteRole, inviteRole, setInviteRole]);
-
-  /* load teams from API */
-  useEffect(() => {
-    const token = getToken();
-    if (!token) return;
-    let cancelled = false;
-    listTeams(token, { size: 100 })
-      .then((res) => {
-        if (!cancelled) setApiTeams(res.data.map((t: TeamApiResponse) => ({ id: t.id, name: t.name })));
-      })
-      .catch(() => { /* teams are optional, fail silently */ });
-    return () => { cancelled = true; };
-  }, [apiOrgId, getToken]);
 
   const roleFilterOptions = useMemo(
     () => ([
@@ -242,130 +225,76 @@ export function UsersModule() {
     [roleSelectionOptions],
   );
 
+  // --- Derive pageUsers from query data ---
+  const pageUsers = useMemo(() => {
+    if (!usersData) return [];
+    return usersData.map((u) => apiUserToView(u, apiOrgId, teamNameById));
+  }, [usersData, apiOrgId, teamNameById]);
+
   const table = useUsersTable(pageUsers, resolveRoleSlug);
 
   const [rolePopoverUser, setRolePopoverUser] = useState<string | null>(null);
   const rolePopoverRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [actionsPopoverUser, setActionsPopoverUser] = useState<string | null>(null);
 
-  useEffect(() => {
-    const token = getToken();
-    if (!token) return;
-    let cancelled = false;
-    listUsers(token, { size: 100 })
-      .then((res) => {
-        if (cancelled) return;
-        setPageUsers(res.data.map((u) => apiUserToView(u, apiOrgId, teamNameById)));
-        if (res.total > res.data.length) {
-          toast.warning(`Exibindo os primeiros ${res.data.length} de ${res.total} usuários`);
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) toast.error(userErrorToMessage(err));
-      });
-    return () => { cancelled = true; };
-  }, [apiOrgId, getToken, teamNameById]);
-
   async function handleInvite() {
-    const token = getToken();
-    if (!token) return;
     setInviteLoading(true);
     try {
-      const created = await createUser(
-        {
-          first_name: inviteForm.firstName,
-          last_name: inviteForm.lastName,
-          email: inviteForm.email,
-          password: crypto.randomUUID(),
-          role: resolveRoleSlug(inviteForm.role),
-          nickname: inviteForm.nickname || undefined,
-          job_title: inviteForm.jobTitle || undefined,
-          birth_date: inviteForm.getBirthDateString(),
-          language: inviteForm.language,
-          gender: inviteForm.gender || undefined,
-          team_ids: inviteForm.teams.length > 0 ? inviteForm.teams : undefined,
-        },
-        token,
-      );
-      const now = new Date().toISOString();
-      const newUser: UserView = {
-        id: created.id,
-        orgId: apiOrgId,
-        email: created.email,
-        firstName: created.first_name,
-        lastName: created.last_name,
-        nickname: created.nickname ?? null,
-        jobTitle: created.job_title ?? null,
-        managerId: null,
-        avatarUrl: null,
-        initials: `${created.first_name[0] ?? ""}${created.last_name[0] ?? ""}`.toUpperCase(),
-        birthDate: created.birth_date ?? null,
-        gender: (created.gender as Gender) ?? null,
-        language: created.language,
-        phone: null,
-        status: "invited",
-        invitedAt: now,
-        activatedAt: null,
-        lastLoginAt: null,
-        authProvider: "email",
-        authProviderId: null,
-        createdAt: created.created_at,
-        updatedAt: created.updated_at,
-        deletedAt: null,
-        roleId: createViewRoleId(apiOrgId, resolveRoleSlug(inviteForm.role)),
-        roleType: resolveRoleSlug(inviteForm.role),
-        teams: inviteForm.teams.map((id) => teamNameById.get(id) ?? id),
-      };
-      setPageUsers((prev) => [...prev, newUser]);
+      await createUserMutation.mutateAsync({
+        first_name: inviteForm.firstName,
+        last_name: inviteForm.lastName,
+        email: inviteForm.email,
+        password: crypto.randomUUID(),
+        role: resolveRoleSlug(inviteForm.role) as RoleSlug,
+        nickname: inviteForm.nickname || undefined,
+        job_title: inviteForm.jobTitle || undefined,
+        birth_date: inviteForm.getBirthDateString(),
+        language: inviteForm.language,
+        gender: (inviteForm.gender as "feminino" | "masculino" | "nao-binario" | "prefiro-nao-dizer") || undefined,
+        team_ids: inviteForm.teams.length > 0 ? inviteForm.teams : undefined,
+      });
       setInviteOpen(false);
       inviteForm.reset();
       toast.success("Convite enviado com sucesso");
     } catch (err) {
-      toast.error(userErrorToMessage(err));
+      toast.error(apiErrorToMessage(err, { 409: "Conflito: este usuário já existe na organização." }));
     } finally {
       setInviteLoading(false);
     }
   }
 
   async function handleBulkToggleStatus() {
-    const token = getToken();
-    if (!token) return;
     const newStatus = table.allSelectedInactive ? "active" as const : "inactive" as const;
     const targets = pageUsers.filter((u) => table.selectedRows.has(u.id) && u.status !== "invited");
     const results = await Promise.allSettled(
-      targets.map((u) => updateUser(u.id, {
-        first_name: u.firstName,
-        last_name: u.lastName,
-        email: u.email,
-        status: newStatus,
-        nickname: u.nickname ?? undefined,
-        job_title: u.jobTitle ?? undefined,
-        birth_date: u.birthDate ?? undefined,
-        language: u.language,
-        gender: u.gender ?? undefined,
-        phone: u.phone ?? undefined,
-      }, token)),
+      targets.map((u) => updateUserMutation.mutateAsync({
+        id: u.id,
+        body: {
+          first_name: u.firstName,
+          last_name: u.lastName,
+          email: u.email,
+          status: newStatus,
+          nickname: u.nickname ?? undefined,
+          job_title: u.jobTitle ?? undefined,
+          birth_date: u.birthDate ?? undefined,
+          language: u.language,
+          gender: (u.gender as "feminino" | "masculino" | "nao-binario" | "prefiro-nao-dizer") ?? undefined,
+          phone: u.phone ?? undefined,
+        },
+      })),
     );
     const succeeded = new Set(targets.filter((_, i) => results[i]?.status === "fulfilled").map((u) => u.id));
     const failCount = results.filter((r) => r.status === "rejected").length;
-    if (succeeded.size > 0) {
-      setPageUsers((prev) => prev.map((u) => succeeded.has(u.id) ? { ...u, status: newStatus } : u));
-    }
     table.clearSelection();
     if (failCount > 0) toast.error(`${failCount} operação(ões) falharam`);
     else toast.success(newStatus === "active" ? `${succeeded.size} usuário(s) ativado(s)` : `${succeeded.size} usuário(s) desativado(s)`);
   }
 
   async function handleBulkDelete() {
-    const token = getToken();
-    if (!token) return;
     const targets = [...table.selectedRows];
-    const results = await Promise.allSettled(targets.map((id) => deleteUserMembership(id, token)));
+    const results = await Promise.allSettled(targets.map((id) => deleteUserMutation.mutateAsync(id)));
     const succeeded = new Set(targets.filter((_, i) => results[i]?.status === "fulfilled"));
     const failCount = results.filter((r) => r.status === "rejected").length;
-    if (succeeded.size > 0) {
-      setPageUsers((prev) => prev.filter((u) => !succeeded.has(u.id)));
-    }
     table.clearSelection();
     if (failCount > 0) toast.error(`${failCount} remoção(ões) falharam`);
     else toast.success(`${succeeded.size} usuário(s) removido(s)`);
@@ -378,27 +307,27 @@ export function UsersModule() {
       setDeactivateUser(null);
       return;
     }
-    const token = getToken();
-    if (!token) return;
     const newStatus = deactivateUser.status === "active" ? "inactive" as const : "active" as const;
     try {
-      await updateUser(deactivateUser.id, {
-        first_name: deactivateUser.firstName,
-        last_name: deactivateUser.lastName,
-        email: deactivateUser.email,
-        status: newStatus,
-        nickname: deactivateUser.nickname ?? undefined,
-        job_title: deactivateUser.jobTitle ?? undefined,
-        birth_date: deactivateUser.birthDate ?? undefined,
-        language: deactivateUser.language,
-        gender: deactivateUser.gender ?? undefined,
-        phone: deactivateUser.phone ?? undefined,
-      }, token);
-      setPageUsers((prev) => prev.map((u) => u.id === deactivateUser.id ? { ...u, status: newStatus } : u));
+      await updateUserMutation.mutateAsync({
+        id: deactivateUser.id,
+        body: {
+          first_name: deactivateUser.firstName,
+          last_name: deactivateUser.lastName,
+          email: deactivateUser.email,
+          status: newStatus,
+          nickname: deactivateUser.nickname ?? undefined,
+          job_title: deactivateUser.jobTitle ?? undefined,
+          birth_date: deactivateUser.birthDate ?? undefined,
+          language: deactivateUser.language,
+          gender: (deactivateUser.gender as "feminino" | "masculino" | "nao-binario" | "prefiro-nao-dizer") ?? undefined,
+          phone: deactivateUser.phone ?? undefined,
+        },
+      });
       setDeactivateUser(null);
       toast.success(newStatus === "active" ? "Usuário ativado" : "Usuário desativado");
     } catch (err) {
-      toast.error(userErrorToMessage(err));
+      toast.error(apiErrorToMessage(err, { 409: "Conflito: este usuário já existe na organização." }));
     }
   }
 
@@ -456,24 +385,25 @@ export function UsersModule() {
 
   async function handleEditSave() {
     if (!editUser) return;
-    const token = getToken();
-    if (!token) return;
     const userStatus = (editUser.status === "active" || editUser.status === "inactive") ? editUser.status : "active";
     try {
-      await updateUser(editUser.id, {
-        first_name: editForm.firstName,
-        last_name: editForm.lastName,
-        email: editForm.email,
-        status: userStatus,
-        nickname: editForm.nickname || undefined,
-        job_title: editForm.jobTitle || undefined,
-        birth_date: editForm.getBirthDateString(),
-        language: editForm.language,
-        gender: editForm.gender || undefined,
-        team_ids: editForm.teams,
-      }, token);
+      await updateUserMutation.mutateAsync({
+        id: editUser.id,
+        body: {
+          first_name: editForm.firstName,
+          last_name: editForm.lastName,
+          email: editForm.email,
+          status: userStatus,
+          nickname: editForm.nickname || undefined,
+          job_title: editForm.jobTitle || undefined,
+          birth_date: editForm.getBirthDateString(),
+          language: editForm.language,
+          gender: (editForm.gender as "feminino" | "masculino" | "nao-binario" | "prefiro-nao-dizer") || undefined,
+          team_ids: editForm.teams,
+        },
+      });
     } catch (err) {
-      toast.error(userErrorToMessage(err));
+      toast.error(apiErrorToMessage(err, { 409: "Conflito: este usuário já existe na organização." }));
       return;
     }
     const newRole = resolveRoleSlug(editForm.role);
@@ -482,26 +412,14 @@ export function UsersModule() {
     if (newRole !== currentRole) {
       const membershipStatus = editUser.status === "invited" ? "invited" as const : "active" as const;
       try {
-        await updateUserMembership(editUser.id, { role: newRole, status: membershipStatus }, token);
+        await updateMembershipMutation.mutateAsync({
+          id: editUser.id,
+          body: { role: newRole as RoleSlug, status: membershipStatus },
+        });
       } catch {
         roleUpdated = false;
       }
     }
-    setPageUsers((prev) => prev.map((u) => u.id === editUser.id ? {
-      ...u,
-      firstName: editForm.firstName,
-      lastName: editForm.lastName,
-      nickname: editForm.nickname || null,
-      email: editForm.email,
-      jobTitle: editForm.jobTitle || null,
-      initials: `${editForm.firstName[0] ?? ""}${editForm.lastName[0] ?? ""}`.toUpperCase(),
-      birthDate: editForm.getBirthDateString() ?? null,
-      gender: (editForm.gender as Gender) || null,
-      language: editForm.language,
-      teams: editForm.teams.map((id) => teamNameById.get(id) ?? id),
-      ...(roleUpdated ? { roleId: createViewRoleId(apiOrgId, newRole), roleType: newRole } : {}),
-      updatedAt: new Date().toISOString(),
-    } : u));
     if (!roleUpdated) {
       toast.warning("Perfil salvo, mas tipo de usuário não foi atualizado. Tente novamente.");
     } else {
@@ -511,20 +429,18 @@ export function UsersModule() {
   }
 
   async function handleRoleChange(userId: string, newRole: string) {
-    const token = getToken();
-    if (!token) return;
     const normalizedRole = resolveRoleSlug(newRole);
     const target = pageUsers.find((u) => u.id === userId);
     const membershipStatus = target?.status === "invited" ? "invited" as const : "active" as const;
     try {
-      await updateUserMembership(userId, { role: normalizedRole, status: membershipStatus }, token);
-      setPageUsers((prev) => prev.map((u) => u.id === userId
-        ? { ...u, roleType: normalizedRole, roleId: createViewRoleId(apiOrgId, normalizedRole) }
-        : u));
+      await updateMembershipMutation.mutateAsync({
+        id: userId,
+        body: { role: normalizedRole as RoleSlug, status: membershipStatus },
+      });
       setRolePopoverUser(null);
       toast.success("Tipo de usuário atualizado");
     } catch (err) {
-      toast.error(userErrorToMessage(err));
+      toast.error(apiErrorToMessage(err, { 409: "Conflito: este usuário já existe na organização." }));
     }
   }
 
@@ -543,6 +459,18 @@ export function UsersModule() {
 
   return (
     <>
+      {usersQuery.isTruncated && (
+        <Alert variant="warning" title="Lista de usuários parcial">
+          Mostrando {usersData.length} de {usersQuery.total} usuários. A paginação completa ainda precisa ser implementada.
+        </Alert>
+      )}
+
+      {teamsQuery.isTruncated && (
+        <Alert variant="warning" title="Lista de times parcial">
+          Mostrando {teamsData.length} de {teamsQuery.total} times. Alguns vínculos podem não aparecer até a paginação completa ser implementada.
+        </Alert>
+      )}
+
       <Table
         variant="divider"
         elevated={false}

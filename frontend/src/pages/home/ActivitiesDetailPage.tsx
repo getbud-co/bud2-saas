@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Card,
@@ -24,7 +24,7 @@ import {
   Check,
 } from "@phosphor-icons/react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { useConfigData } from "@/contexts/ConfigDataContext";
+import { useCycles } from "@/hooks/use-cycles";
 import type { HomeActivityItem } from "./hooks/useHomeMissionReadModel";
 import { useHomeActivities } from "./hooks/useHomeActivities";
 import styles from "./ActivitiesDetailPage.module.css";
@@ -82,20 +82,28 @@ function ActivityItem({ activity, onClick }: { activity: Activity; onClick?: () 
 export function ActivitiesDetailPage() {
   const navigate = useNavigate();
   const { allActivities: allActivitiesInput } = useHomeActivities();
-  const { cycles } = useConfigData();
+  const { data: cycles = [] } = useCycles();
 
   // ── Period filter ───────────────────────────────────────────────────────
   const defaultCycleId = useMemo(
     () => cycles.find((c) => c.status === "active")?.id ?? cycles[0]?.id ?? "",
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    [cycles],
   );
-  const [selectedCycleId, setSelectedCycleId] = useState(defaultCycleId);
+  const [selectedCycleId, setSelectedCycleId] = useState("");
   const [customRange, setCustomRange] = useState<[CalendarDate | null, CalendarDate | null]>([null, null]);
   const periodBtnRef = useRef<HTMLButtonElement>(null);
   const [periodOpen, setPeriodOpen] = useState(false);
   const periodCustomBtnRef = useRef<HTMLButtonElement>(null);
   const [periodCustomOpen, setPeriodCustomOpen] = useState(false);
+
+  useEffect(() => {
+    if (!defaultCycleId) return;
+    setSelectedCycleId((current) => {
+      if (current === CUSTOM_CYCLE_VALUE) return current;
+      if (current && cycles.some((cycle) => cycle.id === current)) return current;
+      return defaultCycleId;
+    });
+  }, [cycles, defaultCycleId]);
 
   function selectCycle(id: string) {
     setSelectedCycleId(id);
@@ -127,8 +135,8 @@ export function ActivitiesDetailPage() {
     } else {
       const cycle = cycles.find((c) => c.id === selectedCycleId);
       if (cycle) {
-        start = new Date(cycle.startDate);
-        end = new Date(cycle.endDate + "T23:59:59");
+        start = new Date(cycle.start_date);
+        end = new Date(cycle.end_date + "T23:59:59");
       }
     }
 

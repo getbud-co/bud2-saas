@@ -12,32 +12,16 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactNode } from "react";
 import { renderMinimal } from "../../../../tests/setup/test-utils";
-import { useConfigData } from "@/contexts/ConfigDataContext";
-import {
-  createCycle,
-  deleteCycle,
-  listCycles,
-  updateCycle,
-} from "@/lib/cycles-api";
+import { useCycles, useCreateCycle, useUpdateCycle, useDeleteCycle } from "@/hooks/use-cycles";
 import { CyclesModule } from "./CyclesModule";
 
-vi.mock("@/contexts/ConfigDataContext", () => ({
-  ConfigDataProvider: ({ children }: { children: ReactNode }) => children,
-  useConfigData: vi.fn(),
+vi.mock("@/hooks/use-cycles", () => ({
+  useCycles: vi.fn(),
+  useCreateCycle: vi.fn(),
+  useUpdateCycle: vi.fn(),
+  useDeleteCycle: vi.fn(),
 }));
-
-vi.mock("@/lib/cycles-api", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/cycles-api")>("@/lib/cycles-api");
-  return {
-    ...actual,
-    createCycle: vi.fn(),
-    deleteCycle: vi.fn(),
-    listCycles: vi.fn(),
-    updateCycle: vi.fn(),
-  };
-});
 
 const apiCycles = [
   {
@@ -87,38 +71,16 @@ async function openCreateModal(user: ReturnType<typeof userEvent.setup>) {
 // ─── Tests ───
 
 describe("CyclesModule", () => {
+  const mockCreateMutate = vi.fn();
+  const mockUpdateMutate = vi.fn();
+  const mockDeleteMutate = vi.fn();
+
   beforeEach(() => {
-    localStorage.clear();
-    localStorage.setItem("bud.test.access-token", "test-token");
-    localStorage.setItem(
-      "bud.test.organizations",
-      JSON.stringify([{ id: "api-org-9", name: "API Org", workspace: "api-org" }]),
-    );
     vi.clearAllMocks();
-    vi.mocked(useConfigData).mockReturnValue({
-      cycles: apiCycles.map((cycle) => ({
-        id: cycle.id,
-        orgId: cycle.org_id,
-        name: cycle.name,
-        type: cycle.type,
-        startDate: cycle.start_date,
-        endDate: cycle.end_date,
-        status: cycle.status,
-        okrDefinitionDeadline: cycle.okr_definition_deadline,
-        midReviewDate: cycle.mid_review_date,
-        createdAt: cycle.created_at,
-        updatedAt: cycle.updated_at,
-      })),
-      cyclesStatus: "ready",
-      cyclesError: null,
-      createCycle: vi.fn().mockResolvedValue(undefined),
-      updateCycle: vi.fn().mockResolvedValue(undefined),
-      deleteCycle: vi.fn().mockResolvedValue(undefined),
-    } as unknown as ReturnType<typeof useConfigData>);
-    vi.mocked(listCycles).mockResolvedValue({ data: apiCycles, total: 2, page: 1, size: 100 });
-    vi.mocked(createCycle).mockResolvedValue(apiCycles[0]!);
-    vi.mocked(updateCycle).mockResolvedValue({ ...apiCycles[0]!, status: "ended" });
-    vi.mocked(deleteCycle).mockResolvedValue(undefined);
+    vi.mocked(useCycles).mockReturnValue({ data: apiCycles, isLoading: false, error: null } as any);
+    vi.mocked(useCreateCycle).mockReturnValue({ mutateAsync: mockCreateMutate } as any);
+    vi.mocked(useUpdateCycle).mockReturnValue({ mutateAsync: mockUpdateMutate } as any);
+    vi.mocked(useDeleteCycle).mockReturnValue({ mutateAsync: mockDeleteMutate } as any);
   });
 
   // ═══════════════════════════════════════════════════════════════════════════

@@ -28,9 +28,8 @@ import {
 } from "@getbud-co/buds";
 import type { PopoverItem, CalendarDate } from "@getbud-co/buds";
 import { Plus, PencilSimple, Trash, Play, Stop, MagnifyingGlass } from "@phosphor-icons/react";
-import type { Cycle, CycleType, CycleStatus } from "@/types";
-import { useConfigData } from "@/contexts/ConfigDataContext";
-import { cycleErrorToMessage } from "@/lib/cycles-api";
+import { useCycles, useCreateCycle, useUpdateCycle, useDeleteCycle, type Cycle, type CycleType, type CycleStatus } from "@/hooks/use-cycles";
+import { apiErrorToMessage } from "@/lib/api-error";
 import styles from "./CyclesModule.module.css";
 
 /** Converts an ISO date string (YYYY-MM-DD) to a CalendarDate for the DatePicker */
@@ -64,20 +63,20 @@ const STATUS_BADGE: Partial<Record<CycleStatus, { label: string; color: "success
   archived: { label: "Arquivado", color: "neutral" },
 };
 
+const CYCLE_ERROR_OVERRIDES: Record<number, string> = {
+  409: "Conflito: já existe um ciclo com esse nome.",
+};
+
 export function CyclesModule() {
-  const {
-    cycles,
-    cyclesStatus,
-    cyclesError,
-    createCycle,
-    updateCycle,
-    deleteCycle,
-  } = useConfigData();
+  const { data: cycles = [], isLoading, error, isTruncated, total } = useCycles();
+  const createCycle = useCreateCycle();
+  const updateCycle = useUpdateCycle();
+  const deleteCycleMutation = useDeleteCycle();
+
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCycle, setEditingCycle] = useState<Cycle | null>(null);
   const [deletingCycle, setDeletingCycle] = useState<Cycle | null>(null);
-  const [saving, setSaving] = useState(false);
   const [actionsPopoverCycle, setActionsPopoverCycle] = useState<string | null>(null);
   const {
     selectedRows,
@@ -96,18 +95,18 @@ export function CyclesModule() {
     () => cycles.filter((c) => !search || c.name.toLowerCase().includes(search.toLowerCase())),
     [cycles, search],
   );
-  const cyclesLoading = cyclesStatus === "loading";
 
   const rowIds = useMemo(() => filtered.map((c) => c.id), [filtered]);
 
   async function handleBulkDelete() {
-    try {
-      await Promise.all([...selectedRows].map((cycleId) => deleteCycle(cycleId)));
-      toast.success(`${selectedRows.size} ciclo(s) excluído(s)`);
-      clearSelection();
-    } catch (err) {
-      toast.error(cycleErrorToMessage(err));
-    }
+    const results = await Promise.allSettled(
+      [...selectedRows].map((cycleId) => deleteCycleMutation.mutateAsync(cycleId)),
+    );
+    const failed = results.filter((r) => r.status === "rejected");
+    const succeeded = results.length - failed.length;
+    if (succeeded > 0) toast.success(`${succeeded} ciclo(s) excluído(s)`);
+    if (failed.length > 0) toast.error(`${failed.length} ciclo(s) não puderam ser excluídos`);
+    clearSelection();
   }
 
   function openCreate() {
@@ -123,7 +122,7 @@ export function CyclesModule() {
     setEditingCycle(cycle);
     setFormName(cycle.name);
     setFormType(cycle.type);
-    setFormDates([isoToCalendarDate(cycle.startDate), isoToCalendarDate(cycle.endDate)]);
+    setFormDates([isoToCalendarDate(cycle.start_date), isoToCalendarDate(cycle.end_date)]);
     setFormStatus(cycle.status);
     setModalOpen(true);
   }
@@ -131,45 +130,36 @@ export function CyclesModule() {
   async function handleSave() {
     if (!formDates[0] || !formDates[1]) return;
 
-    setSaving(true);
     try {
+      const body = {
+        name: formName,
+        type: formType,
+        start_date: calendarDateToIso(formDates[0]),
+        end_date: calendarDateToIso(formDates[1]),
+        status: formStatus,
+      };
+
       if (editingCycle) {
-        await updateCycle(editingCycle.id, {
-          name: formName,
-          type: formType,
-          startDate: calendarDateToIso(formDates[0]),
-          endDate: calendarDateToIso(formDates[1]),
-          status: formStatus,
-        });
+        await updateCycle.mutateAsync({ id: editingCycle.id, body });
         toast.success("Ciclo atualizado");
       } else {
-        await createCycle({
-          name: formName,
-          type: formType,
-          startDate: calendarDateToIso(formDates[0]),
-          endDate: calendarDateToIso(formDates[1]),
-          status: formStatus,
-          okrDefinitionDeadline: null,
-          midReviewDate: null,
-        });
+        await createCycle.mutateAsync(body);
         toast.success("Ciclo criado");
       }
       setModalOpen(false);
     } catch (err) {
-      toast.error(cycleErrorToMessage(err));
-    } finally {
-      setSaving(false);
+      toast.error(apiErrorToMessage(err, CYCLE_ERROR_OVERRIDES));
     }
   }
 
   async function handleDelete() {
     if (!deletingCycle) return;
     try {
-      await deleteCycle(deletingCycle.id);
+      await deleteCycleMutation.mutateAsync(deletingCycle.id);
       setDeletingCycle(null);
       toast.success("Ciclo excluído");
     } catch (err) {
-      toast.error(cycleErrorToMessage(err));
+      toast.error(apiErrorToMessage(err, CYCLE_ERROR_OVERRIDES));
     }
   }
 
@@ -177,10 +167,19 @@ export function CyclesModule() {
     const newStatus: CycleStatus = cycle.status === "active" ? "ended" : "active";
     setActionsPopoverCycle(null);
     try {
-      await updateCycle(cycle.id, { status: newStatus });
+      await updateCycle.mutateAsync({
+        id: cycle.id,
+        body: {
+          name: cycle.name,
+          type: cycle.type,
+          start_date: cycle.start_date,
+          end_date: cycle.end_date,
+          status: newStatus,
+        },
+      });
       toast.success(newStatus === "active" ? "Ciclo ativado" : "Ciclo encerrado");
     } catch (err) {
-      toast.error(cycleErrorToMessage(err));
+      toast.error(apiErrorToMessage(err, CYCLE_ERROR_OVERRIDES));
     }
   }
 
@@ -203,15 +202,21 @@ export function CyclesModule() {
         Os ciclos criados aqui ficam disponíveis como períodos pré-definidos nas funcionalidades de missões e pesquisas da plataforma.
       </Alert>
 
-      {cyclesStatus === "error" && (
+      {error && (
         <Alert variant="error" title="Não foi possível carregar os ciclos">
-          {cyclesError ?? "Tente recarregar a página em alguns instantes."}
+          {apiErrorToMessage(error, CYCLE_ERROR_OVERRIDES)}
         </Alert>
       )}
 
-      {cyclesStatus === "loading" && cycles.length === 0 && (
+      {isLoading && cycles.length === 0 && (
         <Alert variant="info" title="Carregando ciclos">
           Buscando os ciclos cadastrados para a organização ativa.
+        </Alert>
+      )}
+
+      {isTruncated && (
+        <Alert variant="warning" title="Lista de ciclos parcial">
+          Mostrando {cycles.length} de {total} ciclos. A paginação completa ainda precisa ser implementada.
         </Alert>
       )}
 
@@ -237,7 +242,7 @@ export function CyclesModule() {
                   leftIcon={MagnifyingGlass}
                 />
               </div>
-              <Button variant="primary" size="md" leftIcon={Plus} disabled={cyclesLoading} onClick={openCreate}>
+              <Button variant="primary" size="md" leftIcon={Plus} disabled={isLoading} onClick={openCreate}>
                 Novo ciclo
               </Button>
             </div>
@@ -263,8 +268,8 @@ export function CyclesModule() {
                   <TableCell isCheckbox rowId={c.id} />
                   <TableCell>{c.name}</TableCell>
                   <TableCell>{TYPE_OPTIONS.find((t) => t.value === c.type)?.label ?? c.type}</TableCell>
-                  <TableCell>{formatDateDisplay(c.startDate)}</TableCell>
-                  <TableCell>{formatDateDisplay(c.endDate)}</TableCell>
+                  <TableCell>{formatDateDisplay(c.start_date)}</TableCell>
+                  <TableCell>{formatDateDisplay(c.end_date)}</TableCell>
                   <TableCell><Badge color={sb.color}>{sb.label}</Badge></TableCell>
                   <TableCell>
                     <RowActionsPopover
@@ -282,7 +287,7 @@ export function CyclesModule() {
           </TableBody>
         </TableContent>
         <TableBulkActions count={selectedRows.size} onClear={clearSelection}>
-          <Button variant="danger" size="md" leftIcon={Trash} disabled={cyclesLoading} onClick={handleBulkDelete}>
+          <Button variant="danger" size="md" leftIcon={Trash} disabled={isLoading} onClick={handleBulkDelete}>
             Excluir
           </Button>
         </TableBulkActions>
@@ -320,7 +325,7 @@ export function CyclesModule() {
         </ModalBody>
         <ModalFooter>
           <Button variant="tertiary" size="md" onClick={() => setModalOpen(false)}>Cancelar</Button>
-          <Button variant="primary" size="md" disabled={saving || cyclesLoading || !formName.trim() || !formDates[0] || !formDates[1]} onClick={handleSave}>
+          <Button variant="primary" size="md" disabled={createCycle.isPending || updateCycle.isPending || isLoading || !formName.trim() || !formDates[0] || !formDates[1]} onClick={handleSave}>
             {editingCycle ? "Salvar" : "Criar ciclo"}
           </Button>
         </ModalFooter>
@@ -338,7 +343,7 @@ export function CyclesModule() {
         </ModalBody>
         <ModalFooter>
           <Button variant="tertiary" size="md" onClick={() => setDeletingCycle(null)}>Cancelar</Button>
-          <Button variant="danger" size="md" leftIcon={Trash} disabled={cyclesLoading} onClick={handleDelete}>Excluir</Button>
+          <Button variant="danger" size="md" leftIcon={Trash} disabled={isLoading} onClick={handleDelete}>Excluir</Button>
         </ModalFooter>
       </Modal>
     </>

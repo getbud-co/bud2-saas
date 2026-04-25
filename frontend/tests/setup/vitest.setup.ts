@@ -2,6 +2,15 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, vi } from "vitest";
 
+// Global mock for use-cycles hook (ConfigDataProvider depends on it internally).
+// Individual test files may override this with their own vi.mock factory.
+vi.mock("@/hooks/use-cycles", () => ({
+  useCycles: vi.fn(() => ({ data: [], isLoading: false, error: null })),
+  useCreateCycle: vi.fn(() => ({ mutateAsync: vi.fn() })),
+  useUpdateCycle: vi.fn(() => ({ mutateAsync: vi.fn() })),
+  useDeleteCycle: vi.fn(() => ({ mutateAsync: vi.fn() })),
+}));
+
 // Cleanup after each test
 afterEach(() => {
   cleanup();
@@ -33,10 +42,11 @@ Object.defineProperty(globalThis, "localStorage", {
   value: localStorageMock,
 });
 
-// Reset localStorage before each test
+// Reset localStorage before each test.
+// Note: vi.clearAllMocks() resets call counts but the vi.mock factory
+// functions are re-invoked per test file, so the implementations are stable.
 beforeEach(() => {
   localStorage.clear();
-  vi.clearAllMocks();
 });
 
 // Mock window.matchMedia

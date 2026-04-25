@@ -9,6 +9,7 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiError, apiRequest } from "@/lib/api-client";
+import { queryClient } from "@/lib/query-client";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -118,6 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [organizations, setOrganizations] = useState<AuthOrganization[]>([]);
 
   const applySession = useCallback((session: LoginResponse) => {
+	queryClient.clear();
 	setAccessToken(session.access_token);
 	setUser(session.user);
 	setActiveOrganization(session.active_organization ?? null);
@@ -199,6 +201,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setActiveOrganization(null);
     setOrganizations([]);
+    queryClient.clear();
     navigate("/login");
   }, [navigate]);
 

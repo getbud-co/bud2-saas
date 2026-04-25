@@ -10,18 +10,13 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { AuthContext } from "@/contexts/AuthContext";
 import { RolesModule } from "./RolesModule";
-import { listPermissions, listRoles } from "@/lib/roles-api";
+import { useRoles, usePermissions } from "@/hooks/use-roles";
 
-vi.mock("@/lib/roles-api", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/roles-api")>("@/lib/roles-api");
-  return {
-    ...actual,
-    listRoles: vi.fn(),
-    listPermissions: vi.fn(),
-  };
-});
+vi.mock("@/hooks/use-roles", () => ({
+  useRoles: vi.fn(),
+  usePermissions: vi.fn(),
+}));
 
 const toastMock = vi.fn();
 vi.mock("@getbud-co/buds", async () => {
@@ -57,34 +52,11 @@ const API_PERMISSIONS = [
 
 // ─── Test Helpers ───
 
-function setup(options?: { activeOrganizationId?: string }) {
+function setup() {
   const user = userEvent.setup();
-  const activeOrganizationId = options?.activeOrganizationId ?? "org-1";
   const result = render(
     <MemoryRouter>
-      <AuthContext.Provider
-        value={{
-          isAuthenticated: true,
-          initializing: false,
-          user: null,
-          activeOrganization: {
-            id: activeOrganizationId,
-            name: "API Org",
-            domain: `${activeOrganizationId}.example.com`,
-            workspace: activeOrganizationId,
-            status: "active",
-            membership_role: "super-admin",
-            membership_status: "active",
-          },
-          organizations: [],
-          login: vi.fn().mockResolvedValue(undefined),
-          switchOrganization: vi.fn().mockResolvedValue(undefined),
-          logout: vi.fn(),
-          getToken: vi.fn().mockReturnValue("test-token"),
-        }}
-      >
-        <RolesModule />
-      </AuthContext.Provider>
+      <RolesModule />
     </MemoryRouter>,
   );
   return { user, ...result };
@@ -105,8 +77,8 @@ describe("RolesModule", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     toastMock.mockClear();
-    vi.mocked(listRoles).mockResolvedValue({ data: API_ROLES });
-    vi.mocked(listPermissions).mockResolvedValue({ data: API_PERMISSIONS });
+    vi.mocked(useRoles).mockReturnValue({ data: API_ROLES, isLoading: false, error: null } as any);
+    vi.mocked(usePermissions).mockReturnValue({ data: API_PERMISSIONS, isLoading: false, error: null } as any);
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -139,7 +111,7 @@ describe("RolesModule", () => {
     });
 
     it("shows error state when roles or permissions fail to load", async () => {
-      vi.mocked(listPermissions).mockRejectedValueOnce(new Error("boom"));
+      vi.mocked(useRoles).mockReturnValue({ data: undefined, isLoading: false, error: new Error("boom") } as any);
 
       setup();
 
@@ -178,7 +150,7 @@ describe("RolesModule", () => {
     });
 
     it("keeps system roles visible for the authenticated API organization", async () => {
-      setup({ activeOrganizationId: "api-org-9" });
+      setup();
 
       expect(await screen.findByText("Super Admin")).toBeInTheDocument();
       expect(screen.getAllByText("Sistema").length).toBeGreaterThan(0);

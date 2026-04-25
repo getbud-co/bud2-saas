@@ -205,6 +205,15 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetail"];
                     };
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
             };
         };
         /** Update active organization in session */
@@ -1017,6 +1026,55 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetail"];
                     };
                 };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cycles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List cycles in active organization */
+        get: {
+            parameters: {
+                query?: {
+                    page?: number;
+                    size?: number;
+                    status?: "planning" | "active" | "review" | "ended" | "archived";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CycleListResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
                 /** @description Forbidden */
                 403: {
                     headers: {
@@ -1029,8 +1087,246 @@ export interface paths {
             };
         };
         put?: never;
-        post?: never;
+        /** Create cycle in active organization */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateCycleRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        /** @description URL do recurso criado */
+                        Location?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Cycle"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Cycle name already in use */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cycles/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** Get cycle from active organization */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Cycle"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        /** Update cycle in active organization */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateCycleRequest"];
+                };
+            };
+            responses: {
+                /** @description Updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Cycle"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Cycle name already in use */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Soft delete cycle from active organization */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -1373,6 +1669,65 @@ export interface components {
             /** @enum {string} */
             status: "active" | "archived";
             members?: components["schemas"]["TeamMemberInput"][];
+        };
+        Cycle: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            org_id: string;
+            name: string;
+            /** @enum {string} */
+            type: "quarterly" | "semi_annual" | "annual" | "custom";
+            /** Format: date */
+            start_date: string;
+            /** Format: date */
+            end_date: string;
+            /** @enum {string} */
+            status: "planning" | "active" | "review" | "ended" | "archived";
+            /** Format: date */
+            okr_definition_deadline: string | null;
+            /** Format: date */
+            mid_review_date: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        CycleListResponse: {
+            data: components["schemas"]["Cycle"][];
+            total: number;
+            page: number;
+            size: number;
+        };
+        CreateCycleRequest: {
+            name: string;
+            /** @enum {string} */
+            type: "quarterly" | "semi_annual" | "annual" | "custom";
+            /** Format: date */
+            start_date: string;
+            /** Format: date */
+            end_date: string;
+            /** @enum {string} */
+            status: "planning" | "active" | "review" | "ended" | "archived";
+            /** Format: date */
+            okr_definition_deadline?: string | null;
+            /** Format: date */
+            mid_review_date?: string | null;
+        };
+        UpdateCycleRequest: {
+            name: string;
+            /** @enum {string} */
+            type: "quarterly" | "semi_annual" | "annual" | "custom";
+            /** Format: date */
+            start_date: string;
+            /** Format: date */
+            end_date: string;
+            /** @enum {string} */
+            status: "planning" | "active" | "review" | "ended" | "archived";
+            /** Format: date */
+            okr_definition_deadline?: string | null;
+            /** Format: date */
+            mid_review_date?: string | null;
         };
         Role: {
             /** Format: uuid */

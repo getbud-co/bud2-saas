@@ -8,46 +8,36 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, within, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
-import { AuthContext } from "@/contexts/AuthContext";
+import {
+  screen,
+  within,
+  waitFor,
+  renderMinimal,
+  userEvent,
+} from "../../../../tests/setup/test-utils";
 import { UsersModule } from "./UsersModule";
-import { createUser, listUsers, updateUser, updateUserMembership } from "@/lib/users-api";
-import { listRoles } from "@/lib/roles-api";
+import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useUpdateMembership } from "@/hooks/use-users";
+import { useRoles } from "@/hooks/use-roles";
+import { useTeams } from "@/hooks/use-teams";
 
-vi.mock("@/lib/users-api", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/users-api")>("@/lib/users-api");
-  return {
-    ...actual,
-    listUsers: vi.fn().mockResolvedValue({ data: [], total: 0, page: 1, size: 100 }),
-    createUser: vi.fn(),
-    updateUser: vi.fn(),
-    deleteUserMembership: vi.fn(),
-    updateUserMembership: vi.fn(),
-  };
-});
-
-vi.mock("@/lib/teams-api", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/teams-api")>("@/lib/teams-api");
-  return {
-    ...actual,
-    listTeams: vi.fn().mockResolvedValue({ data: [], total: 0, page: 1, size: 100 }),
-  };
-});
-
-vi.mock("@/lib/roles-api", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/roles-api")>("@/lib/roles-api");
-  return {
-    ...actual,
-    listRoles: vi.fn().mockResolvedValue({ data: [] }),
-  };
-});
+vi.mock("@/hooks/use-users", () => ({
+  useUsers: vi.fn(),
+  useCreateUser: vi.fn(),
+  useUpdateUser: vi.fn(),
+  useDeleteUser: vi.fn(),
+  useUpdateMembership: vi.fn(),
+}));
+vi.mock("@/hooks/use-roles", () => ({
+  useRoles: vi.fn(),
+}));
+vi.mock("@/hooks/use-teams", () => ({
+  useTeams: vi.fn(),
+}));
 
 const SEED_USERS = [
-  { id: "u1", first_name: "Maria", last_name: "Soares", email: "maria@empresa.com", status: "active", is_system_admin: false, language: "pt-br", role: "super-admin", membership_status: "active", team_ids: [], created_at: "2024-01-01T00:00:00Z", updated_at: "2024-01-01T00:00:00Z" },
-  { id: "u2", first_name: "João", last_name: "Silva", email: "joao@empresa.com", status: "active", is_system_admin: false, language: "pt-br", role: "colaborador", membership_status: "active", team_ids: [], created_at: "2024-01-01T00:00:00Z", updated_at: "2024-01-01T00:00:00Z" },
-  { id: "u3", first_name: "Ana", last_name: "Costa", email: "ana@empresa.com", status: "inactive", is_system_admin: false, language: "pt-br", role: "gestor", membership_status: "inactive", team_ids: [], created_at: "2024-01-01T00:00:00Z", updated_at: "2024-01-01T00:00:00Z" },
+  { id: "u1", first_name: "Maria", last_name: "Soares", email: "maria@empresa.com", status: "active" as const, is_system_admin: false, language: "pt-br", role: "super-admin", membership_status: "active" as const, team_ids: [], created_at: "2024-01-01T00:00:00Z", updated_at: "2024-01-01T00:00:00Z" },
+  { id: "u2", first_name: "João", last_name: "Silva", email: "joao@empresa.com", status: "active" as const, is_system_admin: false, language: "pt-br", role: "colaborador", membership_status: "active" as const, team_ids: [], created_at: "2024-01-01T00:00:00Z", updated_at: "2024-01-01T00:00:00Z" },
+  { id: "u3", first_name: "Ana", last_name: "Costa", email: "ana@empresa.com", status: "inactive" as const, is_system_admin: false, language: "pt-br", role: "gestor", membership_status: "inactive" as const, team_ids: [], created_at: "2024-01-01T00:00:00Z", updated_at: "2024-01-01T00:00:00Z" },
 ];
 
 const API_ROLES = [
@@ -57,37 +47,16 @@ const API_ROLES = [
   { id: "role-lider-projeto", slug: "lider-projeto", name: "Lider de projeto", description: "Coordena projetos especiais", type: "custom" as const, scope: "team" as const, is_default: false, permission_ids: ["people.view"], users_count: 1, created_at: "2026-04-24T10:03:00Z", updated_at: "2026-04-24T10:03:00Z" },
 ];
 
+const mockCreateUser = vi.fn();
+const mockUpdateUser = vi.fn();
+const mockDeleteUser = vi.fn();
+const mockUpdateMembership = vi.fn();
+
 // ─── Test Helpers ───
 
 function setup() {
   const user = userEvent.setup();
-  const result = render(
-    <MemoryRouter>
-      <AuthContext.Provider
-        value={{
-          isAuthenticated: true,
-          initializing: false,
-          user: null,
-          activeOrganization: {
-            id: "org-1",
-            name: "Org 1",
-            domain: "org-1.example.com",
-            workspace: "org-1",
-            status: "active",
-            membership_role: "super-admin",
-            membership_status: "active",
-          },
-          organizations: [],
-          login: vi.fn().mockResolvedValue(undefined),
-          switchOrganization: vi.fn().mockResolvedValue(undefined),
-          logout: vi.fn(),
-          getToken: vi.fn().mockReturnValue("test-token"),
-        }}
-      >
-        <UsersModule />
-      </AuthContext.Provider>
-    </MemoryRouter>,
-  );
+  const result = renderMinimal(<UsersModule />);
   return { user, ...result };
 }
 
@@ -96,11 +65,22 @@ function setup() {
 describe("UsersModule", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(listUsers).mockResolvedValue({ data: SEED_USERS, total: SEED_USERS.length, page: 1, size: 100 });
-    vi.mocked(listRoles).mockResolvedValue({ data: API_ROLES });
-    vi.mocked(updateUser).mockResolvedValue(SEED_USERS[0]!);
-    vi.mocked(updateUserMembership).mockResolvedValue({ role: "lider-projeto", status: "active" });
-    vi.mocked(createUser).mockResolvedValue({
+    localStorage.setItem(
+      "bud.test.organizations",
+      JSON.stringify([
+        {
+          id: "org-1",
+          name: "Org 1",
+          domain: "org-1.example.com",
+          workspace: "org-1",
+          status: "active",
+          membership_role: "super-admin",
+          membership_status: "active",
+        },
+      ]),
+    );
+
+    mockCreateUser.mockResolvedValue({
       id: "u4",
       first_name: "Bruna",
       last_name: "Lima",
@@ -114,6 +94,40 @@ describe("UsersModule", () => {
       created_at: "2026-04-24T10:04:00Z",
       updated_at: "2026-04-24T10:04:00Z",
     });
+    mockUpdateUser.mockResolvedValue(SEED_USERS[0]!);
+    mockDeleteUser.mockResolvedValue(undefined);
+    mockUpdateMembership.mockResolvedValue({ role: "lider-projeto", status: "active" });
+
+    vi.mocked(useUsers).mockReturnValue({
+      data: SEED_USERS,
+      isLoading: false,
+      error: null,
+      isTruncated: false,
+      total: SEED_USERS.length,
+      page: 1,
+      size: 100,
+    } as unknown as ReturnType<typeof useUsers>);
+
+    vi.mocked(useRoles).mockReturnValue({
+      data: API_ROLES,
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useRoles>);
+
+    vi.mocked(useTeams).mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+      isTruncated: false,
+      total: 0,
+      page: 1,
+      size: 100,
+    } as unknown as ReturnType<typeof useTeams>);
+
+    vi.mocked(useCreateUser).mockReturnValue({ mutateAsync: mockCreateUser } as unknown as ReturnType<typeof useCreateUser>);
+    vi.mocked(useUpdateUser).mockReturnValue({ mutateAsync: mockUpdateUser } as unknown as ReturnType<typeof useUpdateUser>);
+    vi.mocked(useDeleteUser).mockReturnValue({ mutateAsync: mockDeleteUser } as unknown as ReturnType<typeof useDeleteUser>);
+    vi.mocked(useUpdateMembership).mockReturnValue({ mutateAsync: mockUpdateMembership } as unknown as ReturnType<typeof useUpdateMembership>);
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -510,9 +524,8 @@ describe("UsersModule", () => {
       await user.click(within(dialog).getByRole("button", { name: /enviar convite/i }));
 
       await waitFor(() => {
-        expect(createUser).toHaveBeenCalledWith(
+        expect(mockCreateUser).toHaveBeenCalledWith(
           expect.objectContaining({ role: "lider-projeto" }),
-          "test-token",
         );
       });
     });
@@ -663,11 +676,10 @@ describe("UsersModule", () => {
       await user.click(await screen.findByText("Lider de projeto"));
 
       await waitFor(() => {
-        expect(updateUserMembership).toHaveBeenCalledWith(
-          "u1",
-          { role: "lider-projeto", status: "active" },
-          "test-token",
-        );
+        expect(mockUpdateMembership).toHaveBeenCalledWith({
+          id: "u1",
+          body: { role: "lider-projeto", status: "active" },
+        });
       });
     });
 

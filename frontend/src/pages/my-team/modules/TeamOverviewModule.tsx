@@ -28,7 +28,7 @@ import type { CalendarDate } from "@getbud-co/buds";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useTeamOverviewData, type PeriodFilter } from "@/hooks/useTeamOverviewData";
 import { usePeopleData } from "@/contexts/PeopleDataContext";
-import { useConfigData } from "@/contexts/ConfigDataContext";
+import { useCycles } from "@/hooks/use-cycles";
 import { EngagementStatsBar } from "./components/EngagementStatsBar";
 import { TeamHealthTable } from "./components/TeamHealthTable";
 import { CollaboratorProfileModal } from "./components/CollaboratorProfileModal";
@@ -55,7 +55,7 @@ function formatCalendarDate(d: CalendarDate): string {
 
 export function TeamOverviewModule() {
   const { teams, currentUserId } = usePeopleData();
-  const { cycles } = useConfigData();
+  const { data: cycles = [] } = useCycles();
 
   // ── Team filter (default = teams led by current user) ─────────────────────
   const defaultTeamIds = useMemo(() => {
@@ -84,15 +84,23 @@ export function TeamOverviewModule() {
   // ── Period filter (popover com lista de ciclos) ───────────────────────────
   const defaultCycleId = useMemo(
     () => cycles.find((c) => c.status === "active")?.id ?? cycles[0]?.id ?? "",
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    [cycles],
   );
-  const [selectedCycleId, setSelectedCycleId] = useState<string>(defaultCycleId);
+  const [selectedCycleId, setSelectedCycleId] = useState<string>("");
   const [customRange, setCustomRange] = useState<[CalendarDate | null, CalendarDate | null]>([null, null]);
   const periodBtnRef = useRef<HTMLButtonElement>(null);
   const [periodOpen, setPeriodOpen] = useState(false);
   const periodCustomBtnRef = useRef<HTMLButtonElement>(null);
   const [periodCustomOpen, setPeriodCustomOpen] = useState(false);
+
+  useEffect(() => {
+    if (!defaultCycleId) return;
+    setSelectedCycleId((current) => {
+      if (current === CUSTOM_CYCLE_VALUE) return current;
+      if (current && cycles.some((cycle) => cycle.id === current)) return current;
+      return defaultCycleId;
+    });
+  }, [cycles, defaultCycleId]);
 
   function selectCycle(id: string) {
     setSelectedCycleId(id);
@@ -124,7 +132,7 @@ export function TeamOverviewModule() {
     }
     const cycle = cycles.find((c) => c.id === selectedCycleId);
     if (!cycle) return null;
-    return { startDate: cycle.startDate, endDate: cycle.endDate };
+    return { startDate: cycle.start_date, endDate: cycle.end_date };
   }, [selectedCycleId, customRange, cycles]);
 
   const data = useTeamOverviewData(selectedTeamIds, activePeriod);
