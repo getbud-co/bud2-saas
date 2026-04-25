@@ -108,7 +108,7 @@ describe("Store Functions", () => {
     it("returns seed data when localStorage is empty", () => {
       const snapshot = loadConfigSnapshot();
 
-      expect(snapshot.schemaVersion).toBe(3);
+      expect(snapshot.schemaVersion).toBe(4);
       expect(snapshot.activeOrgId).toBe("org-1");
       expect(Object.keys(snapshot.organizationsById).length).toBeGreaterThan(0);
     });
@@ -163,7 +163,7 @@ describe("Store Functions", () => {
       const snapshot = loadConfigSnapshot();
 
       // Should return seed data
-      expect(snapshot.schemaVersion).toBe(3);
+      expect(snapshot.schemaVersion).toBe(4);
       expect(snapshot.activeOrgId).toBe("org-1");
     });
 
@@ -187,7 +187,7 @@ describe("Store Functions", () => {
       localStorage.setItem("bud.saas.config-store", JSON.stringify(oldData));
       const snapshot = loadConfigSnapshot();
 
-      expect(snapshot.schemaVersion).toBe(3);
+      expect(snapshot.schemaVersion).toBe(4);
       // Should have migrated org with new fields
       expect(snapshot.organizationsById["org-1"]?.depth).toBeDefined();
       expect(snapshot.organizationsById["org-1"]?.path).toBeDefined();
@@ -228,7 +228,7 @@ describe("Store Functions", () => {
       const initial = loadConfigSnapshot();
       const saved = saveConfigSnapshot(initial);
 
-      expect(saved.schemaVersion).toBe(3);
+      expect(saved.schemaVersion).toBe(4);
       expect(saved.updatedAt).toBeDefined();
     });
 
@@ -313,15 +313,9 @@ describe("Seed Data Validation", () => {
     expect(tags?.length).toBeGreaterThan(0);
   });
 
-  it("seed includes cycles with dynamic dates", () => {
+  it("does not seed cycles into local config storage", () => {
     const snapshot = loadConfigSnapshot();
-    const cycles = snapshot.cyclesByOrg["org-1"];
-    expect(cycles).toBeDefined();
-    expect(cycles?.length).toBeGreaterThan(0);
-
-    // Should have active cycle
-    const activeCycles = cycles?.filter((c) => c.status === "active");
-    expect(activeCycles?.length).toBeGreaterThan(0);
+    expect(snapshot.cyclesByOrg).toEqual({});
   });
 
   it("seed includes roles with permissions", () => {
@@ -416,7 +410,7 @@ describe("Data Sanitization", () => {
     expect(tags?.some((t) => t.name === "Invalid" && !t.id)).toBe(false);
   });
 
-  it("sanitizes invalid cycle data", () => {
+  it("drops legacy cycle data during migration", () => {
     const invalidData = {
       schemaVersion: 2,
       activeOrgId: "org-1",
@@ -442,10 +436,7 @@ describe("Data Sanitization", () => {
     localStorage.setItem("bud.saas.config-store", JSON.stringify(invalidData));
     const snapshot = loadConfigSnapshot();
 
-    const cycles = snapshot.cyclesByOrg["org-1"];
-    const cycle1 = cycles?.find((c) => c.id === "cycle-1");
-    expect(cycle1?.type).toBe("custom"); // default
-    expect(cycle1?.status).toBe("planning"); // default
+    expect(snapshot.cyclesByOrg).toEqual({});
   });
 
   it("falls back to seed data when arrays are empty", () => {
@@ -467,7 +458,7 @@ describe("Data Sanitization", () => {
     // Should fall back to seed data since arrays are empty
     expect(snapshot.companyValuesByOrg["org-1"]?.length).toBeGreaterThan(0);
     expect(snapshot.tagsByOrg["org-1"]?.length).toBeGreaterThan(0);
-    expect(snapshot.cyclesByOrg["org-1"]?.length).toBeGreaterThan(0);
+    expect(snapshot.cyclesByOrg).toEqual({});
     expect(snapshot.rolesByOrg["org-1"]?.length).toBeGreaterThan(0);
   });
 });

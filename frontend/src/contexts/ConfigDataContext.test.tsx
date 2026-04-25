@@ -10,7 +10,25 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { AuthContext } from "@/contexts/AuthContext";
+import type { Cycle } from "@/types";
+import {
+  createCycle as createCycleApi,
+  deleteCycle as deleteCycleApi,
+  listCycles,
+  updateCycle as updateCycleApi,
+} from "@/lib/cycles-api";
 import { ConfigDataProvider, useConfigData } from "./ConfigDataContext";
+
+vi.mock("@/lib/cycles-api", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/cycles-api")>("@/lib/cycles-api");
+  return {
+    ...actual,
+    createCycle: vi.fn(),
+    deleteCycle: vi.fn(),
+    listCycles: vi.fn(),
+    updateCycle: vi.fn(),
+  };
+});
 
 // ─── Test Helpers ───
 
@@ -56,6 +74,31 @@ function authenticatedWrapper({ children }: { children: ReactNode }) {
   );
 }
 
+const apiCycle = {
+  id: "11111111-1111-4111-8111-111111111111",
+  org_id: "api-org-9",
+  name: "Q1 2026",
+  type: "quarterly" as const,
+  start_date: "2026-01-01",
+  end_date: "2026-03-31",
+  status: "active" as const,
+  okr_definition_deadline: null,
+  mid_review_date: null,
+  created_at: "2026-01-01T00:00:00Z",
+  updated_at: "2026-01-01T00:00:00Z",
+};
+
+const createdApiCycle = {
+  ...apiCycle,
+  id: "22222222-2222-4222-8222-222222222222",
+  name: "Q2 2026",
+  start_date: "2026-04-01",
+  end_date: "2026-06-30",
+  status: "planning" as const,
+  okr_definition_deadline: "2026-04-15",
+  mid_review_date: "2026-05-15",
+};
+
 // ─── Tests ───
 
 describe("ConfigDataContext", () => {
@@ -63,6 +106,15 @@ describe("ConfigDataContext", () => {
     localStorage.clear();
     localStorage.setItem("bud.test.access-token", "test-token");
     vi.clearAllMocks();
+    vi.mocked(listCycles).mockResolvedValue({ data: [apiCycle], total: 1, page: 1, size: 100 });
+    vi.mocked(createCycleApi).mockResolvedValue(createdApiCycle);
+    vi.mocked(updateCycleApi).mockResolvedValue({
+      ...createdApiCycle,
+      name: "Updated Cycle",
+      status: "active",
+      updated_at: "2026-01-02T00:00:00Z",
+    });
+    vi.mocked(deleteCycleApi).mockResolvedValue(undefined);
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -111,7 +163,7 @@ describe("ConfigDataContext", () => {
     it("has cycles array", () => {
       const { result } = renderHook(() => useConfigData(), { wrapper });
       expect(Array.isArray(result.current.cycles)).toBe(true);
-      expect(result.current.cycles.length).toBeGreaterThan(0);
+      expect(result.current.cycles).toHaveLength(0);
     });
 
     it("has roles array", () => {
@@ -363,14 +415,26 @@ describe("ConfigDataContext", () => {
   // ═══════════════════════════════════════════════════════════════════════════
 
   describe("cycles CRUD", () => {
-    it("creates a cycle", () => {
-      const { result } = renderHook(() => useConfigData(), { wrapper });
+    it("loads cycles from the API", async () => {
+      const { result } = renderHook(() => useConfigData(), { wrapper: authenticatedWrapper });
+
+      await waitFor(() => expect(result.current.cyclesStatus).toBe("ready"));
+
+      expect(result.current.cycles).toHaveLength(1);
+      expect(result.current.cycles[0]?.id).toBe(apiCycle.id);
+      expect(listCycles).toHaveBeenCalledWith("test-token", { size: 100 });
+    });
+
+    it("creates a cycle", async () => {
+      const { result } = renderHook(() => useConfigData(), { wrapper: authenticatedWrapper });
+
+      await waitFor(() => expect(result.current.cyclesStatus).toBe("ready"));
 
       const initialCount = result.current.cycles.length;
 
-      let newCycle: ReturnType<typeof result.current.createCycle>;
-      act(() => {
-        newCycle = result.current.createCycle({
+      let newCycle: Cycle | undefined;
+      await act(async () => {
+        newCycle = await result.current.createCycle({
           name: "Q2 2026",
           type: "quarterly",
           startDate: "2026-04-01",
@@ -385,15 +449,28 @@ describe("ConfigDataContext", () => {
       expect(newCycle!.name).toBe("Q2 2026");
       expect(newCycle!.type).toBe("quarterly");
       expect(newCycle!.status).toBe("planning");
+      expect(createCycleApi).toHaveBeenCalledWith(
+        {
+          name: "Q2 2026",
+          type: "quarterly",
+          start_date: "2026-04-01",
+          end_date: "2026-06-30",
+          status: "planning",
+          okr_definition_deadline: "2026-04-15",
+          mid_review_date: "2026-05-15",
+        },
+        "test-token",
+      );
     });
 
-    it("creates cycle with custom ID", () => {
-      const { result } = renderHook(() => useConfigData(), { wrapper });
+    it("uses the backend ID when creating a cycle", async () => {
+      const { result } = renderHook(() => useConfigData(), { wrapper: authenticatedWrapper });
 
-      let newCycle: ReturnType<typeof result.current.createCycle>;
-      act(() => {
-        newCycle = result.current.createCycle({
-          id: "custom-cycle-id",
+      await waitFor(() => expect(result.current.cyclesStatus).toBe("ready"));
+
+      let newCycle: Cycle | undefined;
+      await act(async () => {
+        newCycle = await result.current.createCycle({
           name: "Custom Cycle",
           type: "custom",
           startDate: "2026-01-01",
@@ -404,15 +481,17 @@ describe("ConfigDataContext", () => {
         });
       });
 
-      expect(newCycle!.id).toBe("custom-cycle-id");
+      expect(newCycle!.id).toBe(createdApiCycle.id);
     });
 
-    it("updates a cycle", () => {
-      const { result } = renderHook(() => useConfigData(), { wrapper });
+    it("updates a cycle", async () => {
+      const { result } = renderHook(() => useConfigData(), { wrapper: authenticatedWrapper });
+
+      await waitFor(() => expect(result.current.cyclesStatus).toBe("ready"));
 
       let cycleId: string;
-      act(() => {
-        const cycle = result.current.createCycle({
+      await act(async () => {
+        const cycle = await result.current.createCycle({
           name: "Original Cycle",
           type: "quarterly",
           startDate: "2026-01-01",
@@ -424,8 +503,8 @@ describe("ConfigDataContext", () => {
         cycleId = cycle.id;
       });
 
-      act(() => {
-        result.current.updateCycle(cycleId!, { name: "Updated Cycle", status: "active" });
+      await act(async () => {
+        await result.current.updateCycle(cycleId!, { name: "Updated Cycle", status: "active" });
       });
 
       const updated = result.current.cycles.find((c) => c.id === cycleId);
@@ -433,12 +512,14 @@ describe("ConfigDataContext", () => {
       expect(updated?.status).toBe("active");
     });
 
-    it("deletes a cycle", () => {
-      const { result } = renderHook(() => useConfigData(), { wrapper });
+    it("deletes a cycle", async () => {
+      const { result } = renderHook(() => useConfigData(), { wrapper: authenticatedWrapper });
+
+      await waitFor(() => expect(result.current.cyclesStatus).toBe("ready"));
 
       let cycleId: string;
-      act(() => {
-        const cycle = result.current.createCycle({
+      await act(async () => {
+        const cycle = await result.current.createCycle({
           name: "To Delete",
           type: "quarterly",
           startDate: "2026-01-01",
@@ -452,8 +533,8 @@ describe("ConfigDataContext", () => {
 
       const countBefore = result.current.cycles.length;
 
-      act(() => {
-        result.current.deleteCycle(cycleId!);
+      await act(async () => {
+        await result.current.deleteCycle(cycleId!);
       });
 
       expect(result.current.cycles.length).toBe(countBefore - 1);
@@ -815,10 +896,22 @@ describe("ConfigDataContext", () => {
     it("setCycles allows direct state setting", () => {
       const { result } = renderHook(() => useConfigData(), { wrapper });
 
-      expect(result.current.cycles.length).toBeGreaterThan(1);
-
       act(() => {
-        result.current.setCycles((prev) => prev.slice(0, 1));
+        result.current.setCycles([
+          {
+            id: "local-cycle",
+            orgId: "org-1",
+            name: "Local Cycle",
+            type: "custom",
+            startDate: "2026-01-01",
+            endDate: "2026-12-31",
+            status: "planning",
+            okrDefinitionDeadline: null,
+            midReviewDate: null,
+            createdAt: "2026-01-01T00:00:00Z",
+            updatedAt: "2026-01-01T00:00:00Z",
+          },
+        ]);
       });
 
       expect(result.current.cycles.length).toBe(1);

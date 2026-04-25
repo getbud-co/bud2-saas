@@ -9,17 +9,70 @@
  * focus on structure and behavior rather than specific cycle names.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders } from "../../../../tests/setup/test-utils";
+import type { ReactNode } from "react";
+import { renderMinimal } from "../../../../tests/setup/test-utils";
+import { useConfigData } from "@/contexts/ConfigDataContext";
+import {
+  createCycle,
+  deleteCycle,
+  listCycles,
+  updateCycle,
+} from "@/lib/cycles-api";
 import { CyclesModule } from "./CyclesModule";
+
+vi.mock("@/contexts/ConfigDataContext", () => ({
+  ConfigDataProvider: ({ children }: { children: ReactNode }) => children,
+  useConfigData: vi.fn(),
+}));
+
+vi.mock("@/lib/cycles-api", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/cycles-api")>("@/lib/cycles-api");
+  return {
+    ...actual,
+    createCycle: vi.fn(),
+    deleteCycle: vi.fn(),
+    listCycles: vi.fn(),
+    updateCycle: vi.fn(),
+  };
+});
+
+const apiCycles = [
+  {
+    id: "11111111-1111-4111-8111-111111111111",
+    org_id: "api-org-9",
+    name: "Q1 2026",
+    type: "quarterly" as const,
+    start_date: "2026-01-01",
+    end_date: "2026-03-31",
+    status: "active" as const,
+    okr_definition_deadline: null,
+    mid_review_date: null,
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+  },
+  {
+    id: "22222222-2222-4222-8222-222222222222",
+    org_id: "api-org-9",
+    name: "Q2 2026",
+    type: "quarterly" as const,
+    start_date: "2026-04-01",
+    end_date: "2026-06-30",
+    status: "planning" as const,
+    okr_definition_deadline: null,
+    mid_review_date: null,
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+  },
+];
 
 // ─── Test Helpers ───
 
 function setup() {
   const user = userEvent.setup();
-  const result = renderWithProviders(<CyclesModule />);
+  const result = renderMinimal(<CyclesModule />);
   return { user, ...result };
 }
 
@@ -36,6 +89,36 @@ async function openCreateModal(user: ReturnType<typeof userEvent.setup>) {
 describe("CyclesModule", () => {
   beforeEach(() => {
     localStorage.clear();
+    localStorage.setItem("bud.test.access-token", "test-token");
+    localStorage.setItem(
+      "bud.test.organizations",
+      JSON.stringify([{ id: "api-org-9", name: "API Org", workspace: "api-org" }]),
+    );
+    vi.clearAllMocks();
+    vi.mocked(useConfigData).mockReturnValue({
+      cycles: apiCycles.map((cycle) => ({
+        id: cycle.id,
+        orgId: cycle.org_id,
+        name: cycle.name,
+        type: cycle.type,
+        startDate: cycle.start_date,
+        endDate: cycle.end_date,
+        status: cycle.status,
+        okrDefinitionDeadline: cycle.okr_definition_deadline,
+        midReviewDate: cycle.mid_review_date,
+        createdAt: cycle.created_at,
+        updatedAt: cycle.updated_at,
+      })),
+      cyclesStatus: "ready",
+      cyclesError: null,
+      createCycle: vi.fn().mockResolvedValue(undefined),
+      updateCycle: vi.fn().mockResolvedValue(undefined),
+      deleteCycle: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ReturnType<typeof useConfigData>);
+    vi.mocked(listCycles).mockResolvedValue({ data: apiCycles, total: 2, page: 1, size: 100 });
+    vi.mocked(createCycle).mockResolvedValue(apiCycles[0]!);
+    vi.mocked(updateCycle).mockResolvedValue({ ...apiCycles[0]!, status: "ended" });
+    vi.mocked(deleteCycle).mockResolvedValue(undefined);
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -438,7 +521,7 @@ describe("CyclesModule", () => {
     it("alert has proper role", () => {
       setup();
 
-      expect(screen.getByRole("alert")).toBeInTheDocument();
+      expect(screen.getAllByRole("alert").length).toBeGreaterThan(0);
     });
   });
 });

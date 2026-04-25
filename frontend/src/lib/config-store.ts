@@ -63,7 +63,7 @@ export interface ConfigStoreSnapshot {
 }
 
 const STORAGE_KEY = "bud.saas.config-store";
-const STORE_SCHEMA_VERSION = 3;
+const STORE_SCHEMA_VERSION = 4;
 
 const DEFAULT_ACTIVE_ORG_ID = "org-1";
 
@@ -493,7 +493,6 @@ function getSeedSnapshot(): ConfigStoreSnapshot {
     const defaults = buildOrgDefaults(organization.id);
     companyValuesByOrg[organization.id] = defaults.values;
     tagsByOrg[organization.id] = defaults.tags;
-    cyclesByOrg[organization.id] = defaults.cycles;
     rolesByOrg[organization.id] = defaults.roles;
   });
 
@@ -577,27 +576,6 @@ function sanitizeTag(raw: unknown, orgId: string): Tag | null {
   };
 }
 
-function sanitizeCycle(raw: unknown, orgId: string): Cycle | null {
-  if (!raw || typeof raw !== "object") return null;
-  const item = raw as Partial<Cycle>;
-  if (!item.id || !item.name || !item.startDate || !item.endDate) return null;
-
-  const now = nowIso();
-  return {
-    id: String(item.id),
-    orgId,
-    name: String(item.name),
-    type: (item.type as CycleType | undefined) ?? "custom",
-    startDate: String(item.startDate),
-    endDate: String(item.endDate),
-    status: (item.status as CycleStatus | undefined) ?? "planning",
-    okrDefinitionDeadline: item.okrDefinitionDeadline ? String(item.okrDefinitionDeadline) : null,
-    midReviewDate: item.midReviewDate ? String(item.midReviewDate) : null,
-    createdAt: String(item.createdAt ?? now),
-    updatedAt: String(item.updatedAt ?? now),
-  };
-}
-
 function sanitizeRole(raw: unknown, orgId: string): ConfigRoleRecord | null {
   if (!raw || typeof raw !== "object") return null;
   const item = raw as Partial<ConfigRoleRecord>;
@@ -661,7 +639,6 @@ function migrateSnapshot(raw: Partial<ConfigStoreSnapshot> | null): ConfigStoreS
   Object.keys(organizationsById).forEach((orgId) => {
     const seedValues = seed.companyValuesByOrg[orgId] ?? [];
     const seedTags = seed.tagsByOrg[orgId] ?? [];
-    const seedCycles = seed.cyclesByOrg[orgId] ?? [];
     const seedRoles = seed.rolesByOrg[orgId] ?? [];
 
     const rawValues = Array.isArray(raw.companyValuesByOrg?.[orgId])
@@ -685,18 +662,6 @@ function migrateSnapshot(raw: Partial<ConfigStoreSnapshot> | null): ConfigStoreS
     const userTagIds = new Set(nextTags.map((t) => t.id));
     const newSeedTags = seedTags.filter((t) => !userTagIds.has(t.id));
     tagsByOrg[orgId] = nextTags.length === 0 ? seedTags : [...nextTags, ...newSeedTags];
-
-    const rawCycles = Array.isArray(raw.cyclesByOrg?.[orgId])
-      ? raw.cyclesByOrg?.[orgId] ?? []
-      : [];
-    const nextCycles = rawCycles
-      .map((cycle) => sanitizeCycle(cycle, orgId))
-      .filter((cycle): cycle is Cycle => !!cycle);
-    // Seed cycles are date-relative, always regenerated fresh.
-    // User-created custom cycles (IDs not in seed) are preserved.
-    const seedCycleIds = new Set(seedCycles.map((c) => c.id));
-    const userCustomCycles = nextCycles.filter((c) => !seedCycleIds.has(c.id));
-    cyclesByOrg[orgId] = [...seedCycles, ...userCustomCycles];
 
     const rawRoles = Array.isArray(raw.rolesByOrg?.[orgId])
       ? raw.rolesByOrg?.[orgId] ?? []
@@ -771,7 +736,7 @@ export function saveConfigSnapshot(
     organizationsById: cloneDeep(snapshot.organizationsById),
     companyValuesByOrg: cloneDeep(snapshot.companyValuesByOrg),
     tagsByOrg: cloneDeep(snapshot.tagsByOrg),
-    cyclesByOrg: cloneDeep(snapshot.cyclesByOrg),
+    cyclesByOrg: {},
     rolesByOrg: cloneDeep(snapshot.rolesByOrg),
     permissions: cloneDeep(snapshot.permissions),
     legacyRoleSlugAliases: {
