@@ -11,6 +11,7 @@ import (
 
 	domaincycle "github.com/getbud-co/bud2/backend/internal/domain/cycle"
 	domainmission "github.com/getbud-co/bud2/backend/internal/domain/mission"
+	domainorg "github.com/getbud-co/bud2/backend/internal/domain/organization"
 	domainteam "github.com/getbud-co/bud2/backend/internal/domain/team"
 	domainuser "github.com/getbud-co/bud2/backend/internal/domain/user"
 )
@@ -50,9 +51,26 @@ func (c *Checker) CheckTeamInOrg(ctx context.Context, teamID, organizationID uui
 	return nil
 }
 
+// CheckUserInOrg verifies the user exists AND has an ACTIVE membership in the
+// organization. A user that exists in another org (or whose membership in this
+// org is inactive/invited) must not be assignable as mission owner.
+//
+// GetByIDForOrganization returns:
+//   - domainuser.ErrNotFound       — user does not exist at all
+//   - domainorg.ErrMembershipNotFound — user exists but has no membership here
+//
+// Both map to ErrInvalidReference at the boundary so callers see 422, not 500.
+// Status check (active vs invited/inactive) happens after the lookup succeeds.
 func (c *Checker) CheckUserInOrg(ctx context.Context, userID, organizationID uuid.UUID) error {
-	if _, err := c.users.GetByIDForOrganization(ctx, userID, organizationID); err != nil {
-		if errors.Is(err, domainuser.ErrNotFound) {
+	u, err := c.users.GetByIDForOrganization(ctx, userID, organizationID)
+	if err != nil {
+		if errors.Is(err, domainuser.ErrNotFound) || errors.Is(err, domainorg.ErrMembershipNotFound) {
+			return domainmission.ErrInvalidReference
+		}
+		return err
+	}
+	if _, err := u.ActiveMembershipForOrganization(organizationID); err != nil {
+		if errors.Is(err, domainorg.ErrMembershipNotFound) {
 			return domainmission.ErrInvalidReference
 		}
 		return err
