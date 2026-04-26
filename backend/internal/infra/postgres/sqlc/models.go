@@ -26,6 +26,26 @@ type Cycle struct {
 	DeletedAt             pgtype.Timestamptz
 }
 
+type Mission struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	CycleID        pgtype.UUID
+	ParentID       pgtype.UUID
+	OwnerID        uuid.UUID
+	TeamID         pgtype.UUID
+	Title          string
+	Description    pgtype.Text
+	Status         string
+	Visibility     string
+	KanbanStatus   string
+	SortOrder      int32
+	DueDate        pgtype.Date
+	CompletedAt    pgtype.Timestamptz
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	DeletedAt      pgtype.Timestamptz
+}
+
 type Organization struct {
 	ID        uuid.UUID
 	Name      string

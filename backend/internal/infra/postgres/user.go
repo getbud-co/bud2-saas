@@ -289,37 +289,7 @@ func updateUserRowToDomain(row sqlc.UpdateUserRow) *user.User {
 		row.CreatedAt, row.UpdatedAt, nil)
 }
 
-// ── pgtype helpers ────────────────────────────────────────────────────────────
-
-func textToPgtype(s *string) pgtype.Text {
-	if s == nil {
-		return pgtype.Text{Valid: false}
-	}
-	return pgtype.Text{String: *s, Valid: true}
-}
-
-func pgtypeToText(t pgtype.Text) *string {
-	if !t.Valid {
-		return nil
-	}
-	s := t.String
-	return &s
-}
-
-func timeToPgtypeDate(t *time.Time) pgtype.Date {
-	if t == nil {
-		return pgtype.Date{Valid: false}
-	}
-	return pgtype.Date{Time: *t, Valid: true}
-}
-
-func pgtypeDateToTime(d pgtype.Date) *time.Time {
-	if !d.Valid {
-		return nil
-	}
-	t := d.Time
-	return &t
-}
+// pgtype helpers live in helpers.go (shared across repositories).
 
 // ── Membership helpers ────────────────────────────────────────────────────────
 

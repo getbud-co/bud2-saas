@@ -21,6 +21,7 @@ import (
 	apiauth "github.com/getbud-co/bud2/backend/internal/api/auth"
 	apibootstrap "github.com/getbud-co/bud2/backend/internal/api/bootstrap"
 	apicycle "github.com/getbud-co/bud2/backend/internal/api/cycle"
+	apimission "github.com/getbud-co/bud2/backend/internal/api/mission"
 	apiorg "github.com/getbud-co/bud2/backend/internal/api/organization"
 	apiperm "github.com/getbud-co/bud2/backend/internal/api/permission"
 	apirole "github.com/getbud-co/bud2/backend/internal/api/role"
@@ -29,6 +30,7 @@ import (
 	appauth "github.com/getbud-co/bud2/backend/internal/app/auth"
 	appbootstrap "github.com/getbud-co/bud2/backend/internal/app/bootstrap"
 	appcycle "github.com/getbud-co/bud2/backend/internal/app/cycle"
+	appmission "github.com/getbud-co/bud2/backend/internal/app/mission"
 	apporg "github.com/getbud-co/bud2/backend/internal/app/organization"
 	appperm "github.com/getbud-co/bud2/backend/internal/app/permission"
 	approle "github.com/getbud-co/bud2/backend/internal/app/role"
@@ -36,6 +38,7 @@ import (
 	appuser "github.com/getbud-co/bud2/backend/internal/app/user"
 	"github.com/getbud-co/bud2/backend/internal/config"
 	infraauth "github.com/getbud-co/bud2/backend/internal/infra/auth"
+	"github.com/getbud-co/bud2/backend/internal/infra/missionrefs"
 	"github.com/getbud-co/bud2/backend/internal/infra/otel"
 	"github.com/getbud-co/bud2/backend/internal/infra/postgres"
 	"github.com/getbud-co/bud2/backend/internal/infra/postgres/sqlc"
@@ -98,6 +101,7 @@ func main() {
 	teamRepo := postgres.NewTeamRepository(queries)
 	roleRepo := postgres.NewRoleRepository(queries)
 	cycleRepo := postgres.NewCycleRepository(queries)
+	missionRepo := postgres.NewMissionRepository(queries, pool)
 	refreshTokenRepo := postgres.NewRefreshTokenRepository(queries)
 	txManager := postgres.NewTxManager(pool)
 	tokenIssuer := infraauth.NewTokenIssuer(cfg.JWTSecret)
@@ -133,6 +137,13 @@ func main() {
 	updateCycle := appcycle.NewUpdateUseCase(cycleRepo, logger)
 	deleteCycle := appcycle.NewDeleteUseCase(cycleRepo, logger)
 
+	missionRefs := missionrefs.New(cycleRepo, teamRepo, userRepo)
+	createMission := appmission.NewCreateUseCase(missionRepo, missionRefs, logger)
+	getMission := appmission.NewGetUseCase(missionRepo, logger)
+	listMission := appmission.NewListUseCase(missionRepo, logger)
+	updateMission := appmission.NewUpdateUseCase(missionRepo, missionRefs, logger)
+	deleteMission := appmission.NewDeleteUseCase(missionRepo, logger)
+
 	bootstrapUC := appbootstrap.NewUseCase(orgRepo, txManager, tokenIssuer, passwordHasher, logger)
 	loginUC := appauth.NewLoginUseCase(userRepo, orgRepo, tokenIssuer, passwordHasher, refreshTokenRepo, tokenHasher, logger)
 	getSessionUC := appauth.NewGetSessionUseCase(userRepo, orgRepo, tokenIssuer, passwordHasher, logger)
@@ -148,7 +159,8 @@ func main() {
 	roleHandler := apirole.NewHandler(listRole)
 	permissionHandler := apiperm.NewHandler(listPermission)
 	cycleHandler := apicycle.NewHandler(createCycle, getCycle, listCycle, updateCycle, deleteCycle)
-	router := api.NewRouter(bootstrapHandler, authHandler, orgHandler, userHandler, teamHandler, roleHandler, permissionHandler, cycleHandler, api.RouterConfig{
+	missionHandler := apimission.NewHandler(createMission, getMission, listMission, updateMission, deleteMission)
+	router := api.NewRouter(bootstrapHandler, authHandler, orgHandler, userHandler, teamHandler, roleHandler, permissionHandler, cycleHandler, missionHandler, api.RouterConfig{
 		Env:            cfg.Env,
 		AllowedOrigins: strings.Split(cfg.AllowedOrigins, ","),
 		OpenAPISpec:    apispec.Spec,

@@ -1,0 +1,434 @@
+package mission
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
+	appmission "github.com/getbud-co/bud2/backend/internal/app/mission"
+	"github.com/getbud-co/bud2/backend/internal/domain"
+	domainmission "github.com/getbud-co/bud2/backend/internal/domain/mission"
+	"github.com/getbud-co/bud2/backend/internal/test/fixtures"
+)
+
+type mockCreateUC struct{ mock.Mock }
+
+func (m *mockCreateUC) Execute(ctx context.Context, cmd appmission.CreateCommand) (*domainmission.Mission, error) {
+	args := m.Called(ctx, cmd)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domainmission.Mission), args.Error(1)
+}
+
+type mockUpdateUC struct{ mock.Mock }
+
+func (m *mockUpdateUC) Execute(ctx context.Context, cmd appmission.UpdateCommand) (*domainmission.Mission, error) {
+	args := m.Called(ctx, cmd)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domainmission.Mission), args.Error(1)
+}
+
+type mockDeleteUC struct{ mock.Mock }
+
+func (m *mockDeleteUC) Execute(ctx context.Context, cmd appmission.DeleteCommand) error {
+	args := m.Called(ctx, cmd)
+	return args.Error(0)
+}
+
+type mockGetUC struct{ mock.Mock }
+
+func (m *mockGetUC) Execute(ctx context.Context, organizationID domain.TenantID, id uuid.UUID) (*domainmission.Mission, error) {
+	args := m.Called(ctx, organizationID, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domainmission.Mission), args.Error(1)
+}
+
+type mockListUC struct{ mock.Mock }
+
+func (m *mockListUC) Execute(ctx context.Context, cmd appmission.ListCommand) (domainmission.ListResult, error) {
+	args := m.Called(ctx, cmd)
+	return args.Get(0).(domainmission.ListResult), args.Error(1)
+}
+
+func routeReq(req *http.Request, tenantID domain.TenantID, id string) *http.Request {
+	rctx := chi.NewRouteContext()
+	if id != "" {
+		rctx.URLParams.Add("id", id)
+	}
+	ctx := domain.TenantIDToContext(req.Context(), tenantID)
+	return req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, rctx))
+}
+
+func sampleMission(id, orgID uuid.UUID) *domainmission.Mission {
+	return &domainmission.Mission{
+		ID:             id,
+		OrganizationID: orgID,
+		OwnerID:        uuid.New(),
+		Title:          "Reduzir churn",
+		Status:         domainmission.StatusActive,
+		Visibility:     domainmission.VisibilityPublic,
+		KanbanStatus:   domainmission.KanbanTodo,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	}
+}
+
+func TestHandler_Create_Success(t *testing.T) {
+	tenantID := fixtures.NewTestTenantID()
+	createUC := new(mockCreateUC)
+	handler := NewHandler(createUC, nil, nil, nil, nil)
+
+	expected := sampleMission(uuid.New(), tenantID.UUID())
+	createUC.On("Execute", mock.Anything, mock.Anything).Return(expected, nil)
+
+	ownerID := uuid.New()
+	body, _ := json.Marshal(map[string]any{
+		"title":    "Reduzir churn",
+		"owner_id": ownerID.String(),
+	})
+	req := httptest.NewRequest(http.MethodPost, "/missions", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req = req.WithContext(domain.TenantIDToContext(req.Context(), tenantID))
+	rr := httptest.NewRecorder()
+
+	handler.Create(rr, req)
+
+	assert.Equal(t, http.StatusCreated, rr.Code)
+	assert.Equal(t, "/missions/"+expected.ID.String(), rr.Header().Get("Location"))
+	var resp Response
+	assert.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	assert.Equal(t, expected.ID.String(), resp.ID)
+}
+
+func TestHandler_Create_InvalidReference_Returns422(t *testing.T) {
+	tenantID := fixtures.NewTestTenantID()
+	createUC := new(mockCreateUC)
+	createUC.On("Execute", mock.Anything, mock.Anything).Return(nil, domainmission.ErrInvalidReference)
+	handler := NewHandler(createUC, nil, nil, nil, nil)
+
+	body, _ := json.Marshal(map[string]any{
+		"title":    "x",
+		"owner_id": uuid.New().String(),
+	})
+	req := httptest.NewRequest(http.MethodPost, "/missions", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req = req.WithContext(domain.TenantIDToContext(req.Context(), tenantID))
+	rr := httptest.NewRecorder()
+
+	handler.Create(rr, req)
+
+	assert.Equal(t, http.StatusUnprocessableEntity, rr.Code, "FK / cross-tenant references must surface as 422, not 500")
+}
+
+func TestHandler_Create_MissingTitle_ReturnsValidationError(t *testing.T) {
+	tenantID := fixtures.NewTestTenantID()
+	handler := NewHandler(new(mockCreateUC), nil, nil, nil, nil)
+
+	body := []byte(`{"owner_id":"` + uuid.New().String() + `"}`)
+	req := httptest.NewRequest(http.MethodPost, "/missions", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req = req.WithContext(domain.TenantIDToContext(req.Context(), tenantID))
+	rr := httptest.NewRecorder()
+
+	handler.Create(rr, req)
+
+	assert.Equal(t, http.StatusUnprocessableEntity, rr.Code)
+}
+
+func TestHandler_Update_InvalidParent_Returns422(t *testing.T) {
+	tenantID := fixtures.NewTestTenantID()
+	updateUC := new(mockUpdateUC)
+	handler := NewHandler(nil, nil, nil, updateUC, nil)
+
+	id := uuid.New()
+	updateUC.On("Execute", mock.Anything, mock.Anything).Return(nil, domainmission.ErrInvalidParent)
+
+	body, _ := json.Marshal(map[string]any{
+		"title":         "x",
+		"owner_id":      uuid.New().String(),
+		"status":        "active",
+		"visibility":    "public",
+		"kanban_status": "todo",
+		"parent_id":     uuid.New().String(),
+	})
+	req := httptest.NewRequest(http.MethodPut, "/missions/"+id.String(), bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req = routeReq(req, tenantID, id.String())
+	rr := httptest.NewRecorder()
+
+	handler.Update(rr, req)
+
+	assert.Equal(t, http.StatusUnprocessableEntity, rr.Code)
+}
+
+func TestHandler_Update_OmittedParentID_DoesNotSetParent(t *testing.T) {
+	tenantID := fixtures.NewTestTenantID()
+	updateUC := new(mockUpdateUC)
+	handler := NewHandler(nil, nil, nil, updateUC, nil)
+
+	id := uuid.New()
+	expected := sampleMission(id, tenantID.UUID())
+	updateUC.On("Execute", mock.Anything, mock.MatchedBy(func(cmd appmission.UpdateCommand) bool {
+		return !cmd.SetParentID && cmd.ParentID == nil
+	})).Return(expected, nil)
+
+	// Body intentionally lacks the parent_id key.
+	body := []byte(`{
+		"title":"new title","owner_id":"` + uuid.New().String() + `",
+		"status":"active","visibility":"public","kanban_status":"todo"
+	}`)
+	req := httptest.NewRequest(http.MethodPut, "/missions/"+id.String(), bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req = routeReq(req, tenantID, id.String())
+	rr := httptest.NewRecorder()
+
+	handler.Update(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	updateUC.AssertExpectations(t)
+}
+
+func TestHandler_Update_AcceptsNullParent(t *testing.T) {
+	tenantID := fixtures.NewTestTenantID()
+	updateUC := new(mockUpdateUC)
+	handler := NewHandler(nil, nil, nil, updateUC, nil)
+
+	id := uuid.New()
+	expected := sampleMission(id, tenantID.UUID())
+	updateUC.On("Execute", mock.Anything, mock.MatchedBy(func(cmd appmission.UpdateCommand) bool {
+		return cmd.SetParentID && cmd.ParentID == nil
+	})).Return(expected, nil)
+
+	body := []byte(`{
+		"title":"x","owner_id":"` + uuid.New().String() + `",
+		"status":"active","visibility":"public","kanban_status":"todo",
+		"parent_id":null
+	}`)
+	req := httptest.NewRequest(http.MethodPut, "/missions/"+id.String(), bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req = routeReq(req, tenantID, id.String())
+	rr := httptest.NewRecorder()
+
+	handler.Update(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+}
+
+// ── Get ───────────────────────────────────────────────────────────────────
+
+func TestHandler_Get_Success(t *testing.T) {
+	tenantID := fixtures.NewTestTenantID()
+	id := uuid.New()
+	getUC := new(mockGetUC)
+	expected := sampleMission(id, tenantID.UUID())
+	getUC.On("Execute", mock.Anything, tenantID, id).Return(expected, nil)
+	handler := NewHandler(nil, getUC, nil, nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/missions/"+id.String(), nil)
+	req = routeReq(req, tenantID, id.String())
+	rr := httptest.NewRecorder()
+
+	handler.Get(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var resp Response
+	assert.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	assert.Equal(t, id.String(), resp.ID)
+}
+
+func TestHandler_Get_NotFound_Returns404(t *testing.T) {
+	tenantID := fixtures.NewTestTenantID()
+	id := uuid.New()
+	getUC := new(mockGetUC)
+	getUC.On("Execute", mock.Anything, mock.Anything, mock.Anything).Return(nil, domainmission.ErrNotFound)
+	handler := NewHandler(nil, getUC, nil, nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/missions/"+id.String(), nil)
+	req = routeReq(req, tenantID, id.String())
+	rr := httptest.NewRecorder()
+
+	handler.Get(rr, req)
+
+	assert.Equal(t, http.StatusNotFound, rr.Code)
+}
+
+func TestHandler_Get_InvalidUUID_Returns400(t *testing.T) {
+	tenantID := fixtures.NewTestTenantID()
+	handler := NewHandler(nil, new(mockGetUC), nil, nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/missions/not-a-uuid", nil)
+	req = routeReq(req, tenantID, "not-a-uuid")
+	rr := httptest.NewRecorder()
+
+	handler.Get(rr, req)
+
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+}
+
+// ── List ──────────────────────────────────────────────────────────────────
+
+func TestHandler_List_NoParams_ReturnsAllInOrg(t *testing.T) {
+	tenantID := fixtures.NewTestTenantID()
+	listUC := new(mockListUC)
+	listUC.On("Execute", mock.Anything, mock.MatchedBy(func(cmd appmission.ListCommand) bool {
+		return cmd.OrganizationID == tenantID && !cmd.FilterByParent && cmd.ParentID == nil && cmd.Status == nil
+	})).Return(domainmission.ListResult{Missions: nil, Total: 0}, nil)
+	handler := NewHandler(nil, nil, listUC, nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/missions", nil)
+	req = req.WithContext(domain.TenantIDToContext(req.Context(), tenantID))
+	rr := httptest.NewRecorder()
+
+	handler.List(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	listUC.AssertExpectations(t)
+}
+
+func TestHandler_List_ParentIDNull_SetsFilterByParentTrueWithNilID(t *testing.T) {
+	tenantID := fixtures.NewTestTenantID()
+	listUC := new(mockListUC)
+	listUC.On("Execute", mock.Anything, mock.MatchedBy(func(cmd appmission.ListCommand) bool {
+		return cmd.FilterByParent && cmd.ParentID == nil
+	})).Return(domainmission.ListResult{}, nil)
+	handler := NewHandler(nil, nil, listUC, nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/missions?parent_id=null", nil)
+	req = req.WithContext(domain.TenantIDToContext(req.Context(), tenantID))
+	rr := httptest.NewRecorder()
+
+	handler.List(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	listUC.AssertExpectations(t)
+}
+
+func TestHandler_List_ParentIDUUID_PropagatesAsUUID(t *testing.T) {
+	tenantID := fixtures.NewTestTenantID()
+	parentID := uuid.New()
+	listUC := new(mockListUC)
+	listUC.On("Execute", mock.Anything, mock.MatchedBy(func(cmd appmission.ListCommand) bool {
+		return cmd.FilterByParent && cmd.ParentID != nil && *cmd.ParentID == parentID
+	})).Return(domainmission.ListResult{}, nil)
+	handler := NewHandler(nil, nil, listUC, nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/missions?parent_id="+parentID.String(), nil)
+	req = req.WithContext(domain.TenantIDToContext(req.Context(), tenantID))
+	rr := httptest.NewRecorder()
+
+	handler.List(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+}
+
+func TestHandler_List_InvalidParentID_Returns400(t *testing.T) {
+	tenantID := fixtures.NewTestTenantID()
+	handler := NewHandler(nil, nil, new(mockListUC), nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/missions?parent_id=not-a-uuid", nil)
+	req = req.WithContext(domain.TenantIDToContext(req.Context(), tenantID))
+	rr := httptest.NewRecorder()
+
+	handler.List(rr, req)
+
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+}
+
+func TestHandler_List_InvalidCycleID_Returns400(t *testing.T) {
+	tenantID := fixtures.NewTestTenantID()
+	handler := NewHandler(nil, nil, new(mockListUC), nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/missions?cycle_id=bogus", nil)
+	req = req.WithContext(domain.TenantIDToContext(req.Context(), tenantID))
+	rr := httptest.NewRecorder()
+
+	handler.List(rr, req)
+
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+}
+
+func TestHandler_List_InvalidStatusEnum_Returns400(t *testing.T) {
+	tenantID := fixtures.NewTestTenantID()
+	handler := NewHandler(nil, nil, new(mockListUC), nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/missions?status=bogus", nil)
+	req = req.WithContext(domain.TenantIDToContext(req.Context(), tenantID))
+	rr := httptest.NewRecorder()
+
+	handler.List(rr, req)
+
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+}
+
+func TestHandler_List_StatusFilterPropagated(t *testing.T) {
+	tenantID := fixtures.NewTestTenantID()
+	listUC := new(mockListUC)
+	listUC.On("Execute", mock.Anything, mock.MatchedBy(func(cmd appmission.ListCommand) bool {
+		return cmd.Status != nil && *cmd.Status == "active"
+	})).Return(domainmission.ListResult{}, nil)
+	handler := NewHandler(nil, nil, listUC, nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/missions?status=active", nil)
+	req = req.WithContext(domain.TenantIDToContext(req.Context(), tenantID))
+	rr := httptest.NewRecorder()
+
+	handler.List(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+}
+
+func TestHandler_List_AllUUIDFiltersPropagated(t *testing.T) {
+	tenantID := fixtures.NewTestTenantID()
+	cycleID := uuid.New()
+	ownerID := uuid.New()
+	teamID := uuid.New()
+	listUC := new(mockListUC)
+	listUC.On("Execute", mock.Anything, mock.MatchedBy(func(cmd appmission.ListCommand) bool {
+		return cmd.CycleID != nil && *cmd.CycleID == cycleID &&
+			cmd.OwnerID != nil && *cmd.OwnerID == ownerID &&
+			cmd.TeamID != nil && *cmd.TeamID == teamID
+	})).Return(domainmission.ListResult{}, nil)
+	handler := NewHandler(nil, nil, listUC, nil, nil)
+
+	url := "/missions?cycle_id=" + cycleID.String() + "&owner_id=" + ownerID.String() + "&team_id=" + teamID.String()
+	req := httptest.NewRequest(http.MethodGet, url, nil)
+	req = req.WithContext(domain.TenantIDToContext(req.Context(), tenantID))
+	rr := httptest.NewRecorder()
+
+	handler.List(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+}
+
+// ── Delete ────────────────────────────────────────────────────────────────
+
+func TestHandler_Delete_NotFound_IsIdempotent(t *testing.T) {
+	tenantID := fixtures.NewTestTenantID()
+	deleteUC := new(mockDeleteUC)
+	handler := NewHandler(nil, nil, nil, nil, deleteUC)
+
+	id := uuid.New()
+	deleteUC.On("Execute", mock.Anything, appmission.DeleteCommand{OrganizationID: tenantID, ID: id}).Return(nil)
+
+	req := httptest.NewRequest(http.MethodDelete, "/missions/"+id.String(), nil)
+	req = routeReq(req, tenantID, id.String())
+	rr := httptest.NewRecorder()
+
+	handler.Delete(rr, req)
+
+	assert.Equal(t, http.StatusNoContent, rr.Code)
+}

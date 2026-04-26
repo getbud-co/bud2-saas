@@ -30,3 +30,14 @@ p, gestor, teams, write
 p, gestor, teams, read
 p, colaborador, teams, read
 p, visualizador, teams, read
+
+p, super-admin, missions, write
+p, super-admin, missions, read
+p, super-admin, missions, delete
+p, admin-rh, missions, write
+p, admin-rh, missions, read
+p, admin-rh, missions, delete
+p, gestor, missions, write
+p, gestor, missions, read
+p, colaborador, missions, read
+p, visualizador, missions, read
