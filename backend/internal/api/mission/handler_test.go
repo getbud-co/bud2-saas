@@ -30,9 +30,9 @@ func (m *mockCreateUC) Execute(ctx context.Context, cmd appmission.CreateCommand
 	return args.Get(0).(*domainmission.Mission), args.Error(1)
 }
 
-type mockUpdateUC struct{ mock.Mock }
+type mockPatchUC struct{ mock.Mock }
 
-func (m *mockUpdateUC) Execute(ctx context.Context, cmd appmission.UpdateCommand) (*domainmission.Mission, error) {
+func (m *mockPatchUC) Execute(ctx context.Context, cmd appmission.PatchCommand) (*domainmission.Mission, error) {
 	args := m.Called(ctx, cmd)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -149,83 +149,107 @@ func TestHandler_Create_MissingTitle_ReturnsValidationError(t *testing.T) {
 	assert.Equal(t, http.StatusUnprocessableEntity, rr.Code)
 }
 
-func TestHandler_Update_InvalidParent_Returns422(t *testing.T) {
+func TestHandler_Patch_InvalidReference_Returns422(t *testing.T) {
 	tenantID := fixtures.NewTestTenantID()
-	updateUC := new(mockUpdateUC)
-	handler := NewHandler(nil, nil, nil, updateUC, nil)
+	patchUC := new(mockPatchUC)
+	handler := NewHandler(nil, nil, nil, patchUC, nil)
 
 	id := uuid.New()
-	updateUC.On("Execute", mock.Anything, mock.Anything).Return(nil, domainmission.ErrInvalidParent)
+	patchUC.On("Execute", mock.Anything, mock.Anything).Return(nil, domainmission.ErrInvalidReference)
 
 	body, _ := json.Marshal(map[string]any{
-		"title":         "x",
-		"owner_id":      uuid.New().String(),
-		"status":        "active",
-		"visibility":    "public",
-		"kanban_status": "todo",
-		"parent_id":     uuid.New().String(),
+		"owner_id": uuid.New().String(),
 	})
-	req := httptest.NewRequest(http.MethodPut, "/missions/"+id.String(), bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPatch, "/missions/"+id.String(), bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req = routeReq(req, tenantID, id.String())
 	rr := httptest.NewRecorder()
 
-	handler.Update(rr, req)
+	handler.Patch(rr, req)
 
 	assert.Equal(t, http.StatusUnprocessableEntity, rr.Code)
 }
 
-func TestHandler_Update_OmittedParentID_DoesNotSetParent(t *testing.T) {
+func TestHandler_Patch_OnlyTitle_PreservesOtherFieldsAtBoundary(t *testing.T) {
+	// Boundary-level test: handler routes a single-field PATCH to the use case
+	// with only Title set; all other PatchCommand pointers must be nil so the
+	// use case knows not to touch those fields.
 	tenantID := fixtures.NewTestTenantID()
-	updateUC := new(mockUpdateUC)
-	handler := NewHandler(nil, nil, nil, updateUC, nil)
+	patchUC := new(mockPatchUC)
+	handler := NewHandler(nil, nil, nil, patchUC, nil)
 
 	id := uuid.New()
 	expected := sampleMission(id, tenantID.UUID())
-	updateUC.On("Execute", mock.Anything, mock.MatchedBy(func(cmd appmission.UpdateCommand) bool {
-		return !cmd.SetParentID && cmd.ParentID == nil
+	patchUC.On("Execute", mock.Anything, mock.MatchedBy(func(cmd appmission.PatchCommand) bool {
+		return cmd.Title != nil && *cmd.Title == "new title" &&
+			cmd.Description == nil &&
+			cmd.CycleID == nil &&
+			cmd.OwnerID == nil &&
+			cmd.TeamID == nil &&
+			cmd.Status == nil &&
+			cmd.Visibility == nil &&
+			cmd.KanbanStatus == nil &&
+			cmd.SortOrder == nil &&
+			cmd.DueDate == nil
 	})).Return(expected, nil)
 
-	// Body intentionally lacks the parent_id key.
-	body := []byte(`{
-		"title":"new title","owner_id":"` + uuid.New().String() + `",
-		"status":"active","visibility":"public","kanban_status":"todo"
-	}`)
-	req := httptest.NewRequest(http.MethodPut, "/missions/"+id.String(), bytes.NewReader(body))
+	body := []byte(`{"title":"new title"}`)
+	req := httptest.NewRequest(http.MethodPatch, "/missions/"+id.String(), bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req = routeReq(req, tenantID, id.String())
 	rr := httptest.NewRecorder()
 
-	handler.Update(rr, req)
+	handler.Patch(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
-	updateUC.AssertExpectations(t)
+	patchUC.AssertExpectations(t)
 }
 
-func TestHandler_Update_AcceptsNullParent(t *testing.T) {
+func TestHandler_Patch_EmptyBody_Returns400(t *testing.T) {
 	tenantID := fixtures.NewTestTenantID()
-	updateUC := new(mockUpdateUC)
-	handler := NewHandler(nil, nil, nil, updateUC, nil)
+	patchUC := new(mockPatchUC)
+	handler := NewHandler(nil, nil, nil, patchUC, nil)
 
 	id := uuid.New()
-	expected := sampleMission(id, tenantID.UUID())
-	updateUC.On("Execute", mock.Anything, mock.MatchedBy(func(cmd appmission.UpdateCommand) bool {
-		return cmd.SetParentID && cmd.ParentID == nil
-	})).Return(expected, nil)
-
-	body := []byte(`{
-		"title":"x","owner_id":"` + uuid.New().String() + `",
-		"status":"active","visibility":"public","kanban_status":"todo",
-		"parent_id":null
-	}`)
-	req := httptest.NewRequest(http.MethodPut, "/missions/"+id.String(), bytes.NewReader(body))
+	body := []byte(`{}`)
+	req := httptest.NewRequest(http.MethodPatch, "/missions/"+id.String(), bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req = routeReq(req, tenantID, id.String())
 	rr := httptest.NewRecorder()
 
-	handler.Update(rr, req)
+	handler.Patch(rr, req)
+
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+	patchUC.AssertNotCalled(t, "Execute")
+}
+
+func TestHandler_Patch_BodyWithParentID_IgnoredSilently(t *testing.T) {
+	// parent_id is intentionally not exposed in PatchMissionRequest. A custom
+	// client sending it must NOT be able to reparent. We accept the request
+	// (json.Unmarshal silently drops unknown fields by default) but the use
+	// case never receives parent_id — there is no field for it.
+	tenantID := fixtures.NewTestTenantID()
+	patchUC := new(mockPatchUC)
+	handler := NewHandler(nil, nil, nil, patchUC, nil)
+
+	id := uuid.New()
+	expected := sampleMission(id, tenantID.UUID())
+	patchUC.On("Execute", mock.Anything, mock.Anything).Return(expected, nil)
+
+	body, _ := json.Marshal(map[string]any{
+		"title":     "new title",
+		"parent_id": uuid.New().String(), // sneaky client; must not affect anything
+	})
+	req := httptest.NewRequest(http.MethodPatch, "/missions/"+id.String(), bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req = routeReq(req, tenantID, id.String())
+	rr := httptest.NewRecorder()
+
+	handler.Patch(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
+	// PatchCommand has no ParentID field; the request was processed normally
+	// using only Title. Reparent simply does not exist in this contract.
 }
 
 // ── Get ───────────────────────────────────────────────────────────────────

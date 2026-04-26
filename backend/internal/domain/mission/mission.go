@@ -129,6 +129,12 @@ type Repository interface {
 	Create(ctx context.Context, mission *Mission) (*Mission, error)
 	GetByID(ctx context.Context, id, organizationID uuid.UUID) (*Mission, error)
 	List(ctx context.Context, filter ListFilter) (ListResult, error)
+	// IsDescendant has no caller in the current API surface (PATCH does not
+	// expose parent_id). It is kept here because (a) the recursive CTE behind
+	// it is non-trivial and integration-tested, and (b) when reparent is
+	// reintroduced as a feature, the structural cycle prevention will likely
+	// pair this with a closure-table migration. Removing it now and bringing
+	// it back later would only cost rebuilding the SQL + tests.
 	IsDescendant(ctx context.Context, organizationID, ancestorID, candidateID uuid.UUID) (bool, error)
 	Update(ctx context.Context, mission *Mission) (*Mission, error)
 	SoftDeleteSubtree(ctx context.Context, id, organizationID uuid.UUID) error

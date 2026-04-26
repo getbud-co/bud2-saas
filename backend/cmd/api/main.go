@@ -141,7 +141,7 @@ func main() {
 	createMission := appmission.NewCreateUseCase(missionRepo, missionRefs, logger)
 	getMission := appmission.NewGetUseCase(missionRepo, logger)
 	listMission := appmission.NewListUseCase(missionRepo, logger)
-	updateMission := appmission.NewUpdateUseCase(missionRepo, missionRefs, logger)
+	patchMission := appmission.NewPatchUseCase(missionRepo, missionRefs, logger)
 	deleteMission := appmission.NewDeleteUseCase(missionRepo, logger)
 
 	bootstrapUC := appbootstrap.NewUseCase(orgRepo, txManager, tokenIssuer, passwordHasher, logger)
@@ -159,7 +159,7 @@ func main() {
 	roleHandler := apirole.NewHandler(listRole)
 	permissionHandler := apiperm.NewHandler(listPermission)
 	cycleHandler := apicycle.NewHandler(createCycle, getCycle, listCycle, updateCycle, deleteCycle)
-	missionHandler := apimission.NewHandler(createMission, getMission, listMission, updateMission, deleteMission)
+	missionHandler := apimission.NewHandler(createMission, getMission, listMission, patchMission, deleteMission)
 	router := api.NewRouter(bootstrapHandler, authHandler, orgHandler, userHandler, teamHandler, roleHandler, permissionHandler, cycleHandler, missionHandler, api.RouterConfig{
 		Env:            cfg.Env,
 		AllowedOrigins: strings.Split(cfg.AllowedOrigins, ","),

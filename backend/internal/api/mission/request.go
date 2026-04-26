@@ -1,7 +1,6 @@
 package mission
 
 import (
-	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -26,44 +25,35 @@ type createRequest struct {
 	DueDate      *string    `json:"due_date" validate:"omitempty,datetime=2006-01-02"`
 }
 
-type updateRequest struct {
-	Title        string     `json:"title" validate:"required,min=1,max=200"`
+// patchRequest models JSON Merge Patch (RFC 7396) semantics: every field is
+// a pointer, and only non-nil fields are applied to the existing mission.
+// Absent (nil) fields preserve their current value. `parent_id` is
+// intentionally absent — reparent is not exposed via this endpoint.
+//
+// Limitation: with single pointers we cannot distinguish "field omitted"
+// from "field explicitly null". Sending null on a nullable field does NOT
+// clear it. If clearing is needed in the future, switch to **T or a Wrapper.
+type patchRequest struct {
+	Title        *string    `json:"title" validate:"omitempty,min=1,max=200"`
 	Description  *string    `json:"description" validate:"omitempty,max=5000"`
 	CycleID      *uuid.UUID `json:"cycle_id" validate:"omitempty"`
-	ParentID     *uuid.UUID `json:"parent_id" validate:"omitempty"`
-	OwnerID      uuid.UUID  `json:"owner_id" validate:"required"`
+	OwnerID      *uuid.UUID `json:"owner_id" validate:"omitempty"`
 	TeamID       *uuid.UUID `json:"team_id" validate:"omitempty"`
-	Status       string     `json:"status" validate:"required,oneof=draft active paused completed cancelled"`
-	Visibility   string     `json:"visibility" validate:"required,oneof=public team_only private"`
-	KanbanStatus string     `json:"kanban_status" validate:"required,oneof=uncategorized todo doing done"`
-	SortOrder    int        `json:"sort_order"`
+	Status       *string    `json:"status" validate:"omitempty,oneof=draft active paused completed cancelled"`
+	Visibility   *string    `json:"visibility" validate:"omitempty,oneof=public team_only private"`
+	KanbanStatus *string    `json:"kanban_status" validate:"omitempty,oneof=uncategorized todo doing done"`
+	SortOrder    *int       `json:"sort_order" validate:"omitempty"`
 	DueDate      *string    `json:"due_date" validate:"omitempty,datetime=2006-01-02"`
-
-	// parentIDPresent tracks whether the JSON body actually included a
-	// "parent_id" key. PUT semantics for missing-but-nullable fields are
-	// dangerous here: the frontend's edit form does not surface parent_id, so
-	// blindly applying the unmarshalled (nil) value would silently detach the
-	// mission from its parent on every title edit. We preserve the existing
-	// parent unless the client explicitly sets parent_id (to a UUID or null).
-	parentIDPresent bool
 }
 
-// UnmarshalJSON detects whether "parent_id" was sent by the client (with any
-// value, including null) versus omitted entirely. The decoded value goes
-// through the regular struct path; the presence flag is the only extra bit
-// captured here. Other nullable fields (cycle_id, team_id, description,
-// due_date) follow PUT semantics: omitted means "set to null".
-func (r *updateRequest) UnmarshalJSON(data []byte) error {
-	type alias updateRequest
-	if err := json.Unmarshal(data, (*alias)(r)); err != nil {
-		return err
-	}
-	var raw map[string]json.RawMessage
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-	_, r.parentIDPresent = raw["parent_id"]
-	return nil
+// isEmpty reports whether the patch body carries no actionable field. The
+// handler rejects empty patches with 400 — a no-op PATCH is almost always a
+// client bug.
+func (r patchRequest) isEmpty() bool {
+	return r.Title == nil && r.Description == nil && r.CycleID == nil &&
+		r.OwnerID == nil && r.TeamID == nil && r.Status == nil &&
+		r.Visibility == nil && r.KanbanStatus == nil && r.SortOrder == nil &&
+		r.DueDate == nil
 }
 
 func parseOptionalDate(value *string) *time.Time {
@@ -94,15 +84,13 @@ func (r createRequest) toCommand(organizationID domain.TenantID) appmission.Crea
 	}
 }
 
-func (r updateRequest) toCommand(organizationID domain.TenantID, id uuid.UUID) appmission.UpdateCommand {
-	return appmission.UpdateCommand{
+func (r patchRequest) toCommand(organizationID domain.TenantID, id uuid.UUID) appmission.PatchCommand {
+	return appmission.PatchCommand{
 		OrganizationID: organizationID,
 		ID:             id,
 		Title:          r.Title,
 		Description:    r.Description,
 		CycleID:        r.CycleID,
-		ParentID:       r.ParentID,
-		SetParentID:    r.parentIDPresent,
 		OwnerID:        r.OwnerID,
 		TeamID:         r.TeamID,
 		Status:         r.Status,

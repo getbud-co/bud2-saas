@@ -1367,6 +1367,15 @@ export interface paths {
                         "application/json": components["schemas"]["MissionListResponse"];
                     };
                 };
+                /** @description Bad request (invalid UUID, invalid status filter) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
                 /** @description Unauthorized */
                 401: {
                     headers: {
@@ -1478,6 +1487,15 @@ export interface paths {
                         "application/json": components["schemas"]["Mission"];
                     };
                 };
+                /** @description Bad request (invalid UUID in path) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
                 /** @description Unauthorized */
                 401: {
                     headers: {
@@ -1507,8 +1525,66 @@ export interface paths {
                 };
             };
         };
-        /** Update mission in active organization */
-        put: {
+        put?: never;
+        post?: never;
+        /** Soft delete mission (and descendants) from active organization */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad request (invalid UUID in path) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Partially update mission in active organization
+         * @description JSON Merge Patch semantics (RFC 7396): only fields present in the body
+         *     are applied; absent fields preserve their current value. Note that
+         *     `parent_id` is intentionally NOT exposed: reparent is not supported via
+         *     this endpoint and will be a dedicated feature when needed.
+         */
+        patch: {
             parameters: {
                 query?: never;
                 header?: never;
@@ -1519,7 +1595,7 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["UpdateMissionRequest"];
+                    "application/json": components["schemas"]["PatchMissionRequest"];
                 };
             };
             responses: {
@@ -1530,6 +1606,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["Mission"];
+                    };
+                };
+                /** @description Bad request (invalid UUID in path or empty body) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
                     };
                 };
                 /** @description Unauthorized */
@@ -1570,49 +1655,6 @@ export interface paths {
                 };
             };
         };
-        post?: never;
-        /** Soft delete mission (and descendants) from active organization */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Deleted */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetail"];
-                    };
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetail"];
-                    };
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
         trace?: never;
     };
     "/permissions": {
@@ -2070,26 +2112,33 @@ export interface components {
             /** Format: date */
             due_date?: string | null;
         };
-        UpdateMissionRequest: {
-            title: string;
-            description?: string | null;
+        /**
+         * @description JSON Merge Patch body. All fields are optional; only fields present in
+         *     the request are applied to the mission. Absent fields preserve their
+         *     existing values. `parent_id` is intentionally NOT exposed — reparent
+         *     is not supported via this endpoint.
+         *     Limitation: with simple pointers we cannot distinguish "field absent"
+         *     from "field explicitly null", so sending null on a nullable field
+         *     does NOT clear it in this iteration.
+         */
+        PatchMissionRequest: {
+            title?: string;
+            description?: string;
             /** Format: uuid */
-            cycle_id?: string | null;
+            cycle_id?: string;
             /** Format: uuid */
-            parent_id?: string | null;
+            owner_id?: string;
             /** Format: uuid */
-            owner_id: string;
-            /** Format: uuid */
-            team_id?: string | null;
+            team_id?: string;
             /** @enum {string} */
-            status: "draft" | "active" | "paused" | "completed" | "cancelled";
+            status?: "draft" | "active" | "paused" | "completed" | "cancelled";
             /** @enum {string} */
-            visibility: "public" | "team_only" | "private";
+            visibility?: "public" | "team_only" | "private";
             /** @enum {string} */
-            kanban_status: "uncategorized" | "todo" | "doing" | "done";
+            kanban_status?: "uncategorized" | "todo" | "doing" | "done";
             sort_order?: number;
             /** Format: date */
-            due_date?: string | null;
+            due_date?: string;
         };
         Role: {
             /** Format: uuid */

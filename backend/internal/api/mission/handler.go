@@ -28,8 +28,8 @@ type listUseCase interface {
 	Execute(ctx context.Context, cmd appmission.ListCommand) (domainmission.ListResult, error)
 }
 
-type updateUseCase interface {
-	Execute(ctx context.Context, cmd appmission.UpdateCommand) (*domainmission.Mission, error)
+type patchUseCase interface {
+	Execute(ctx context.Context, cmd appmission.PatchCommand) (*domainmission.Mission, error)
 }
 
 type deleteUseCase interface {
@@ -40,12 +40,12 @@ type Handler struct {
 	create createUseCase
 	get    getUseCase
 	list   listUseCase
-	update updateUseCase
+	patch  patchUseCase
 	delete deleteUseCase
 }
 
-func NewHandler(create createUseCase, get getUseCase, list listUseCase, update updateUseCase, delete deleteUseCase) *Handler {
-	return &Handler{create: create, get: get, list: list, update: update, delete: delete}
+func NewHandler(create createUseCase, get getUseCase, list listUseCase, patch patchUseCase, delete deleteUseCase) *Handler {
+	return &Handler{create: create, get: get, list: list, patch: patch, delete: delete}
 }
 
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
@@ -162,7 +162,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	httputil.WriteJSON(w, http.StatusOK, ListResponse{Data: items, Total: result.Total, Page: result.Page, Size: result.Size})
 }
 
-func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 	organizationID, err := domain.TenantIDFromContext(r.Context())
 	if err != nil {
 		httputil.WriteProblem(w, http.StatusUnauthorized, "Unauthorized", err.Error())
@@ -174,7 +174,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req updateRequest
+	var req patchRequest
 	if !httputil.DecodeJSON(w, r, &req) {
 		return
 	}
@@ -182,8 +182,12 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		httputil.WriteProblem(w, http.StatusUnprocessableEntity, "Validation Error", validator.FormatValidationErrors(err))
 		return
 	}
+	if req.isEmpty() {
+		httputil.WriteProblem(w, http.StatusBadRequest, "Bad Request", "patch body must contain at least one field")
+		return
+	}
 
-	result, err := h.update.Execute(r.Context(), req.toCommand(organizationID, id))
+	result, err := h.patch.Execute(r.Context(), req.toCommand(organizationID, id))
 	if err != nil {
 		handleError(w, err)
 		return

@@ -9,7 +9,7 @@ export type ApiMissionVisibility = ApiMission["visibility"];
 export type ApiMissionKanbanStatus = ApiMission["kanban_status"];
 
 type CreateMissionBody = components["schemas"]["CreateMissionRequest"];
-type UpdateMissionBody = components["schemas"]["UpdateMissionRequest"];
+type PatchMissionBody = components["schemas"]["PatchMissionRequest"];
 type ListQueryParams = NonNullable<
   paths["/missions"]["get"]["parameters"]["query"]
 >;
@@ -87,8 +87,8 @@ export function useUpdateMission() {
   const { activeOrganization } = useAuth();
   const orgId = activeOrganization?.id;
   return useMutation({
-    mutationFn: async ({ id, body }: { id: string; body: UpdateMissionBody }) => {
-      const { data, error } = await client.PUT("/missions/{id}", {
+    mutationFn: async ({ id, body }: { id: string; body: PatchMissionBody }) => {
+      const { data, error } = await client.PATCH("/missions/{id}", {
         params: { path: { id } },
         body,
       });

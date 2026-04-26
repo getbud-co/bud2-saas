@@ -149,7 +149,7 @@ func NewRouter(bootstrapHandler BootstrapHandler, authHandler *auth.Handler, org
 			r.With(middleware.RequirePermission(cfg.Enforcer, "missions", "write")).Post("/", missionHandler.Create)
 			r.With(middleware.RequirePermission(cfg.Enforcer, "missions", "read")).Get("/", missionHandler.List)
 			r.With(middleware.RequirePermission(cfg.Enforcer, "missions", "read")).Get("/{id}", missionHandler.Get)
-			r.With(middleware.RequirePermission(cfg.Enforcer, "missions", "write")).Put("/{id}", missionHandler.Update)
+			r.With(middleware.RequirePermission(cfg.Enforcer, "missions", "write")).Patch("/{id}", missionHandler.Patch)
 			r.With(middleware.RequirePermission(cfg.Enforcer, "missions", "delete")).Delete("/{id}", missionHandler.Delete)
 		})
 	})

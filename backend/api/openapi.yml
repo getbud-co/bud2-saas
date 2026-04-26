@@ -820,6 +820,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MissionListResponse"
+        "400":
+          description: Bad request (invalid UUID, invalid status filter)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
         "401":
           description: Unauthorized
           content:
@@ -892,6 +898,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Mission"
+        "400":
+          description: Bad request (invalid UUID in path)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
         "401":
           description: Unauthorized
           content:
@@ -910,8 +922,13 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
-    put:
-      summary: Update mission in active organization
+    patch:
+      summary: Partially update mission in active organization
+      description: |
+        JSON Merge Patch semantics (RFC 7396): only fields present in the body
+        are applied; absent fields preserve their current value. Note that
+        `parent_id` is intentionally NOT exposed: reparent is not supported via
+        this endpoint and will be a dedicated feature when needed.
       tags: [Missions]
       security:
         - bearerAuth: []
@@ -920,7 +937,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdateMissionRequest"
+              $ref: "#/components/schemas/PatchMissionRequest"
       responses:
         "200":
           description: Updated
@@ -928,6 +945,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Mission"
+        "400":
+          description: Bad request (invalid UUID in path or empty body)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
         "401":
           description: Unauthorized
           content:
@@ -960,6 +983,12 @@ paths:
       responses:
         "204":
           description: Deleted
+        "400":
+          description: Bad request (invalid UUID in path)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
         "401":
           description: Unauthorized
           content:
@@ -1439,21 +1468,27 @@ components:
         sort_order: { type: integer }
         due_date: { type: string, format: date, nullable: true }
 
-    UpdateMissionRequest:
+    PatchMissionRequest:
       type: object
-      required: [title, owner_id, status, visibility, kanban_status]
+      description: |
+        JSON Merge Patch body. All fields are optional; only fields present in
+        the request are applied to the mission. Absent fields preserve their
+        existing values. `parent_id` is intentionally NOT exposed — reparent
+        is not supported via this endpoint.
+        Limitation: with simple pointers we cannot distinguish "field absent"
+        from "field explicitly null", so sending null on a nullable field
+        does NOT clear it in this iteration.
       properties:
         title: { type: string, minLength: 1, maxLength: 200 }
-        description: { type: string, maxLength: 5000, nullable: true }
-        cycle_id: { type: string, format: uuid, nullable: true }
-        parent_id: { type: string, format: uuid, nullable: true }
+        description: { type: string, maxLength: 5000 }
+        cycle_id: { type: string, format: uuid }
         owner_id: { type: string, format: uuid }
-        team_id: { type: string, format: uuid, nullable: true }
+        team_id: { type: string, format: uuid }
         status: { type: string, enum: [draft, active, paused, completed, cancelled] }
         visibility: { type: string, enum: [public, team_only, private] }
         kanban_status: { type: string, enum: [uncategorized, todo, doing, done] }
         sort_order: { type: integer }
-        due_date: { type: string, format: date, nullable: true }
+        due_date: { type: string, format: date }
 
     Role:
       type: object
