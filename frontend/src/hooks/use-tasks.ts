@@ -123,6 +123,15 @@ export interface CreateTaskInput {
 
 export type UpdateTaskInput = Partial<Omit<CreateTaskInput, "missionId">>;
 
+// API task status has four states (todo|in_progress|done|cancelled) but the
+// UI only distinguishes done vs not-done via MissionTask.isDone. The
+// adapter is intentionally lossy on the way in: any non-done status
+// (including in_progress and cancelled) becomes isDone=false. The diff
+// helper then emits a status PATCH only when isDone actually flips, so
+// in_progress/cancelled are preserved across edits that do not toggle the
+// done flag — a flip from true→false defaults to "todo" via the create
+// adapter, which is the safest interpretation given the UI cannot express
+// the intermediate state.
 export function apiTaskToMissionTask(api: ApiTask): MissionTask {
   return {
     id: api.id,

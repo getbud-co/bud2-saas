@@ -3,8 +3,6 @@ package indicator
 import (
 	"time"
 
-	"github.com/google/uuid"
-
 	domainindicator "github.com/getbud-co/bud2/backend/internal/domain/indicator"
 )
 
@@ -59,6 +57,3 @@ func formatOptionalDate(value *time.Time) *string {
 	return &formatted
 }
 
-// uuidString is unused but kept for symmetry with the mission API package.
-// Helper signature mirrored to ease future copy-paste.
-var _ = func(id uuid.UUID) string { return id.String() }

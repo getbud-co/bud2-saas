@@ -128,6 +128,11 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*Creat
 
 	// Validate every indicator/task owner up front too, with the same mapping
 	// rule. Owners default to the mission owner, which we already validated.
+	//
+	// Invariant: cmd.OwnerID is pre-populated in seenOwners ONLY because the
+	// mission-owner block above has already called users.GetActiveMemberByID
+	// for it. If a future refactor moves that block, this dedup must move
+	// with it — otherwise a stale or invalid owner would skip validation.
 	seenOwners := map[uuid.UUID]struct{}{cmd.OwnerID: {}}
 	for _, in := range cmd.Indicators {
 		owner := cmd.OwnerID

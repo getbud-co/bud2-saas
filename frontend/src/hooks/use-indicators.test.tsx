@@ -167,8 +167,11 @@ describe("apiIndicatorToKeyResult", () => {
     expect(kr.currentValue).toBe("0");
   });
 
-  it("maps API status to UI status", () => {
-    expect(apiIndicatorToKeyResult({ ...apiIndicator, status: "draft" }).status).toBe("on_track");
+  it("maps API status to UI status, with draft kept distinct from active", () => {
+    // Draft must NOT collapse to on_track — that would silently promote the
+    // indicator to active on the first edit/save round-trip.
+    expect(apiIndicatorToKeyResult({ ...apiIndicator, status: "draft" }).status).toBe("off_track");
+    expect(apiIndicatorToKeyResult({ ...apiIndicator, status: "active" }).status).toBe("on_track");
     expect(apiIndicatorToKeyResult({ ...apiIndicator, status: "at_risk" }).status).toBe("attention");
     expect(apiIndicatorToKeyResult({ ...apiIndicator, status: "done" }).status).toBe("completed");
     expect(apiIndicatorToKeyResult({ ...apiIndicator, status: "archived" }).status).toBe("off_track");

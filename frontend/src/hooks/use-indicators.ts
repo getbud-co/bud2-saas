@@ -221,9 +221,19 @@ function inferUnit(unitLabel: string | null | undefined): KRUnit {
   return "custom";
 }
 
+// Status mappings between the API and the UI vocabulary.
+//
+// The API has a setup state (`draft`) that the UI does not model directly,
+// so we surface it as `off_track` rather than `on_track` — that way, an
+// indicator the user has not finished configuring is visually distinct from
+// one that is on track. Mapping it to `on_track` (as we did initially) led
+// to an unwanted server-side promotion to `active` on the first edit save.
+// Round-trip from a fresh draft is now: draft → off_track → (no edit) →
+// (no PATCH) → still draft.
 function apiStatusToKRStatus(status: ApiIndicator["status"]): KRStatus {
   switch (status) {
     case "draft":
+      return "off_track";
     case "active":
       return "on_track";
     case "at_risk":
@@ -237,6 +247,11 @@ function apiStatusToKRStatus(status: ApiIndicator["status"]): KRStatus {
   }
 }
 
+// Reverse mapping is intentionally lossy: we cannot tell from the UI status
+// alone whether `off_track` should mean "draft" or "archived" on the
+// server. We pick `archived` (the more conservative interpretation) so the
+// server side is never silently promoted from draft to active. Callers that
+// need explicit draft/active control should not go through this adapter.
 function krStatusToApiStatus(status: KRStatus): ApiIndicator["status"] {
   switch (status) {
     case "on_track":

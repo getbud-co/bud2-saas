@@ -50,6 +50,7 @@ p, admin-rh, indicators, read
 p, admin-rh, indicators, delete
 p, gestor, indicators, write
 p, gestor, indicators, read
+p, gestor, indicators, delete
 p, colaborador, indicators, read
 p, visualizador, indicators, read
 
@@ -61,5 +62,6 @@ p, admin-rh, tasks, read
 p, admin-rh, tasks, delete
 p, gestor, tasks, write
 p, gestor, tasks, read
+p, gestor, tasks, delete
 p, colaborador, tasks, read
 p, visualizador, tasks, read

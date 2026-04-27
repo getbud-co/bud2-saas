@@ -140,12 +140,15 @@ func TestPolicy_MissionsMatrix_MatchesRolePermissions(t *testing.T) {
 	}
 }
 
-// Indicators and tasks are sub-resources of missions. They share the same
-// access matrix because anyone who can manage a mission must also manage its
-// indicators and tasks; viewers see them through the mission they're attached
-// to. Drift here would let a colaborador create indicators while being unable
-// to edit the parent mission, which the UI does not expect.
-func TestPolicy_IndicatorsAndTasksMatrix_MatchesMissions(t *testing.T) {
+// Indicators and tasks are sub-resources of missions. The matrix is one step
+// more permissive on the gestor row: gestor can delete an indicator or a
+// task even though they cannot delete a mission. The reasoning is that
+// editing a mission via the page commonly involves removing one of its
+// indicators or tasks (the EDIT FLOW dispatches a per-resource diff), so
+// requiring an admin role to remove a single indicator would block routine
+// edits. Removing the parent mission stays admin-only because the cascade
+// is destructive.
+func TestPolicy_IndicatorsAndTasksMatrix(t *testing.T) {
 	repoRoot, err := filepath.Abs(filepath.Join("..", "..", "..", ".."))
 	require.NoError(t, err)
 	modelPath := filepath.Join(repoRoot, "backend", "policies", "model.conf")
@@ -160,7 +163,7 @@ func TestPolicy_IndicatorsAndTasksMatrix_MatchesMissions(t *testing.T) {
 	expected := map[string]matrix{
 		"super-admin":  {true, true, true},
 		"admin-rh":     {true, true, true},
-		"gestor":       {true, true, false},
+		"gestor":       {true, true, true},
 		"colaborador":  {true, false, false},
 		"visualizador": {true, false, false},
 	}
