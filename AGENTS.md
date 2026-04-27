@@ -50,6 +50,7 @@ Repository-specific guidance for AI agents. Keep this file short and durable: on
 - For behavioral changes, start with a failing automated test, implement the minimum change to make it pass, and then refactor.
 - Every relevant behavior change should be covered by automated tests close to the changed code.
 - Prefer unit tests first. Add integration tests only for behavior that depends on real boundaries such as SQL/migrations/transactions or router/middleware/JWT/Casbin wiring.
+- Each non-trivial source file has its own `_test.go` alongside it; a missing pair is a gap worth filling.
 - Aim for engineering excellence: correctness, simplicity, consistency, clear boundaries, and maintainability.
 - Prefer clean solutions aligned with project references over ad hoc fixes or workaround-driven designs.
 
