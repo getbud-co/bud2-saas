@@ -1,0 +1,122 @@
+import { describe, expect, it } from "vitest";
+import { composeMissionTree } from "./compose-mission-tree";
+import type { components } from "@/lib/types";
+import type { KeyResult, MissionTask } from "@/types";
+
+type ApiMission = components["schemas"]["Mission"];
+
+const apiMission: ApiMission = {
+  id: "m-1",
+  org_id: "org-1",
+  cycle_id: null,
+  parent_id: null,
+  owner_id: "u-1",
+  team_id: null,
+  title: "Reduzir churn",
+  description: null,
+  status: "active",
+  visibility: "public",
+  kanban_status: "todo",
+  sort_order: 0,
+  due_date: null,
+  completed_at: null,
+  created_at: "2024-01-01T00:00:00Z",
+  updated_at: "2024-01-01T00:00:00Z",
+};
+
+const kr: KeyResult = {
+  id: "ind-1",
+  orgId: "org-1",
+  missionId: "m-1",
+  parentKrId: null,
+  title: "Churn",
+  description: null,
+  ownerId: "u-1",
+  teamId: null,
+  measurementMode: "manual",
+  goalType: "reach",
+  targetValue: "100",
+  currentValue: "0",
+  startValue: "0",
+  lowThreshold: null,
+  highThreshold: null,
+  unit: "percent",
+  unitLabel: "%",
+  expectedValue: null,
+  status: "on_track",
+  progress: 0,
+  periodLabel: null,
+  periodStart: null,
+  periodEnd: null,
+  sortOrder: 0,
+  createdAt: "2024-01-01T00:00:00Z",
+  updatedAt: "2024-01-01T00:00:00Z",
+  deletedAt: null,
+  linkedMissionId: null,
+  linkedSurveyId: null,
+  externalSource: null,
+  externalConfig: null,
+};
+
+const task: MissionTask = {
+  id: "t-1",
+  missionId: "m-1",
+  keyResultId: null,
+  title: "Triage",
+  description: null,
+  ownerId: "u-1",
+  teamId: null,
+  dueDate: null,
+  isDone: false,
+  sortOrder: 0,
+  completedAt: null,
+  createdAt: "2024-01-01T00:00:00Z",
+  updatedAt: "2024-01-01T00:00:00Z",
+};
+
+describe("composeMissionTree", () => {
+  it("returns empty when no missions", () => {
+    expect(composeMissionTree(undefined, [kr], [task])).toEqual([]);
+    expect(composeMissionTree([], [kr], [task])).toEqual([]);
+  });
+
+  it("attaches indicators and tasks by mission_id", () => {
+    const tree = composeMissionTree([apiMission], [kr], [task]);
+    expect(tree).toHaveLength(1);
+    expect(tree[0]!.id).toBe("m-1");
+    expect(tree[0]!.keyResults).toEqual([kr]);
+    expect(tree[0]!.tasks).toEqual([task]);
+  });
+
+  it("returns mission with empty children arrays when no matches", () => {
+    const tree = composeMissionTree([apiMission], [], []);
+    expect(tree[0]!.keyResults).toEqual([]);
+    expect(tree[0]!.tasks).toEqual([]);
+  });
+
+  it("does not attach orphan indicators (no parent in missions list)", () => {
+    const orphan: KeyResult = { ...kr, id: "ind-2", missionId: "m-other" };
+    const tree = composeMissionTree([apiMission], [kr, orphan], []);
+    expect(tree[0]!.keyResults).toHaveLength(1);
+    expect(tree[0]!.keyResults![0]!.id).toBe("ind-1");
+  });
+
+  it("groups multiple indicators and tasks under the same mission", () => {
+    const tree = composeMissionTree(
+      [apiMission],
+      [kr, { ...kr, id: "ind-2" }],
+      [task, { ...task, id: "t-2" }],
+    );
+    expect(tree[0]!.keyResults).toHaveLength(2);
+    expect(tree[0]!.tasks).toHaveLength(2);
+  });
+
+  it("handles two missions in one call", () => {
+    const m2: ApiMission = { ...apiMission, id: "m-2", title: "Other" };
+    const kr2: KeyResult = { ...kr, id: "ind-2", missionId: "m-2" };
+    const tree = composeMissionTree([apiMission, m2], [kr, kr2], []);
+    expect(tree.map((m) => m.id)).toEqual(["m-1", "m-2"]);
+    expect(tree[0]!.keyResults![0]!.id).toBe("ind-1");
+    expect(tree[1]!.keyResults![0]!.id).toBe("ind-2");
+  });
+});

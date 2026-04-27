@@ -19,9 +19,11 @@ describe("Missions Store", () => {
     it("returns seed data when localStorage is empty", () => {
       const snapshot = loadMissionsSnapshot();
 
-      expect(snapshot.schemaVersion).toBe(7);
+      expect(snapshot.schemaVersion).toBe(8);
       expect(Array.isArray(snapshot.missions)).toBe(true);
-      expect(snapshot.missions.length).toBeGreaterThan(0);
+      // Schema 8: missions are sourced from the API; the snapshot does not
+      // hydrate a `missions` array.
+      expect(snapshot.missions).toEqual([]);
     });
 
     it("persists seed data to localStorage on first load", () => {
@@ -31,11 +33,10 @@ describe("Missions Store", () => {
       expect(stored).not.toBeNull();
     });
 
-    it("ignores persisted missions and reseeds from MOCK_MISSIONS (phase 3)", () => {
-      // Phase 3 of the missions API migration: missions are no longer
-      // durable in localStorage. The API is the source of truth; the
-      // legacy `missions` field — even if present — is discarded so the
-      // runtime shape matches a fresh seed.
+    it("ignores any persisted missions field (schema 8 sources from API)", () => {
+      // Schema 8: missions live on the API. Anything in localStorage from
+      // older schemas is discarded so the runtime list always reflects what
+      // the React Query cache holds.
       const legacyData = {
         schemaVersion: 7,
         updatedAt: new Date().toISOString(),
@@ -74,21 +75,17 @@ describe("Missions Store", () => {
       );
       const snapshot = loadMissionsSnapshot();
 
-      // The persisted mission must NOT survive the load.
-      expect(
-        snapshot.missions.some((m) => m.id === "custom-mission-from-storage"),
-      ).toBe(false);
-      // Seeded MOCK_MISSIONS must come back instead.
-      expect(snapshot.missions.length).toBeGreaterThan(0);
+      expect(snapshot.missions).toEqual([]);
     });
 
     it("handles corrupted localStorage data", () => {
       localStorage.setItem("bud.saas.missions-store:org-1", "not-valid-json");
       const snapshot = loadMissionsSnapshot();
 
-      // Should return seed data
-      expect(snapshot.schemaVersion).toBe(7);
-      expect(snapshot.missions.length).toBeGreaterThan(0);
+      // Should return seed data (schema 8: empty missions, hydrated check-ins)
+      expect(snapshot.schemaVersion).toBe(8);
+      expect(snapshot.missions).toEqual([]);
+      expect(Object.keys(snapshot.checkInsById).length).toBeGreaterThan(0);
     });
 
     it("loads data for different org IDs", () => {
@@ -142,10 +139,10 @@ describe("Missions Store", () => {
       );
       const snapshot = loadMissionsSnapshot();
 
-      expect(snapshot.schemaVersion).toBe(7);
-      // Old schema triggers upgrade → missions reset to seed (new team-produto data)
-      expect(snapshot.missions.length).toBeGreaterThan(0);
-      // Should have normalized check-in structure
+      expect(snapshot.schemaVersion).toBe(8);
+      // Schema 8: missions are sourced from the API; the upgrade path drops
+      // any persisted missions array.
+      expect(snapshot.missions).toEqual([]);
       expect(snapshot.checkInsById).toBeDefined();
       expect(snapshot.checkInIdsByKr).toBeDefined();
     });
@@ -231,7 +228,7 @@ describe("Missions Store", () => {
       const initial = loadMissionsSnapshot();
       const saved = saveMissionsSnapshot(initial);
 
-      expect(saved.schemaVersion).toBe(7);
+      expect(saved.schemaVersion).toBe(8);
       expect(saved.updatedAt).toBeDefined();
     });
 
@@ -277,40 +274,30 @@ describe("Missions Store", () => {
   });
 
   describe("resetMissionsSnapshot()", () => {
-    it("resets to seed data", () => {
-      // First, save some custom data
+    it("resets check-in state to seed (missions stay empty in schema 8)", () => {
       const initial = loadMissionsSnapshot();
-      initial.missions = [
-        {
-          id: "custom-only",
-          orgId: "org-1",
-          cycleId: null,
-          parentId: null,
-          depth: 0,
-          path: ["custom-only"],
-          title: "Custom Only",
-          description: null,
-          ownerId: "user-1",
-          teamId: null,
-          status: "active",
-          visibility: "public",
-          progress: 0,
-          kanbanStatus: "uncategorized",
-          sortOrder: 0,
-          dueDate: null,
-          completedAt: null,
-          createdAt: "2026-01-01T00:00:00.000Z",
-          updatedAt: "2026-01-15T00:00:00.000Z",
-          deletedAt: null,
-        },
-      ];
+      initial.checkInsById["custom-checkin"] = {
+        id: "custom-checkin",
+        keyResultId: "kr-x",
+        authorId: "user-1",
+        value: "1",
+        previousValue: null,
+        confidence: "medium",
+        note: null,
+        mentions: [],
+        createdAt: new Date().toISOString(),
+        clientMutationId: "custom",
+        syncStatus: "synced",
+        syncedAt: new Date().toISOString(),
+        error: null,
+        deletedAt: null,
+      };
       saveMissionsSnapshot(initial);
 
-      // Reset
       const reset = resetMissionsSnapshot();
 
-      expect(reset.missions.some((m) => m.id === "custom-only")).toBe(false);
-      expect(reset.missions.length).toBeGreaterThan(0);
+      expect(reset.checkInsById["custom-checkin"]).toBeUndefined();
+      expect(reset.missions).toEqual([]);
     });
 
     it("persists reset data to localStorage", () => {
@@ -318,7 +305,7 @@ describe("Missions Store", () => {
 
       const stored = localStorage.getItem("bud.saas.missions-store:org-1");
       const parsed = JSON.parse(stored!);
-      expect(parsed.schemaVersion).toBe(7);
+      expect(parsed.schemaVersion).toBe(8);
       expect(parsed.missions).toBeUndefined();
     });
   });
@@ -561,25 +548,9 @@ describe("Seed Data Validation", () => {
     localStorage.clear();
   });
 
-  it("seed includes missions with valid structure", () => {
+  it("seed has no missions (schema 8: API is the source)", () => {
     const snapshot = loadMissionsSnapshot();
-    const mission = snapshot.missions[0];
-
-    expect(mission).toBeDefined();
-    expect(mission?.id).toBeDefined();
-    expect(mission?.title).toBeDefined();
-    expect(mission?.orgId).toBe("org-1");
-    expect(mission?.status).toBeDefined();
-  });
-
-  it("seed missions have key results", () => {
-    const snapshot = loadMissionsSnapshot();
-    const missionWithKRs = snapshot.missions.find(
-      (m) => m.keyResults && m.keyResults.length > 0
-    );
-
-    expect(missionWithKRs).toBeDefined();
-    expect(missionWithKRs?.keyResults?.[0]?.id).toBeDefined();
+    expect(snapshot.missions).toEqual([]);
   });
 
   it("seed has check-in history", () => {

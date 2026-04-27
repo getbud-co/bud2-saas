@@ -1,5 +1,5 @@
 import type { Mission, CheckIn } from "@/types";
-import { MOCK_MISSIONS, MOCK_CHECKIN_HISTORY } from "@/lib/missions";
+import { MOCK_CHECKIN_HISTORY } from "@/lib/missions";
 
 export type CheckInSyncStatus = "pending" | "synced" | "failed";
 
@@ -34,13 +34,14 @@ export interface MissionsStoreSnapshot {
 
 const STORAGE_KEY_PREFIX = "bud.saas.missions-store";
 const LEGACY_STORAGE_KEY = "bud.saas.missions-store";
-// Schema 7 (phase 3 of the missions API migration): the persisted JSON no
-// longer carries the missions array. Mission rows come from the API; only
-// check-in state and the outbox are durable in localStorage. The runtime
-// snapshot still exposes a `missions` field built from the MOCK_MISSIONS
-// seed so the rest of the app (KR/task/check-in joins) keeps working until
-// those resources have their own APIs.
-const STORE_SCHEMA_VERSION = 7;
+// Schema 8: missions, indicators, and tasks all live on the API now. The
+// snapshot only carries check-in state plus the outbox (offline-first
+// retry/dedup queue for check-in mutations). The runtime snapshot still
+// declares a `missions` field for backward compatibility with code that
+// reads it, but it is always an empty array — `MissionsDataContext` builds
+// the visible mission list by composing useMissions + useIndicators +
+// useTasks at runtime.
+const STORE_SCHEMA_VERSION = 8;
 const DEFAULT_ORG_ID = "org-1";
 
 function getStorageKey(orgId: string): string {
@@ -173,32 +174,18 @@ function buildHistoryMap(
   return history;
 }
 
-function mapKeyResultOrg(
-  keyResult: NonNullable<Mission["keyResults"]>[number],
-  orgId: string,
-): NonNullable<Mission["keyResults"]>[number] {
-  return {
-    ...keyResult,
-    orgId,
-    children: keyResult.children?.map((child) => mapKeyResultOrg(child, orgId)),
-  };
-}
-
-function mapMissionOrg(mission: Mission, orgId: string): Mission {
-  return {
-    ...mission,
-    orgId,
-    keyResults: mission.keyResults?.map((keyResult) => mapKeyResultOrg(keyResult, orgId)),
-    children: mission.children?.map((child) => mapMissionOrg(child, orgId)),
-  };
-}
-
-function getSeedSnapshot(orgId = DEFAULT_ORG_ID): MissionsStoreSnapshot {
+function getSeedSnapshot(_orgId = DEFAULT_ORG_ID): MissionsStoreSnapshot {
+  // Schema 8: missions are sourced from the API at runtime. The seed only
+  // hydrates check-in state — and only on a fresh device, since persisted
+  // snapshots take precedence in loadMissionsSnapshot. MOCK_CHECKIN_HISTORY
+  // remains as developer-friendly seed for the (still local-only) check-in
+  // flow; will go away when the check-in API lands.
+  void _orgId;
   const normalized = normalizeCheckIns(cloneDeep(MOCK_CHECKIN_HISTORY));
   return {
     schemaVersion: STORE_SCHEMA_VERSION,
     updatedAt: new Date().toISOString(),
-    missions: cloneDeep(MOCK_MISSIONS).map((mission) => mapMissionOrg(mission, orgId)),
+    missions: [],
     checkInsById: normalized.checkInsById,
     checkInIdsByKr: normalized.checkInIdsByKr,
     checkInOutbox: [],
@@ -213,11 +200,10 @@ function migrateSnapshot(raw: Partial<MissionsStoreSnapshot> | null, orgId = DEF
     return seed;
   }
 
-  // Phase 3: missions are no longer persisted. Even if the legacy field is
-  // still present in localStorage (older schema), we discard it and reseed
-  // from MOCK_MISSIONS so the runtime shape stays valid for the local
-  // joins (keyResults, tasks, etc.).
-  const missions = seed.missions;
+  // Schema 8: missions are sourced from the API. Any legacy `missions`
+  // field still in localStorage is discarded — the runtime composer in
+  // MissionsDataContext now joins useMissions + useIndicators + useTasks.
+  const missions: Mission[] = [];
 
   const hasNormalized =
     raw.checkInsById &&

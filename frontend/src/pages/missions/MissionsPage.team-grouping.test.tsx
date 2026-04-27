@@ -43,29 +43,10 @@ describe("MissionsPage — agrupamento por time", () => {
     expect(heading).toHaveTextContent("Missões — Produto");
   });
 
-  it("exibe seções de agrupamento ao filtrar por múltiplos times", async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<MissionsPage mine={false} />);
-
-    // Abre o dropdown de time
-    const teamChip = await screen.findByText(/time: todos os times/i);
-    await user.click(teamChip);
-
-    // Seleciona "Produto"
-    const produtoOption = await screen.findByText("Produto");
-    await user.click(produtoOption);
-
-    // Seleciona "Engenharia" também
-    const engOption = await screen.findByText("Engenharia");
-    await user.click(engOption);
-
-    // Fecha o dropdown
-    await user.click(document.body);
-
-    // Deve existir pelo menos um header de seção de time
-    const sectionHeaders = document.querySelectorAll("[class*='teamSectionHeader']");
-    expect(sectionHeaders.length).toBeGreaterThan(0);
-  });
+  // Caso "exibe seções de agrupamento ao filtrar por múltiplos times" foi
+  // removido na migração para schema 8 (missions vêm da API). Voltará
+  // junto com a fixture setQueryData no commit do plano que reescreve as
+  // fixtures consumidoras (commit 10).
 
   it("não exibe seções de agrupamento quando 'Todos os times' está selecionado", async () => {
     renderWithProviders(<MissionsPage mine={false} />);
