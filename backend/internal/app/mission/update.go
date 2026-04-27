@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/getbud-co/bud2/backend/internal/domain"
-	domaincycle "github.com/getbud-co/bud2/backend/internal/domain/cycle"
 	domainmission "github.com/getbud-co/bud2/backend/internal/domain/mission"
 	domainteam "github.com/getbud-co/bud2/backend/internal/domain/team"
 	domainuser "github.com/getbud-co/bud2/backend/internal/domain/user"
@@ -26,19 +25,17 @@ type UpdateCommand struct {
 	ID             uuid.UUID
 	Title          *string
 	Description    *string
-	CycleID        *uuid.UUID
 	OwnerID        *uuid.UUID
 	TeamID         *uuid.UUID
 	Status         *string
 	Visibility     *string
 	KanbanStatus   *string
-	SortOrder      *int
-	DueDate        *time.Time
+	StartDate      *time.Time
+	EndDate        *time.Time
 }
 
 type UpdateUseCase struct {
 	missions domainmission.Repository
-	cycles   domaincycle.Repository
 	teams    domainteam.Repository
 	users    domainuser.Repository
 	logger   *slog.Logger
@@ -46,12 +43,11 @@ type UpdateUseCase struct {
 
 func NewUpdateUseCase(
 	missions domainmission.Repository,
-	cycles domaincycle.Repository,
 	teams domainteam.Repository,
 	users domainuser.Repository,
 	logger *slog.Logger,
 ) *UpdateUseCase {
-	return &UpdateUseCase{missions: missions, cycles: cycles, teams: teams, users: users, logger: logger}
+	return &UpdateUseCase{missions: missions, teams: teams, users: users, logger: logger}
 }
 
 func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*domainmission.Mission, error) {
@@ -74,14 +70,6 @@ func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*domai
 			return nil, err
 		}
 	}
-	if cmd.CycleID != nil && (existing.CycleID == nil || *cmd.CycleID != *existing.CycleID) {
-		if _, err := uc.cycles.GetByID(ctx, *cmd.CycleID, orgID); err != nil {
-			if errors.Is(err, domaincycle.ErrNotFound) {
-				return nil, domainmission.ErrInvalidReference
-			}
-			return nil, err
-		}
-	}
 	if cmd.TeamID != nil && (existing.TeamID == nil || *cmd.TeamID != *existing.TeamID) {
 		if _, err := uc.teams.GetByID(ctx, *cmd.TeamID, orgID); err != nil {
 			if errors.Is(err, domainteam.ErrNotFound) {
@@ -98,9 +86,6 @@ func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*domai
 	if cmd.Description != nil {
 		existing.Description = cmd.Description
 	}
-	if cmd.CycleID != nil {
-		existing.CycleID = cmd.CycleID
-	}
 	if cmd.OwnerID != nil {
 		existing.OwnerID = *cmd.OwnerID
 	}
@@ -116,11 +101,11 @@ func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*domai
 	if cmd.KanbanStatus != nil {
 		existing.KanbanStatus = domainmission.KanbanStatus(*cmd.KanbanStatus)
 	}
-	if cmd.SortOrder != nil {
-		existing.SortOrder = *cmd.SortOrder
+	if cmd.StartDate != nil {
+		existing.StartDate = *cmd.StartDate
 	}
-	if cmd.DueDate != nil {
-		existing.DueDate = cmd.DueDate
+	if cmd.EndDate != nil {
+		existing.EndDate = *cmd.EndDate
 	}
 
 	// completed_at lifecycle: auto-fill on transition to completed, clear on

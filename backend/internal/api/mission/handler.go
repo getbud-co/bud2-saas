@@ -64,7 +64,12 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.create.Execute(r.Context(), req.toCommand(organizationID))
+	cmd, err := req.toCommand(organizationID)
+	if err != nil {
+		httputil.WriteProblem(w, http.StatusUnprocessableEntity, "Validation Error", err.Error())
+		return
+	}
+	result, err := h.create.Execute(r.Context(), cmd)
 	if err != nil {
 		handleError(w, err)
 		return
@@ -111,14 +116,6 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		cmd.Status = &s
-	}
-	if v := q.Get("cycle_id"); v != "" {
-		id, parseErr := uuid.Parse(v)
-		if parseErr != nil {
-			httputil.WriteProblem(w, http.StatusBadRequest, "Bad Request", "invalid cycle_id format")
-			return
-		}
-		cmd.CycleID = &id
 	}
 	if v := q.Get("owner_id"); v != "" {
 		id, parseErr := uuid.Parse(v)

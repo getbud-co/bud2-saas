@@ -10,7 +10,6 @@ CREATE TABLE indicators (
     unit            TEXT,
     status          TEXT         NOT NULL DEFAULT 'draft'
                                  CHECK (status IN ('draft', 'active', 'at_risk', 'done', 'archived')),
-    sort_order      INTEGER      NOT NULL DEFAULT 0,
     due_date        DATE,
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),

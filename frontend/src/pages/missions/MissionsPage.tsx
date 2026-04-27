@@ -1741,7 +1741,6 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
         children.push({
           id: childMissionId,
           orgId: activeOrgId,
-          cycleId: null,
           parentId: rootMissionId,
           depth: 1,
           path: [rootMissionId, childMissionId],
@@ -1753,8 +1752,8 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
           visibility: "public",
           progress: childProgress,
           kanbanStatus: "doing",
-          sortOrder: children.length,
-          dueDate: calendarDateToIso(item.period[1]) ?? calendarDateToIso(missionPeriod[1]),
+          startDate: calendarDateToIso(item.period[0]) ?? calendarDateToIso(missionPeriod[0]) ?? "",
+          endDate: calendarDateToIso(item.period[1]) ?? calendarDateToIso(missionPeriod[1]) ?? "",
           completedAt: null,
           createdAt: now,
           updatedAt: now,
@@ -1817,7 +1816,6 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
         periodLabel: null,
         periodStart: calendarDateToIso(item.period[0]) ?? calendarDateToIso(missionPeriod[0]),
         periodEnd: calendarDateToIso(item.period[1]) ?? calendarDateToIso(missionPeriod[1]),
-        sortOrder: keyResults.length,
         createdAt: now,
         updatedAt: now,
         deletedAt: null,
@@ -1839,15 +1837,14 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
     const body: {
       title: string;
       owner_id: string;
+      start_date: string;
+      end_date: string;
       description?: string;
-      cycle_id?: string;
       parent_id?: string;
       team_id?: string;
       status?: typeof m.status;
       visibility?: typeof m.visibility;
       kanban_status?: typeof m.kanbanStatus;
-      sort_order?: number;
-      due_date?: string;
       indicators?: Array<{
         owner_id?: string;
         title: string;
@@ -1855,7 +1852,6 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
         target_value?: number;
         current_value?: number;
         unit?: string;
-        sort_order?: number;
         due_date?: string;
       }>;
       tasks?: Array<{
@@ -1864,19 +1860,15 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
         title: string;
         description?: string;
         status?: "todo" | "in_progress" | "done" | "cancelled";
-        sort_order?: number;
         due_date?: string;
       }>;
-    } = { title: m.title, owner_id: m.ownerId };
+    } = { title: m.title, owner_id: m.ownerId, start_date: m.startDate, end_date: m.endDate };
     if (m.description) body.description = m.description;
-    if (m.cycleId) body.cycle_id = m.cycleId;
     if (m.parentId) body.parent_id = m.parentId;
     if (m.teamId) body.team_id = m.teamId;
     if (m.status) body.status = m.status;
     if (m.visibility) body.visibility = m.visibility;
     if (m.kanbanStatus) body.kanban_status = m.kanbanStatus;
-    if (typeof m.sortOrder === "number") body.sort_order = m.sortOrder;
-    if (m.dueDate) body.due_date = m.dueDate;
 
     if (m.keyResults && m.keyResults.length > 0) {
       body.indicators = m.keyResults.map((kr) => {
@@ -1888,7 +1880,6 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
         const current = parseNumberOrUndefined(kr.currentValue);
         if (current !== undefined) inline.current_value = current;
         if (kr.unitLabel) inline.unit = kr.unitLabel;
-        if (typeof kr.sortOrder === "number") inline.sort_order = kr.sortOrder;
         return inline;
       });
     }
@@ -1904,7 +1895,6 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
       if (t.ownerId && t.ownerId !== m.ownerId) inline.assignee_id = t.ownerId;
       if (t.description) inline.description = t.description;
       if (t.isDone) inline.status = "done";
-      if (typeof t.sortOrder === "number") inline.sort_order = t.sortOrder;
       if (t.dueDate) inline.due_date = t.dueDate;
       if (indicatorIndex !== undefined) inline.indicator_index = indicatorIndex;
       inlineTasks.push(inline);
@@ -1948,7 +1938,6 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
     return {
       id: missionId,
       orgId: existing?.orgId ?? activeOrgId,
-      cycleId: existing?.cycleId ?? null,
       parentId: existing?.parentId ?? null,
       depth: existing?.depth ?? 0,
       path: existing?.path ?? [missionId],
@@ -1960,8 +1949,8 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
       visibility: selectedVisibility === "private" ? "private" : "public",
       progress,
       kanbanStatus: existing?.kanbanStatus ?? "doing",
-      sortOrder: existing?.sortOrder ?? missions.length,
-      dueDate: calendarDateToIso(missionPeriod[1]),
+      startDate: calendarDateToIso(missionPeriod[0]) ?? "",
+      endDate: calendarDateToIso(missionPeriod[1]) ?? "",
       completedAt: existing?.completedAt ?? null,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,

@@ -65,20 +65,17 @@ function flattenTasks(m: Mission): MissionTask[] {
 // ── mission row ────────────────────────────────────────────────────────────
 
 function diffMissionRow(current: Mission, form: Mission): PatchMissionBody | null {
-  // KNOWN LIMITATION: nullable fields (description, cycleId, teamId,
-  // dueDate) cannot be cleared via PATCH today. The backend's
-  // PatchMissionRequest uses single Go pointers, so the application
-  // layer cannot distinguish "field absent" from "field explicitly null".
-  // We mirror that here by only emitting the field when the new value is
-  // non-null; clearing is a no-op until the backend grows support for
-  // it (see the note on PatchMissionRequest in openapi.yml).
+  // KNOWN LIMITATION: nullable fields (description, teamId) cannot be
+  // cleared via PATCH today. The backend's PatchMissionRequest uses single
+  // Go pointers, so the application layer cannot distinguish "field absent"
+  // from "field explicitly null". We mirror that here by only emitting the
+  // field when the new value is non-null; clearing is a no-op until the
+  // backend grows support for it (see the note on PatchMissionRequest in
+  // openapi.yml).
   const patch: PatchMissionBody = {};
   if (current.title !== form.title) patch.title = form.title;
   if ((current.description ?? null) !== (form.description ?? null)) {
     if (form.description != null) patch.description = form.description;
-  }
-  if ((current.cycleId ?? null) !== (form.cycleId ?? null)) {
-    if (form.cycleId != null) patch.cycle_id = form.cycleId;
   }
   if (current.ownerId !== form.ownerId) patch.owner_id = form.ownerId;
   if ((current.teamId ?? null) !== (form.teamId ?? null)) {
@@ -87,10 +84,8 @@ function diffMissionRow(current: Mission, form: Mission): PatchMissionBody | nul
   if (current.status !== form.status) patch.status = form.status;
   if (current.visibility !== form.visibility) patch.visibility = form.visibility;
   if (current.kanbanStatus !== form.kanbanStatus) patch.kanban_status = form.kanbanStatus;
-  if (current.sortOrder !== form.sortOrder) patch.sort_order = form.sortOrder;
-  if ((current.dueDate ?? null) !== (form.dueDate ?? null)) {
-    if (form.dueDate != null) patch.due_date = form.dueDate;
-  }
+  if (current.startDate !== form.startDate) patch.start_date = form.startDate;
+  if (current.endDate !== form.endDate) patch.end_date = form.endDate;
   return Object.keys(patch).length === 0 ? null : patch;
 }
 
@@ -134,7 +129,6 @@ function indicatorPatch(current: KeyResult, form: KeyResult): UpdateIndicatorInp
   if (current.currentValue !== form.currentValue) patch.currentValue = form.currentValue;
   if ((current.unitLabel ?? null) !== (form.unitLabel ?? null)) patch.unitLabel = form.unitLabel ?? null;
   if (current.status !== form.status) patch.status = form.status;
-  if (current.sortOrder !== form.sortOrder) patch.sortOrder = form.sortOrder;
   // KeyResult does not currently expose dueDate at the row level, only via
   // periodEnd. Skip dueDate here until the form surfaces it.
   return Object.keys(patch).length === 0 ? null : patch;
@@ -150,7 +144,6 @@ function keyResultToCreateInput(missionId: string, kr: KeyResult): CreateIndicat
     currentValue: kr.currentValue,
     unitLabel: kr.unitLabel,
     status: kr.status,
-    sortOrder: kr.sortOrder,
   };
 }
 
@@ -198,7 +191,6 @@ function taskPatch(current: MissionTask, form: MissionTask): UpdateTaskInput | n
     // null-vs-absent distinction in PATCH; deferred.)
   }
   if (current.isDone !== form.isDone) patch.isDone = form.isDone;
-  if (current.sortOrder !== form.sortOrder) patch.sortOrder = form.sortOrder;
   if ((current.dueDate ?? null) !== (form.dueDate ?? null)) patch.dueDate = form.dueDate ?? null;
   return Object.keys(patch).length === 0 ? null : patch;
 }
@@ -211,7 +203,6 @@ function missionTaskToCreateInput(missionId: string, t: MissionTask): CreateTask
     title: t.title,
     description: t.description,
     isDone: t.isDone,
-    sortOrder: t.sortOrder,
     dueDate: t.dueDate,
   };
 }

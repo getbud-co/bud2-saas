@@ -15,7 +15,6 @@ import (
 type Response struct {
 	ID           string              `json:"id"`
 	OrgID        string              `json:"org_id"`
-	CycleID      *string             `json:"cycle_id"`
 	ParentID     *string             `json:"parent_id"`
 	OwnerID      string              `json:"owner_id"`
 	TeamID       *string             `json:"team_id"`
@@ -24,8 +23,8 @@ type Response struct {
 	Status       string              `json:"status"`
 	Visibility   string              `json:"visibility"`
 	KanbanStatus string              `json:"kanban_status"`
-	SortOrder    int                 `json:"sort_order"`
-	DueDate      *string             `json:"due_date"`
+	StartDate    string              `json:"start_date"`
+	EndDate      string              `json:"end_date"`
 	CompletedAt  *string             `json:"completed_at"`
 	CreatedAt    string              `json:"created_at"`
 	UpdatedAt    string              `json:"updated_at"`
@@ -49,7 +48,6 @@ type indicatorResponse struct {
 	CurrentValue *float64 `json:"current_value"`
 	Unit         *string  `json:"unit"`
 	Status       string   `json:"status"`
-	SortOrder    int      `json:"sort_order"`
 	DueDate      *string  `json:"due_date"`
 	CreatedAt    string   `json:"created_at"`
 	UpdatedAt    string   `json:"updated_at"`
@@ -64,7 +62,6 @@ type taskResponse struct {
 	Title       string  `json:"title"`
 	Description *string `json:"description"`
 	Status      string  `json:"status"`
-	SortOrder   int     `json:"sort_order"`
 	DueDate     *string `json:"due_date"`
 	CompletedAt *string `json:"completed_at"`
 	CreatedAt   string  `json:"created_at"`
@@ -82,7 +79,6 @@ func toResponse(m *domainmission.Mission) Response {
 	return Response{
 		ID:           m.ID.String(),
 		OrgID:        m.OrganizationID.String(),
-		CycleID:      uuidPtrString(m.CycleID),
 		ParentID:     uuidPtrString(m.ParentID),
 		OwnerID:      m.OwnerID.String(),
 		TeamID:       uuidPtrString(m.TeamID),
@@ -91,8 +87,8 @@ func toResponse(m *domainmission.Mission) Response {
 		Status:       string(m.Status),
 		Visibility:   string(m.Visibility),
 		KanbanStatus: string(m.KanbanStatus),
-		SortOrder:    m.SortOrder,
-		DueDate:      formatOptionalDate(m.DueDate),
+		StartDate:    m.StartDate.Format(httputil.DateLayout),
+		EndDate:      m.EndDate.Format(httputil.DateLayout),
 		CompletedAt:  formatOptionalTimestamp(m.CompletedAt),
 		CreatedAt:    m.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:    m.UpdatedAt.Format(time.RFC3339),
@@ -128,7 +124,6 @@ func toIndicatorResponse(ind *domainindicator.Indicator) indicatorResponse {
 		CurrentValue: ind.CurrentValue,
 		Unit:         ind.Unit,
 		Status:       string(ind.Status),
-		SortOrder:    ind.SortOrder,
 		DueDate:      formatOptionalDate(ind.DueDate),
 		CreatedAt:    ind.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:    ind.UpdatedAt.Format(time.RFC3339),
@@ -150,7 +145,6 @@ func toTaskResponse(t *domaintask.Task) taskResponse {
 		Title:       t.Title,
 		Description: t.Description,
 		Status:      string(t.Status),
-		SortOrder:   t.SortOrder,
 		DueDate:     formatOptionalDate(t.DueDate),
 		CompletedAt: formatOptionalTimestamp(t.CompletedAt),
 		CreatedAt:   t.CreatedAt.Format(time.RFC3339),

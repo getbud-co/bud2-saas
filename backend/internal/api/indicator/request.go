@@ -17,7 +17,6 @@ type createRequest struct {
 	CurrentValue *float64  `json:"current_value"`
 	Unit         *string   `json:"unit" validate:"omitempty,max=32"`
 	Status       string    `json:"status" validate:"omitempty,oneof=draft active at_risk done archived"`
-	SortOrder    int       `json:"sort_order"`
 	DueDate      *string   `json:"due_date" validate:"omitempty,datetime=2006-01-02"`
 }
 
@@ -32,14 +31,13 @@ type updateRequest struct {
 	CurrentValue *float64   `json:"current_value"`
 	Unit         *string    `json:"unit" validate:"omitempty,max=32"`
 	Status       *string    `json:"status" validate:"omitempty,oneof=draft active at_risk done archived"`
-	SortOrder    *int       `json:"sort_order"`
 	DueDate      *string    `json:"due_date" validate:"omitempty,datetime=2006-01-02"`
 }
 
 func (r updateRequest) isEmpty() bool {
 	return r.Title == nil && r.Description == nil && r.OwnerID == nil &&
 		r.TargetValue == nil && r.CurrentValue == nil && r.Unit == nil &&
-		r.Status == nil && r.SortOrder == nil && r.DueDate == nil
+		r.Status == nil && r.DueDate == nil
 }
 
 var parseOptionalDate = httputil.ParseOptionalDate
@@ -55,7 +53,6 @@ func (r createRequest) toCommand(organizationID domain.TenantID) appindicator.Cr
 		CurrentValue:   r.CurrentValue,
 		Unit:           r.Unit,
 		Status:         r.Status,
-		SortOrder:      r.SortOrder,
 		DueDate:        parseOptionalDate(r.DueDate),
 	}
 }
@@ -71,7 +68,6 @@ func (r updateRequest) toCommand(organizationID domain.TenantID, id uuid.UUID) a
 		CurrentValue:   r.CurrentValue,
 		Unit:           r.Unit,
 		Status:         r.Status,
-		SortOrder:      r.SortOrder,
 		DueDate:        parseOptionalDate(r.DueDate),
 	}
 }

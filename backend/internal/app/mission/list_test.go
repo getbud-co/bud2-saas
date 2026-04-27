@@ -96,20 +96,17 @@ func TestListUseCase_Execute_StatusFilter_PropagatedAsTypedStatus(t *testing.T) 
 }
 
 func TestListUseCase_Execute_AllUUIDFilters_Propagated(t *testing.T) {
-	cycleID := uuid.New()
 	ownerID := uuid.New()
 	teamID := uuid.New()
 	repo := new(mocks.MissionRepository)
 	repo.On("List", mock.Anything, mock.MatchedBy(func(f domainmission.ListFilter) bool {
-		return f.CycleID != nil && *f.CycleID == cycleID &&
-			f.OwnerID != nil && *f.OwnerID == ownerID &&
+		return f.OwnerID != nil && *f.OwnerID == ownerID &&
 			f.TeamID != nil && *f.TeamID == teamID
 	})).Return(domainmission.ListResult{}, nil)
 
 	uc := NewListUseCase(repo, testutil.NewDiscardLogger())
 	_, err := uc.Execute(context.Background(), ListCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
-		CycleID:        &cycleID,
 		OwnerID:        &ownerID,
 		TeamID:         &teamID,
 	})

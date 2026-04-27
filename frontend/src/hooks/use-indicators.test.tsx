@@ -33,7 +33,6 @@ const apiIndicator: ApiIndicator = {
   current_value: 50,
   unit: "%",
   status: "active",
-  sort_order: 0,
   due_date: null,
   created_at: "2024-01-01T00:00:00Z",
   updated_at: "2024-01-01T00:00:00Z",

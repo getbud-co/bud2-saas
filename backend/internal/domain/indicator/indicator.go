@@ -39,9 +39,8 @@ type Indicator struct {
 	TargetValue    *float64
 	CurrentValue   *float64
 	Unit           *string
-	Status         Status
-	SortOrder      int
-	DueDate        *time.Time
+	Status  Status
+	DueDate *time.Time
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }

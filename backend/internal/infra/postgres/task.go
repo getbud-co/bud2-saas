@@ -40,7 +40,6 @@ func (r *TaskRepository) Create(ctx context.Context, t *task.Task) (*task.Task, 
 		Title:          t.Title,
 		Description:    textToPgtype(t.Description),
 		Status:         string(t.Status),
-		SortOrder:      int32(t.SortOrder),
 		DueDate:        timeToPgtypeDate(t.DueDate),
 		CompletedAt:    timeToPgtypeTimestamptz(t.CompletedAt),
 	})
@@ -122,7 +121,6 @@ func (r *TaskRepository) Update(ctx context.Context, t *task.Task) (*task.Task, 
 		IndicatorID:    uuidPtrToPgtype(t.IndicatorID),
 		AssigneeID:     t.AssigneeID,
 		Status:         string(t.Status),
-		SortOrder:      int32(t.SortOrder),
 		DueDate:        timeToPgtypeDate(t.DueDate),
 		CompletedAt:    timeToPgtypeTimestamptz(t.CompletedAt),
 	})
@@ -154,7 +152,6 @@ type taskRowData struct {
 	Title          string
 	Description    pgtype.Text
 	Status         string
-	SortOrder      int32
 	DueDate        pgtype.Date
 	CompletedAt    pgtype.Timestamptz
 	CreatedAt      time.Time
@@ -171,7 +168,6 @@ func taskRowToDomain(row taskRowData) *task.Task {
 		Title:          row.Title,
 		Description:    pgtypeToText(row.Description),
 		Status:         task.Status(row.Status),
-		SortOrder:      int(row.SortOrder),
 		DueDate:        pgtypeDateToTime(row.DueDate),
 		CompletedAt:    pgtypeTimestamptzToTime(row.CompletedAt),
 		CreatedAt:      row.CreatedAt,

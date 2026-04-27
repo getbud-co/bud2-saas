@@ -42,7 +42,6 @@ func (r *IndicatorRepository) Create(ctx context.Context, i *indicator.Indicator
 		CurrentValue:   float64PtrToPgtypeNumeric(i.CurrentValue),
 		Unit:           textToPgtype(i.Unit),
 		Status:         string(i.Status),
-		SortOrder:      int32(i.SortOrder),
 		DueDate:        timeToPgtypeDate(i.DueDate),
 	})
 	if err != nil {
@@ -123,7 +122,6 @@ func (r *IndicatorRepository) Update(ctx context.Context, i *indicator.Indicator
 		CurrentValue:   float64PtrToPgtypeNumeric(i.CurrentValue),
 		Unit:           textToPgtype(i.Unit),
 		Status:         string(i.Status),
-		SortOrder:      int32(i.SortOrder),
 		DueDate:        timeToPgtypeDate(i.DueDate),
 	})
 	if err != nil {
@@ -156,7 +154,6 @@ type indicatorRowData struct {
 	CurrentValue   pgtype.Numeric
 	Unit           pgtype.Text
 	Status         string
-	SortOrder      int32
 	DueDate        pgtype.Date
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
@@ -174,7 +171,6 @@ func indicatorRowToDomain(row indicatorRowData) *indicator.Indicator {
 		CurrentValue:   pgtypeNumericToFloat64Ptr(row.CurrentValue),
 		Unit:           pgtypeToText(row.Unit),
 		Status:         indicator.Status(row.Status),
-		SortOrder:      int(row.SortOrder),
 		DueDate:        pgtypeDateToTime(row.DueDate),
 		CreatedAt:      row.CreatedAt,
 		UpdatedAt:      row.UpdatedAt,

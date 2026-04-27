@@ -11,7 +11,6 @@ function makeMission(overrides: Partial<Mission> = {}): Mission {
   return {
     id: "m1",
     orgId: "org1",
-    cycleId: null,
     parentId: null,
     depth: 0,
     path: [],
@@ -23,8 +22,8 @@ function makeMission(overrides: Partial<Mission> = {}): Mission {
     visibility: "public",
     progress: 0,
     kanbanStatus: "uncategorized",
-    sortOrder: 0,
-    dueDate: null,
+    startDate: "2025-01-01",
+    endDate: "2025-12-31",
     completedAt: null,
     createdAt: "2025-01-01T00:00:00Z",
     updatedAt: "2025-01-01T00:00:00Z",
@@ -58,7 +57,6 @@ function makeKR(overrides: Partial<KeyResult> = {}): KeyResult {
     periodLabel: null,
     periodStart: null,
     periodEnd: null,
-    sortOrder: 0,
     createdAt: "2025-01-01T00:00:00Z",
     updatedAt: "2025-01-01T00:00:00Z",
     deletedAt: null,
@@ -81,7 +79,6 @@ function makeTask(overrides: Partial<MissionTask> = {}): MissionTask {
     teamId: null,
     dueDate: null,
     isDone: false,
-    sortOrder: 0,
     completedAt: null,
     createdAt: "2025-01-01T00:00:00Z",
     updatedAt: "2025-01-01T00:00:00Z",
@@ -191,8 +188,8 @@ describe("filterMissions — filtro por team", () => {
 });
 
 describe("filterMissions — filtro por período", () => {
-  it("mantém missão com dueDate dentro do período filtrado", () => {
-    const missions = [makeMission({ id: "m1", dueDate: "2026-02-15" })];
+  it("mantém missão com endDate dentro do período filtrado", () => {
+    const missions = [makeMission({ id: "m1", startDate: "2026-02-01", endDate: "2026-02-15" })];
     const filters = makeFilters({
       activeFilters: ["period"],
       selectedPeriod: [{ year: 2026, month: 1, day: 1 }, { year: 2026, month: 3, day: 31 }],
@@ -200,8 +197,8 @@ describe("filterMissions — filtro por período", () => {
     expect(filterMissions(missions, filters, makeCtx())).toHaveLength(1);
   });
 
-  it("remove missão com dueDate fora do período filtrado", () => {
-    const missions = [makeMission({ id: "m1", dueDate: "2025-06-01" })];
+  it("remove missão com endDate fora do período filtrado", () => {
+    const missions = [makeMission({ id: "m1", startDate: "2025-06-01", endDate: "2025-06-30" })];
     const filters = makeFilters({
       activeFilters: ["period"],
       selectedPeriod: [{ year: 2026, month: 1, day: 1 }, { year: 2026, month: 3, day: 31 }],
@@ -210,7 +207,7 @@ describe("filterMissions — filtro por período", () => {
   });
 
   it("quando ambas as datas do filtro são nulas, retorna tudo", () => {
-    const missions = [makeMission({ id: "m1", dueDate: "2026-02-15" })];
+    const missions = [makeMission({ id: "m1", startDate: "2026-02-01", endDate: "2026-02-15" })];
     const filters = makeFilters({
       activeFilters: ["period"],
       selectedPeriod: [null, null],

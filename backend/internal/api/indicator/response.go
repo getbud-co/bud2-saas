@@ -18,7 +18,6 @@ type Response struct {
 	CurrentValue *float64 `json:"current_value"`
 	Unit         *string  `json:"unit"`
 	Status       string   `json:"status"`
-	SortOrder    int      `json:"sort_order"`
 	DueDate      *string  `json:"due_date"`
 	CreatedAt    string   `json:"created_at"`
 	UpdatedAt    string   `json:"updated_at"`
@@ -43,7 +42,6 @@ func toResponse(i *domainindicator.Indicator) Response {
 		CurrentValue: i.CurrentValue,
 		Unit:         i.Unit,
 		Status:       string(i.Status),
-		SortOrder:    i.SortOrder,
 		DueDate:      formatOptionalDate(i.DueDate),
 		CreatedAt:    i.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:    i.UpdatedAt.Format(time.RFC3339),
@@ -51,4 +49,3 @@ func toResponse(i *domainindicator.Indicator) Response {
 }
 
 var formatOptionalDate = httputil.FormatOptionalDate
-

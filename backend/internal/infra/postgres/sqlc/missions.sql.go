@@ -18,20 +18,18 @@ SELECT COUNT(*)
 FROM missions
 WHERE organization_id = $1
   AND deleted_at IS NULL
-  AND ($2::uuid IS NULL OR cycle_id = $2)
-  AND ($3::uuid IS NULL OR owner_id = $3)
-  AND ($4::uuid IS NULL OR team_id = $4)
-  AND ($5::text IS NULL OR status = $5)
+  AND ($2::uuid IS NULL OR owner_id = $2)
+  AND ($3::uuid IS NULL OR team_id = $3)
+  AND ($4::text IS NULL OR status = $4)
   AND (
-    NOT $6::bool
-    OR ($7::uuid IS NULL AND parent_id IS NULL)
-    OR parent_id = $7
+    NOT $5::bool
+    OR ($6::uuid IS NULL AND parent_id IS NULL)
+    OR parent_id = $6
   )
 `
 
 type CountMissionsParams struct {
 	OrganizationID uuid.UUID
-	CycleID        pgtype.UUID
 	OwnerID        pgtype.UUID
 	TeamID         pgtype.UUID
 	Status         pgtype.Text
@@ -42,7 +40,6 @@ type CountMissionsParams struct {
 func (q *Queries) CountMissions(ctx context.Context, arg CountMissionsParams) (int64, error) {
 	row := q.db.QueryRow(ctx, countMissions,
 		arg.OrganizationID,
-		arg.CycleID,
 		arg.OwnerID,
 		arg.TeamID,
 		arg.Status,
@@ -55,15 +52,14 @@ func (q *Queries) CountMissions(ctx context.Context, arg CountMissionsParams) (i
 }
 
 const createMission = `-- name: CreateMission :one
-INSERT INTO missions (id, organization_id, cycle_id, parent_id, owner_id, team_id, title, description, status, visibility, kanban_status, sort_order, due_date, completed_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-RETURNING id, organization_id, cycle_id, parent_id, owner_id, team_id, title, description, status, visibility, kanban_status, sort_order, due_date, completed_at, created_at, updated_at
+INSERT INTO missions (id, organization_id, parent_id, owner_id, team_id, title, description, status, visibility, kanban_status, start_date, end_date, completed_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+RETURNING id, organization_id, parent_id, owner_id, team_id, title, description, status, visibility, kanban_status, start_date, end_date, completed_at, created_at, updated_at
 `
 
 type CreateMissionParams struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID
-	CycleID        pgtype.UUID
 	ParentID       pgtype.UUID
 	OwnerID        uuid.UUID
 	TeamID         pgtype.UUID
@@ -72,15 +68,14 @@ type CreateMissionParams struct {
 	Status         string
 	Visibility     string
 	KanbanStatus   string
-	SortOrder      int32
-	DueDate        pgtype.Date
+	StartDate      pgtype.Date
+	EndDate        pgtype.Date
 	CompletedAt    pgtype.Timestamptz
 }
 
 type CreateMissionRow struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID
-	CycleID        pgtype.UUID
 	ParentID       pgtype.UUID
 	OwnerID        uuid.UUID
 	TeamID         pgtype.UUID
@@ -89,8 +84,8 @@ type CreateMissionRow struct {
 	Status         string
 	Visibility     string
 	KanbanStatus   string
-	SortOrder      int32
-	DueDate        pgtype.Date
+	StartDate      pgtype.Date
+	EndDate        pgtype.Date
 	CompletedAt    pgtype.Timestamptz
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
@@ -100,7 +95,6 @@ func (q *Queries) CreateMission(ctx context.Context, arg CreateMissionParams) (C
 	row := q.db.QueryRow(ctx, createMission,
 		arg.ID,
 		arg.OrganizationID,
-		arg.CycleID,
 		arg.ParentID,
 		arg.OwnerID,
 		arg.TeamID,
@@ -109,15 +103,14 @@ func (q *Queries) CreateMission(ctx context.Context, arg CreateMissionParams) (C
 		arg.Status,
 		arg.Visibility,
 		arg.KanbanStatus,
-		arg.SortOrder,
-		arg.DueDate,
+		arg.StartDate,
+		arg.EndDate,
 		arg.CompletedAt,
 	)
 	var i CreateMissionRow
 	err := row.Scan(
 		&i.ID,
 		&i.OrganizationID,
-		&i.CycleID,
 		&i.ParentID,
 		&i.OwnerID,
 		&i.TeamID,
@@ -126,8 +119,8 @@ func (q *Queries) CreateMission(ctx context.Context, arg CreateMissionParams) (C
 		&i.Status,
 		&i.Visibility,
 		&i.KanbanStatus,
-		&i.SortOrder,
-		&i.DueDate,
+		&i.StartDate,
+		&i.EndDate,
 		&i.CompletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -136,7 +129,7 @@ func (q *Queries) CreateMission(ctx context.Context, arg CreateMissionParams) (C
 }
 
 const getMissionByID = `-- name: GetMissionByID :one
-SELECT id, organization_id, cycle_id, parent_id, owner_id, team_id, title, description, status, visibility, kanban_status, sort_order, due_date, completed_at, created_at, updated_at
+SELECT id, organization_id, parent_id, owner_id, team_id, title, description, status, visibility, kanban_status, start_date, end_date, completed_at, created_at, updated_at
 FROM missions
 WHERE id = $1
   AND organization_id = $2
@@ -151,7 +144,6 @@ type GetMissionByIDParams struct {
 type GetMissionByIDRow struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID
-	CycleID        pgtype.UUID
 	ParentID       pgtype.UUID
 	OwnerID        uuid.UUID
 	TeamID         pgtype.UUID
@@ -160,8 +152,8 @@ type GetMissionByIDRow struct {
 	Status         string
 	Visibility     string
 	KanbanStatus   string
-	SortOrder      int32
-	DueDate        pgtype.Date
+	StartDate      pgtype.Date
+	EndDate        pgtype.Date
 	CompletedAt    pgtype.Timestamptz
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
@@ -173,7 +165,6 @@ func (q *Queries) GetMissionByID(ctx context.Context, arg GetMissionByIDParams) 
 	err := row.Scan(
 		&i.ID,
 		&i.OrganizationID,
-		&i.CycleID,
 		&i.ParentID,
 		&i.OwnerID,
 		&i.TeamID,
@@ -182,8 +173,8 @@ func (q *Queries) GetMissionByID(ctx context.Context, arg GetMissionByIDParams) 
 		&i.Status,
 		&i.Visibility,
 		&i.KanbanStatus,
-		&i.SortOrder,
-		&i.DueDate,
+		&i.StartDate,
+		&i.EndDate,
 		&i.CompletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -192,20 +183,19 @@ func (q *Queries) GetMissionByID(ctx context.Context, arg GetMissionByIDParams) 
 }
 
 const listMissions = `-- name: ListMissions :many
-SELECT id, organization_id, cycle_id, parent_id, owner_id, team_id, title, description, status, visibility, kanban_status, sort_order, due_date, completed_at, created_at, updated_at
+SELECT id, organization_id, parent_id, owner_id, team_id, title, description, status, visibility, kanban_status, start_date, end_date, completed_at, created_at, updated_at
 FROM missions
 WHERE organization_id = $1
   AND deleted_at IS NULL
-  AND ($4::uuid IS NULL OR cycle_id = $4)
-  AND ($5::uuid IS NULL OR owner_id = $5)
-  AND ($6::uuid IS NULL OR team_id = $6)
-  AND ($7::text IS NULL OR status = $7)
+  AND ($4::uuid IS NULL OR owner_id = $4)
+  AND ($5::uuid IS NULL OR team_id = $5)
+  AND ($6::text IS NULL OR status = $6)
   AND (
-    NOT $8::bool
-    OR ($9::uuid IS NULL AND parent_id IS NULL)
-    OR parent_id = $9
+    NOT $7::bool
+    OR ($8::uuid IS NULL AND parent_id IS NULL)
+    OR parent_id = $8
   )
-ORDER BY sort_order ASC, created_at ASC
+ORDER BY created_at ASC
 LIMIT $2 OFFSET $3
 `
 
@@ -213,7 +203,6 @@ type ListMissionsParams struct {
 	OrganizationID uuid.UUID
 	Limit          int32
 	Offset         int32
-	CycleID        pgtype.UUID
 	OwnerID        pgtype.UUID
 	TeamID         pgtype.UUID
 	Status         pgtype.Text
@@ -224,7 +213,6 @@ type ListMissionsParams struct {
 type ListMissionsRow struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID
-	CycleID        pgtype.UUID
 	ParentID       pgtype.UUID
 	OwnerID        uuid.UUID
 	TeamID         pgtype.UUID
@@ -233,8 +221,8 @@ type ListMissionsRow struct {
 	Status         string
 	Visibility     string
 	KanbanStatus   string
-	SortOrder      int32
-	DueDate        pgtype.Date
+	StartDate      pgtype.Date
+	EndDate        pgtype.Date
 	CompletedAt    pgtype.Timestamptz
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
@@ -245,7 +233,6 @@ func (q *Queries) ListMissions(ctx context.Context, arg ListMissionsParams) ([]L
 		arg.OrganizationID,
 		arg.Limit,
 		arg.Offset,
-		arg.CycleID,
 		arg.OwnerID,
 		arg.TeamID,
 		arg.Status,
@@ -262,7 +249,6 @@ func (q *Queries) ListMissions(ctx context.Context, arg ListMissionsParams) ([]L
 		if err := rows.Scan(
 			&i.ID,
 			&i.OrganizationID,
-			&i.CycleID,
 			&i.ParentID,
 			&i.OwnerID,
 			&i.TeamID,
@@ -271,8 +257,8 @@ func (q *Queries) ListMissions(ctx context.Context, arg ListMissionsParams) ([]L
 			&i.Status,
 			&i.Visibility,
 			&i.KanbanStatus,
-			&i.SortOrder,
-			&i.DueDate,
+			&i.StartDate,
+			&i.EndDate,
 			&i.CompletedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -291,21 +277,20 @@ const updateMission = `-- name: UpdateMission :one
 UPDATE missions
 SET title         = $3,
     description   = $4,
-    cycle_id      = $5,
-    parent_id     = $6,
-    owner_id      = $7,
-    team_id       = $8,
-    status        = $9,
-    visibility    = $10,
-    kanban_status = $11,
-    sort_order    = $12,
-    due_date      = $13,
-    completed_at  = $14,
+    parent_id     = $5,
+    owner_id      = $6,
+    team_id       = $7,
+    status        = $8,
+    visibility    = $9,
+    kanban_status = $10,
+    start_date    = $11,
+    end_date      = $12,
+    completed_at  = $13,
     updated_at    = NOW()
 WHERE id = $1
   AND organization_id = $2
   AND deleted_at IS NULL
-RETURNING id, organization_id, cycle_id, parent_id, owner_id, team_id, title, description, status, visibility, kanban_status, sort_order, due_date, completed_at, created_at, updated_at
+RETURNING id, organization_id, parent_id, owner_id, team_id, title, description, status, visibility, kanban_status, start_date, end_date, completed_at, created_at, updated_at
 `
 
 type UpdateMissionParams struct {
@@ -313,22 +298,20 @@ type UpdateMissionParams struct {
 	OrganizationID uuid.UUID
 	Title          string
 	Description    pgtype.Text
-	CycleID        pgtype.UUID
 	ParentID       pgtype.UUID
 	OwnerID        uuid.UUID
 	TeamID         pgtype.UUID
 	Status         string
 	Visibility     string
 	KanbanStatus   string
-	SortOrder      int32
-	DueDate        pgtype.Date
+	StartDate      pgtype.Date
+	EndDate        pgtype.Date
 	CompletedAt    pgtype.Timestamptz
 }
 
 type UpdateMissionRow struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID
-	CycleID        pgtype.UUID
 	ParentID       pgtype.UUID
 	OwnerID        uuid.UUID
 	TeamID         pgtype.UUID
@@ -337,8 +320,8 @@ type UpdateMissionRow struct {
 	Status         string
 	Visibility     string
 	KanbanStatus   string
-	SortOrder      int32
-	DueDate        pgtype.Date
+	StartDate      pgtype.Date
+	EndDate        pgtype.Date
 	CompletedAt    pgtype.Timestamptz
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
@@ -350,22 +333,20 @@ func (q *Queries) UpdateMission(ctx context.Context, arg UpdateMissionParams) (U
 		arg.OrganizationID,
 		arg.Title,
 		arg.Description,
-		arg.CycleID,
 		arg.ParentID,
 		arg.OwnerID,
 		arg.TeamID,
 		arg.Status,
 		arg.Visibility,
 		arg.KanbanStatus,
-		arg.SortOrder,
-		arg.DueDate,
+		arg.StartDate,
+		arg.EndDate,
 		arg.CompletedAt,
 	)
 	var i UpdateMissionRow
 	err := row.Scan(
 		&i.ID,
 		&i.OrganizationID,
-		&i.CycleID,
 		&i.ParentID,
 		&i.OwnerID,
 		&i.TeamID,
@@ -374,8 +355,8 @@ func (q *Queries) UpdateMission(ctx context.Context, arg UpdateMissionParams) (U
 		&i.Status,
 		&i.Visibility,
 		&i.KanbanStatus,
-		&i.SortOrder,
-		&i.DueDate,
+		&i.StartDate,
+		&i.EndDate,
 		&i.CompletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,

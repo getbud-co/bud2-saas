@@ -13,7 +13,6 @@ CREATE TABLE tasks (
     description     TEXT,
     status          TEXT         NOT NULL DEFAULT 'todo'
                                  CHECK (status IN ('todo', 'in_progress', 'done', 'cancelled')),
-    sort_order      INTEGER      NOT NULL DEFAULT 0,
     due_date        DATE,
     completed_at    TIMESTAMPTZ,
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),

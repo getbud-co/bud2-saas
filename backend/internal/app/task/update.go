@@ -25,7 +25,6 @@ type UpdateCommand struct {
 	IndicatorID    *uuid.UUID
 	AssigneeID     *uuid.UUID
 	Status         *string
-	SortOrder      *int
 	DueDate        *time.Time
 }
 
@@ -93,9 +92,6 @@ func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*domai
 	}
 	if cmd.Status != nil {
 		existing.Status = domaintask.Status(*cmd.Status)
-	}
-	if cmd.SortOrder != nil {
-		existing.SortOrder = *cmd.SortOrder
 	}
 	if cmd.DueDate != nil {
 		existing.DueDate = cmd.DueDate

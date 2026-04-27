@@ -40,9 +40,8 @@ type Task struct {
 	AssigneeID  uuid.UUID
 	Title       string
 	Description *string
-	Status      Status
-	SortOrder   int
-	DueDate     *time.Time
+	Status  Status
+	DueDate *time.Time
 	CompletedAt *time.Time
 	CreatedAt   time.Time
 	UpdatedAt   time.Time

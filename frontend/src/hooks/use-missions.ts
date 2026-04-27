@@ -18,7 +18,6 @@ const PAGE_SIZE = 100;
 
 export interface UseMissionsParams {
   status?: ApiMissionStatus;
-  cycleId?: string;
   parentId?: string | null;
   ownerId?: string;
   teamId?: string;
@@ -36,7 +35,6 @@ export function useMissions(params?: UseMissionsParams) {
     queryFn: async () => {
       const queryParams: ListQueryParams = { size: PAGE_SIZE };
       if (params?.status) queryParams.status = params.status;
-      if (params?.cycleId) queryParams.cycle_id = params.cycleId;
       if (params?.ownerId) queryParams.owner_id = params.ownerId;
       if (params?.teamId) queryParams.team_id = params.teamId;
       if (params && "parentId" in params) {

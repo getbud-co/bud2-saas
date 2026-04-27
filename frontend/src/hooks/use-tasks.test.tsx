@@ -31,7 +31,6 @@ const apiTask: ApiTask = {
   title: "Triage",
   description: null,
   status: "in_progress",
-  sort_order: 0,
   due_date: null,
   completed_at: null,
   created_at: "2024-01-01T00:00:00Z",

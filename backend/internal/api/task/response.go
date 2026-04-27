@@ -16,7 +16,6 @@ type Response struct {
 	Title       string  `json:"title"`
 	Description *string `json:"description"`
 	Status      string  `json:"status"`
-	SortOrder   int     `json:"sort_order"`
 	DueDate     *string `json:"due_date"`
 	CompletedAt *string `json:"completed_at"`
 	CreatedAt   string  `json:"created_at"`
@@ -45,7 +44,6 @@ func toResponse(t *domaintask.Task) Response {
 		Title:       t.Title,
 		Description: t.Description,
 		Status:      string(t.Status),
-		SortOrder:   t.SortOrder,
 		DueDate:     formatOptionalDate(t.DueDate),
 		CompletedAt: formatOptionalTimestamp(t.CompletedAt),
 		CreatedAt:   t.CreatedAt.Format(time.RFC3339),

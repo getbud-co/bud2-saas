@@ -28,7 +28,6 @@ type UpdateCommand struct {
 	CurrentValue   *float64
 	Unit           *string
 	Status         *string
-	SortOrder      *int
 	DueDate        *time.Time
 }
 
@@ -84,9 +83,6 @@ func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*domai
 	}
 	if cmd.Status != nil {
 		existing.Status = domainindicator.Status(*cmd.Status)
-	}
-	if cmd.SortOrder != nil {
-		existing.SortOrder = *cmd.SortOrder
 	}
 	if cmd.DueDate != nil {
 		existing.DueDate = cmd.DueDate

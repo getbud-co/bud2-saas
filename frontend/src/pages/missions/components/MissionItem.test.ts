@@ -10,7 +10,6 @@ function makeMission(overrides: Partial<Mission> = {}): Mission {
   return {
     id: "m1",
     orgId: "org1",
-    cycleId: null,
     parentId: null,
     depth: 0,
     path: [],
@@ -22,8 +21,8 @@ function makeMission(overrides: Partial<Mission> = {}): Mission {
     visibility: "public",
     progress: 0,
     kanbanStatus: "uncategorized",
-    sortOrder: 0,
-    dueDate: null,
+    startDate: "2025-01-01",
+    endDate: "2025-12-31",
     completedAt: null,
     createdAt: "2025-01-01T00:00:00Z",
     updatedAt: "2025-01-01T00:00:00Z",

@@ -65,7 +65,6 @@ func (k KanbanStatus) IsValid() bool {
 type Mission struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID
-	CycleID        *uuid.UUID
 	ParentID       *uuid.UUID
 	OwnerID        uuid.UUID
 	TeamID         *uuid.UUID
@@ -74,8 +73,8 @@ type Mission struct {
 	Status         Status
 	Visibility     Visibility
 	KanbanStatus   KanbanStatus
-	SortOrder      int
-	DueDate        *time.Time
+	StartDate      time.Time
+	EndDate        time.Time
 	CompletedAt    *time.Time
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
@@ -100,6 +99,15 @@ func (m *Mission) Validate() error {
 	if !m.KanbanStatus.IsValid() {
 		return fmt.Errorf("%w: kanban_status must be one of: uncategorized, todo, doing, done", domain.ErrValidation)
 	}
+	if m.StartDate.IsZero() {
+		return fmt.Errorf("%w: start_date is required", domain.ErrValidation)
+	}
+	if m.EndDate.IsZero() {
+		return fmt.Errorf("%w: end_date is required", domain.ErrValidation)
+	}
+	if m.EndDate.Before(m.StartDate) {
+		return fmt.Errorf("%w: end_date must be on or after start_date", domain.ErrValidation)
+	}
 	if m.CompletedAt != nil && m.Status != StatusCompleted {
 		return fmt.Errorf("%w: completed_at is only allowed when status is 'completed'", domain.ErrValidation)
 	}
@@ -108,7 +116,6 @@ func (m *Mission) Validate() error {
 
 type ListFilter struct {
 	OrganizationID uuid.UUID
-	CycleID        *uuid.UUID
 	ParentID       *uuid.UUID
 	FilterByParent bool // true = filter by ParentID (nil means root only); false = no parent filter
 	Status         *Status
@@ -136,9 +143,9 @@ type Repository interface {
 var (
 	ErrNotFound      = errors.New("mission not found")
 	ErrInvalidParent = errors.New("invalid parent mission")
-	// ErrInvalidReference indicates that cycle_id, team_id, or owner_id
-	// references a resource that does not exist in the active tenant. Use case
-	// layer validates this explicitly before persistence; repositories also
-	// map FK violations (SQLSTATE 23503) to this error as a defense-in-depth.
+	// ErrInvalidReference indicates that team_id or owner_id references a
+	// resource that does not exist in the active tenant. Use case layer
+	// validates this explicitly before persistence; repositories also map FK
+	// violations (SQLSTATE 23503) to this error as a defense-in-depth.
 	ErrInvalidReference = errors.New("invalid mission reference")
 )

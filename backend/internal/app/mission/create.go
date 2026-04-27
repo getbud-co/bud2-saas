@@ -10,7 +10,6 @@ import (
 
 	apptx "github.com/getbud-co/bud2/backend/internal/app/tx"
 	"github.com/getbud-co/bud2/backend/internal/domain"
-	domaincycle "github.com/getbud-co/bud2/backend/internal/domain/cycle"
 	domainindicator "github.com/getbud-co/bud2/backend/internal/domain/indicator"
 	domainmission "github.com/getbud-co/bud2/backend/internal/domain/mission"
 	domaintask "github.com/getbud-co/bud2/backend/internal/domain/task"
@@ -28,7 +27,6 @@ type CreateIndicatorInput struct {
 	CurrentValue *float64
 	Unit         *string
 	Status       string
-	SortOrder    int
 	DueDate      *time.Time
 }
 
@@ -45,7 +43,6 @@ type CreateTaskInput struct {
 	Title          string
 	Description    *string
 	Status         string
-	SortOrder      int
 	DueDate        *time.Time
 }
 
@@ -62,22 +59,20 @@ type CreateCommand struct {
 	OrganizationID domain.TenantID
 	Title          string
 	Description    *string
-	CycleID        *uuid.UUID
 	ParentID       *uuid.UUID
 	OwnerID        uuid.UUID
 	TeamID         *uuid.UUID
 	Status         string
 	Visibility     string
 	KanbanStatus   string
-	SortOrder      int
-	DueDate        *time.Time
+	StartDate      time.Time
+	EndDate        time.Time
 	Indicators     []CreateIndicatorInput
 	Tasks          []CreateTaskInput
 }
 
 type CreateUseCase struct {
 	missions domainmission.Repository
-	cycles   domaincycle.Repository
 	teams    domainteam.Repository
 	users    domainuser.Repository
 	txm      apptx.Manager
@@ -86,13 +81,12 @@ type CreateUseCase struct {
 
 func NewCreateUseCase(
 	missions domainmission.Repository,
-	cycles domaincycle.Repository,
 	teams domainteam.Repository,
 	users domainuser.Repository,
 	txm apptx.Manager,
 	logger *slog.Logger,
 ) *CreateUseCase {
-	return &CreateUseCase{missions: missions, cycles: cycles, teams: teams, users: users, txm: txm, logger: logger}
+	return &CreateUseCase{missions: missions, teams: teams, users: users, txm: txm, logger: logger}
 }
 
 func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*CreateResult, error) {
@@ -114,14 +108,6 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*Creat
 			return nil, domainmission.ErrInvalidReference
 		}
 		return nil, err
-	}
-	if cmd.CycleID != nil {
-		if _, err := uc.cycles.GetByID(ctx, *cmd.CycleID, orgID); err != nil {
-			if errors.Is(err, domaincycle.ErrNotFound) {
-				return nil, domainmission.ErrInvalidReference
-			}
-			return nil, err
-		}
 	}
 	if cmd.TeamID != nil {
 		if _, err := uc.teams.GetByID(ctx, *cmd.TeamID, orgID); err != nil {
@@ -189,7 +175,6 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*Creat
 	m := &domainmission.Mission{
 		ID:             uuid.New(),
 		OrganizationID: orgID,
-		CycleID:        cmd.CycleID,
 		ParentID:       cmd.ParentID,
 		OwnerID:        cmd.OwnerID,
 		TeamID:         cmd.TeamID,
@@ -198,8 +183,8 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*Creat
 		Status:         status,
 		Visibility:     visibility,
 		KanbanStatus:   kanban,
-		SortOrder:      cmd.SortOrder,
-		DueDate:        cmd.DueDate,
+		StartDate:      cmd.StartDate,
+		EndDate:        cmd.EndDate,
 	}
 	if err := m.Validate(); err != nil {
 		return nil, err
@@ -228,7 +213,6 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*Creat
 			CurrentValue:   in.CurrentValue,
 			Unit:           in.Unit,
 			Status:         indStatus,
-			SortOrder:      in.SortOrder,
 			DueDate:        in.DueDate,
 		}
 		if err := ind.Validate(); err != nil {
@@ -276,7 +260,6 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*Creat
 			Title:          tk.Title,
 			Description:    tk.Description,
 			Status:         taskStatus,
-			SortOrder:      tk.SortOrder,
 			DueDate:        tk.DueDate,
 		}
 		if err := t.Validate(); err != nil {

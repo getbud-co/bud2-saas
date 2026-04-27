@@ -130,7 +130,6 @@ export interface CreateTaskInput {
   title: string;
   description?: string | null;
   isDone?: boolean;
-  sortOrder?: number;
   dueDate?: string | null;
 }
 
@@ -159,7 +158,6 @@ export function apiTaskToMissionTask(api: ApiTask): MissionTask {
     teamId: null,
     dueDate: api.due_date ?? null,
     isDone: api.status === "done",
-    sortOrder: api.sort_order,
     completedAt: api.completed_at ?? null,
     createdAt: api.created_at,
     updatedAt: api.updated_at,
@@ -174,7 +172,6 @@ export function missionTaskToCreateTaskBody(input: CreateTaskInput): CreateTaskB
     title: input.title,
     description: input.description ?? undefined,
     status: input.isDone ? "done" : "todo",
-    sort_order: input.sortOrder ?? 0,
     due_date: input.dueDate ?? undefined,
   };
 }
@@ -186,7 +183,6 @@ export function missionTaskToPatchTaskBody(patch: UpdateTaskInput): PatchTaskBod
   if (patch.indicatorId !== undefined && patch.indicatorId !== null) body.indicator_id = patch.indicatorId;
   if (patch.assigneeId !== undefined) body.assignee_id = patch.assigneeId;
   if (patch.isDone !== undefined) body.status = patch.isDone ? "done" : "todo";
-  if (patch.sortOrder !== undefined) body.sort_order = patch.sortOrder;
   if (patch.dueDate !== undefined) body.due_date = patch.dueDate ?? undefined;
   return body;
 }

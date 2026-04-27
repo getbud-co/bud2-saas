@@ -43,9 +43,9 @@ func (q *Queries) CountIndicators(ctx context.Context, arg CountIndicatorsParams
 }
 
 const createIndicator = `-- name: CreateIndicator :one
-INSERT INTO indicators (id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, sort_order, due_date)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-RETURNING id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, sort_order, due_date, created_at, updated_at
+INSERT INTO indicators (id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+RETURNING id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date, created_at, updated_at
 `
 
 type CreateIndicatorParams struct {
@@ -59,7 +59,6 @@ type CreateIndicatorParams struct {
 	CurrentValue   pgtype.Numeric
 	Unit           pgtype.Text
 	Status         string
-	SortOrder      int32
 	DueDate        pgtype.Date
 }
 
@@ -74,7 +73,6 @@ type CreateIndicatorRow struct {
 	CurrentValue   pgtype.Numeric
 	Unit           pgtype.Text
 	Status         string
-	SortOrder      int32
 	DueDate        pgtype.Date
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
@@ -92,7 +90,6 @@ func (q *Queries) CreateIndicator(ctx context.Context, arg CreateIndicatorParams
 		arg.CurrentValue,
 		arg.Unit,
 		arg.Status,
-		arg.SortOrder,
 		arg.DueDate,
 	)
 	var i CreateIndicatorRow
@@ -107,7 +104,6 @@ func (q *Queries) CreateIndicator(ctx context.Context, arg CreateIndicatorParams
 		&i.CurrentValue,
 		&i.Unit,
 		&i.Status,
-		&i.SortOrder,
 		&i.DueDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -116,7 +112,7 @@ func (q *Queries) CreateIndicator(ctx context.Context, arg CreateIndicatorParams
 }
 
 const getIndicatorByID = `-- name: GetIndicatorByID :one
-SELECT id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, sort_order, due_date, created_at, updated_at
+SELECT id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date, created_at, updated_at
 FROM indicators
 WHERE id = $1
   AND organization_id = $2
@@ -139,7 +135,6 @@ type GetIndicatorByIDRow struct {
 	CurrentValue   pgtype.Numeric
 	Unit           pgtype.Text
 	Status         string
-	SortOrder      int32
 	DueDate        pgtype.Date
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
@@ -159,7 +154,6 @@ func (q *Queries) GetIndicatorByID(ctx context.Context, arg GetIndicatorByIDPara
 		&i.CurrentValue,
 		&i.Unit,
 		&i.Status,
-		&i.SortOrder,
 		&i.DueDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -168,14 +162,14 @@ func (q *Queries) GetIndicatorByID(ctx context.Context, arg GetIndicatorByIDPara
 }
 
 const listIndicators = `-- name: ListIndicators :many
-SELECT id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, sort_order, due_date, created_at, updated_at
+SELECT id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date, created_at, updated_at
 FROM indicators
 WHERE organization_id = $1
   AND deleted_at IS NULL
   AND ($4::uuid IS NULL OR mission_id = $4)
   AND ($5::uuid IS NULL OR owner_id = $5)
   AND ($6::text IS NULL OR status = $6)
-ORDER BY sort_order ASC, created_at ASC
+ORDER BY created_at ASC
 LIMIT $2 OFFSET $3
 `
 
@@ -199,7 +193,6 @@ type ListIndicatorsRow struct {
 	CurrentValue   pgtype.Numeric
 	Unit           pgtype.Text
 	Status         string
-	SortOrder      int32
 	DueDate        pgtype.Date
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
@@ -232,7 +225,6 @@ func (q *Queries) ListIndicators(ctx context.Context, arg ListIndicatorsParams) 
 			&i.CurrentValue,
 			&i.Unit,
 			&i.Status,
-			&i.SortOrder,
 			&i.DueDate,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -277,13 +269,12 @@ SET title         = $3,
     current_value = $7,
     unit          = $8,
     status        = $9,
-    sort_order    = $10,
-    due_date      = $11,
+    due_date      = $10,
     updated_at    = NOW()
 WHERE id = $1
   AND organization_id = $2
   AND deleted_at IS NULL
-RETURNING id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, sort_order, due_date, created_at, updated_at
+RETURNING id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date, created_at, updated_at
 `
 
 type UpdateIndicatorParams struct {
@@ -296,7 +287,6 @@ type UpdateIndicatorParams struct {
 	CurrentValue   pgtype.Numeric
 	Unit           pgtype.Text
 	Status         string
-	SortOrder      int32
 	DueDate        pgtype.Date
 }
 
@@ -311,7 +301,6 @@ type UpdateIndicatorRow struct {
 	CurrentValue   pgtype.Numeric
 	Unit           pgtype.Text
 	Status         string
-	SortOrder      int32
 	DueDate        pgtype.Date
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
@@ -328,7 +317,6 @@ func (q *Queries) UpdateIndicator(ctx context.Context, arg UpdateIndicatorParams
 		arg.CurrentValue,
 		arg.Unit,
 		arg.Status,
-		arg.SortOrder,
 		arg.DueDate,
 	)
 	var i UpdateIndicatorRow
@@ -343,7 +331,6 @@ func (q *Queries) UpdateIndicator(ctx context.Context, arg UpdateIndicatorParams
 		&i.CurrentValue,
 		&i.Unit,
 		&i.Status,
-		&i.SortOrder,
 		&i.DueDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,

@@ -23,7 +23,6 @@ type CreateCommand struct {
 	Title          string
 	Description    *string
 	Status         string
-	SortOrder      int
 	DueDate        *time.Time
 }
 
@@ -90,9 +89,8 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*domai
 		AssigneeID:     cmd.AssigneeID,
 		Title:          cmd.Title,
 		Description:    cmd.Description,
-		Status:         status,
-		SortOrder:      cmd.SortOrder,
-		DueDate:        cmd.DueDate,
+		Status:  status,
+		DueDate: cmd.DueDate,
 	}
 	if err := t.Validate(); err != nil {
 		return nil, err

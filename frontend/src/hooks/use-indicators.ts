@@ -139,7 +139,6 @@ export interface CreateIndicatorInput {
   currentValue?: string | null;
   unitLabel?: string | null;
   status?: KRStatus;
-  sortOrder?: number;
   dueDate?: string | null;
 }
 
@@ -177,7 +176,6 @@ export function apiIndicatorToKeyResult(api: ApiIndicator): KeyResult {
     periodLabel: null,
     periodStart: null,
     periodEnd: null,
-    sortOrder: api.sort_order,
     createdAt: api.created_at,
     updatedAt: api.updated_at,
     deletedAt: null,
@@ -198,7 +196,6 @@ export function keyResultToCreateIndicatorBody(input: CreateIndicatorInput): Cre
     current_value: parseNumberOrUndefined(input.currentValue),
     unit: input.unitLabel ?? undefined,
     status: input.status ? krStatusToApiStatus(input.status) : undefined,
-    sort_order: input.sortOrder ?? 0,
     due_date: input.dueDate ?? undefined,
   };
 }
@@ -212,7 +209,6 @@ export function keyResultToPatchIndicatorBody(patch: UpdateIndicatorInput): Patc
   if (patch.currentValue !== undefined) body.current_value = parseNumberOrUndefined(patch.currentValue);
   if (patch.unitLabel !== undefined) body.unit = patch.unitLabel ?? undefined;
   if (patch.status !== undefined) body.status = krStatusToApiStatus(patch.status);
-  if (patch.sortOrder !== undefined) body.sort_order = patch.sortOrder;
   if (patch.dueDate !== undefined) body.due_date = patch.dueDate ?? undefined;
   return body;
 }

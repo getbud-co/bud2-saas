@@ -15,7 +15,6 @@ type createRequest struct {
 	Title       string     `json:"title" validate:"required,min=1,max=200"`
 	Description *string    `json:"description" validate:"omitempty,max=5000"`
 	Status      string     `json:"status" validate:"omitempty,oneof=todo in_progress done cancelled"`
-	SortOrder   int        `json:"sort_order"`
 	DueDate     *string    `json:"due_date" validate:"omitempty,datetime=2006-01-02"`
 }
 
@@ -28,13 +27,12 @@ type updateRequest struct {
 	IndicatorID *uuid.UUID `json:"indicator_id" validate:"omitempty"`
 	AssigneeID  *uuid.UUID `json:"assignee_id" validate:"omitempty"`
 	Status      *string    `json:"status" validate:"omitempty,oneof=todo in_progress done cancelled"`
-	SortOrder   *int       `json:"sort_order"`
 	DueDate     *string    `json:"due_date" validate:"omitempty,datetime=2006-01-02"`
 }
 
 func (r updateRequest) isEmpty() bool {
 	return r.Title == nil && r.Description == nil && r.IndicatorID == nil &&
-		r.AssigneeID == nil && r.Status == nil && r.SortOrder == nil && r.DueDate == nil
+		r.AssigneeID == nil && r.Status == nil && r.DueDate == nil
 }
 
 var parseOptionalDate = httputil.ParseOptionalDate
@@ -48,7 +46,6 @@ func (r createRequest) toCommand(organizationID domain.TenantID) apptask.CreateC
 		Title:          r.Title,
 		Description:    r.Description,
 		Status:         r.Status,
-		SortOrder:      r.SortOrder,
 		DueDate:        parseOptionalDate(r.DueDate),
 	}
 }
@@ -62,7 +59,6 @@ func (r updateRequest) toCommand(organizationID domain.TenantID, id uuid.UUID) a
 		IndicatorID:    r.IndicatorID,
 		AssigneeID:     r.AssigneeID,
 		Status:         r.Status,
-		SortOrder:      r.SortOrder,
 		DueDate:        parseOptionalDate(r.DueDate),
 	}
 }

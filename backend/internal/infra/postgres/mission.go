@@ -38,7 +38,6 @@ func (r *MissionRepository) Create(ctx context.Context, m *mission.Mission) (*mi
 	row, err := r.q.CreateMission(ctx, sqlc.CreateMissionParams{
 		ID:             m.ID,
 		OrganizationID: m.OrganizationID,
-		CycleID:        uuidPtrToPgtype(m.CycleID),
 		ParentID:       uuidPtrToPgtype(m.ParentID),
 		OwnerID:        m.OwnerID,
 		TeamID:         uuidPtrToPgtype(m.TeamID),
@@ -47,8 +46,8 @@ func (r *MissionRepository) Create(ctx context.Context, m *mission.Mission) (*mi
 		Status:         string(m.Status),
 		Visibility:     string(m.Visibility),
 		KanbanStatus:   string(m.KanbanStatus),
-		SortOrder:      int32(m.SortOrder),
-		DueDate:        timeToPgtypeDate(m.DueDate),
+		StartDate:      pgtype.Date{Time: m.StartDate, Valid: true},
+		EndDate:        pgtype.Date{Time: m.EndDate, Valid: true},
 		CompletedAt:    timeToPgtypeTimestamptz(m.CompletedAt),
 	})
 	if err != nil {
@@ -92,7 +91,6 @@ func (r *MissionRepository) List(ctx context.Context, f mission.ListFilter) (mis
 		OrganizationID: f.OrganizationID,
 		Limit:          limit,
 		Offset:         offset,
-		CycleID:        uuidPtrToPgtype(f.CycleID),
 		OwnerID:        uuidPtrToPgtype(f.OwnerID),
 		TeamID:         uuidPtrToPgtype(f.TeamID),
 		Status:         statusParam,
@@ -106,7 +104,6 @@ func (r *MissionRepository) List(ctx context.Context, f mission.ListFilter) (mis
 	}
 	total, err := r.q.CountMissions(ctx, sqlc.CountMissionsParams{
 		OrganizationID: f.OrganizationID,
-		CycleID:        listParams.CycleID,
 		OwnerID:        listParams.OwnerID,
 		TeamID:         listParams.TeamID,
 		Status:         listParams.Status,
@@ -130,15 +127,14 @@ func (r *MissionRepository) Update(ctx context.Context, m *mission.Mission) (*mi
 		OrganizationID: m.OrganizationID,
 		Title:          m.Title,
 		Description:    textToPgtype(m.Description),
-		CycleID:        uuidPtrToPgtype(m.CycleID),
 		ParentID:       uuidPtrToPgtype(m.ParentID),
 		OwnerID:        m.OwnerID,
 		TeamID:         uuidPtrToPgtype(m.TeamID),
 		Status:         string(m.Status),
 		Visibility:     string(m.Visibility),
 		KanbanStatus:   string(m.KanbanStatus),
-		SortOrder:      int32(m.SortOrder),
-		DueDate:        timeToPgtypeDate(m.DueDate),
+		StartDate:      pgtype.Date{Time: m.StartDate, Valid: true},
+		EndDate:        pgtype.Date{Time: m.EndDate, Valid: true},
 		CompletedAt:    timeToPgtypeTimestamptz(m.CompletedAt),
 	})
 	if err != nil {
@@ -163,7 +159,6 @@ func (r *MissionRepository) SoftDeleteSubtree(ctx context.Context, id, organizat
 type missionRowData struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID
-	CycleID        pgtype.UUID
 	ParentID       pgtype.UUID
 	OwnerID        uuid.UUID
 	TeamID         pgtype.UUID
@@ -172,8 +167,8 @@ type missionRowData struct {
 	Status         string
 	Visibility     string
 	KanbanStatus   string
-	SortOrder      int32
-	DueDate        pgtype.Date
+	StartDate      pgtype.Date
+	EndDate        pgtype.Date
 	CompletedAt    pgtype.Timestamptz
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
@@ -183,7 +178,6 @@ func missionRowToDomain(row missionRowData) *mission.Mission {
 	return &mission.Mission{
 		ID:             row.ID,
 		OrganizationID: row.OrganizationID,
-		CycleID:        pgtypeToUUIDPtr(row.CycleID),
 		ParentID:       pgtypeToUUIDPtr(row.ParentID),
 		OwnerID:        row.OwnerID,
 		TeamID:         pgtypeToUUIDPtr(row.TeamID),
@@ -192,8 +186,8 @@ func missionRowToDomain(row missionRowData) *mission.Mission {
 		Status:         mission.Status(row.Status),
 		Visibility:     mission.Visibility(row.Visibility),
 		KanbanStatus:   mission.KanbanStatus(row.KanbanStatus),
-		SortOrder:      int(row.SortOrder),
-		DueDate:        pgtypeDateToTime(row.DueDate),
+		StartDate:      row.StartDate.Time,
+		EndDate:        row.EndDate.Time,
 		CompletedAt:    pgtypeTimestamptzToTime(row.CompletedAt),
 		CreatedAt:      row.CreatedAt,
 		UpdatedAt:      row.UpdatedAt,

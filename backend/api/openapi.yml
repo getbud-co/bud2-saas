@@ -797,9 +797,6 @@ paths:
         - name: size
           in: query
           schema: { type: integer, default: 20 }
-        - name: cycle_id
-          in: query
-          schema: { type: string, format: uuid }
         - name: parent_id
           in: query
           description: "Filter by parent. Use 'null' literal to fetch only root missions."
@@ -1843,11 +1840,10 @@ components:
 
     Mission:
       type: object
-      required: [id, org_id, cycle_id, parent_id, owner_id, team_id, title, description, status, visibility, kanban_status, sort_order, due_date, completed_at, created_at, updated_at]
+      required: [id, org_id, parent_id, owner_id, team_id, title, description, status, visibility, kanban_status, start_date, end_date, completed_at, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         org_id: { type: string, format: uuid }
-        cycle_id: { type: string, format: uuid, nullable: true }
         parent_id: { type: string, format: uuid, nullable: true }
         owner_id: { type: string, format: uuid }
         team_id: { type: string, format: uuid, nullable: true }
@@ -1856,8 +1852,8 @@ components:
         status: { type: string, enum: [draft, active, paused, completed, cancelled] }
         visibility: { type: string, enum: [public, team_only, private] }
         kanban_status: { type: string, enum: [uncategorized, todo, doing, done] }
-        sort_order: { type: integer }
-        due_date: { type: string, format: date, nullable: true }
+        start_date: { type: string, format: date }
+        end_date: { type: string, format: date }
         completed_at: { type: string, format: date-time, nullable: true }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
@@ -1891,7 +1887,7 @@ components:
 
     CreateMissionRequest:
       type: object
-      required: [title, owner_id]
+      required: [title, owner_id, start_date, end_date]
       description: |
         POST /missions accepts inline `indicators` and `tasks` so the whole
         mission can be created atomically (one request, one transaction). To
@@ -1902,15 +1898,14 @@ components:
       properties:
         title: { type: string, minLength: 1, maxLength: 200 }
         description: { type: string, maxLength: 5000, nullable: true }
-        cycle_id: { type: string, format: uuid, nullable: true }
         parent_id: { type: string, format: uuid, nullable: true }
         owner_id: { type: string, format: uuid }
         team_id: { type: string, format: uuid, nullable: true }
         status: { type: string, enum: [draft, active, paused, completed, cancelled] }
         visibility: { type: string, enum: [public, team_only, private] }
         kanban_status: { type: string, enum: [uncategorized, todo, doing, done] }
-        sort_order: { type: integer }
-        due_date: { type: string, format: date, nullable: true }
+        start_date: { type: string, format: date }
+        end_date: { type: string, format: date }
         indicators:
           type: array
           items:
@@ -1932,7 +1927,6 @@ components:
         current_value: { type: number, format: double, nullable: true }
         unit: { type: string, maxLength: 32, nullable: true }
         status: { type: string, enum: [draft, active, at_risk, done, archived] }
-        sort_order: { type: integer }
         due_date: { type: string, format: date, nullable: true }
 
     CreateMissionTaskInline:
@@ -1955,7 +1949,6 @@ components:
         title: { type: string, minLength: 1, maxLength: 200 }
         description: { type: string, maxLength: 5000, nullable: true }
         status: { type: string, enum: [todo, in_progress, done, cancelled] }
-        sort_order: { type: integer }
         due_date: { type: string, format: date, nullable: true }
 
     PatchMissionRequest:
@@ -1971,18 +1964,17 @@ components:
       properties:
         title: { type: string, minLength: 1, maxLength: 200 }
         description: { type: string, maxLength: 5000 }
-        cycle_id: { type: string, format: uuid }
         owner_id: { type: string, format: uuid }
         team_id: { type: string, format: uuid }
         status: { type: string, enum: [draft, active, paused, completed, cancelled] }
         visibility: { type: string, enum: [public, team_only, private] }
         kanban_status: { type: string, enum: [uncategorized, todo, doing, done] }
-        sort_order: { type: integer }
-        due_date: { type: string, format: date }
+        start_date: { type: string, format: date }
+        end_date: { type: string, format: date }
 
     Indicator:
       type: object
-      required: [id, org_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, sort_order, due_date, created_at, updated_at]
+      required: [id, org_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         org_id: { type: string, format: uuid }
@@ -1994,7 +1986,6 @@ components:
         current_value: { type: number, format: double, nullable: true }
         unit: { type: string, nullable: true }
         status: { type: string, enum: [draft, active, at_risk, done, archived] }
-        sort_order: { type: integer }
         due_date: { type: string, format: date, nullable: true }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
@@ -2023,7 +2014,6 @@ components:
         current_value: { type: number, format: double, nullable: true }
         unit: { type: string, maxLength: 32, nullable: true }
         status: { type: string, enum: [draft, active, at_risk, done, archived] }
-        sort_order: { type: integer }
         due_date: { type: string, format: date, nullable: true }
 
     PatchIndicatorRequest:
@@ -2041,12 +2031,11 @@ components:
         current_value: { type: number, format: double }
         unit: { type: string, maxLength: 32 }
         status: { type: string, enum: [draft, active, at_risk, done, archived] }
-        sort_order: { type: integer }
         due_date: { type: string, format: date }
 
     Task:
       type: object
-      required: [id, org_id, mission_id, indicator_id, assignee_id, title, description, status, sort_order, due_date, completed_at, created_at, updated_at]
+      required: [id, org_id, mission_id, indicator_id, assignee_id, title, description, status, due_date, completed_at, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         org_id: { type: string, format: uuid }
@@ -2063,7 +2052,6 @@ components:
         title: { type: string }
         description: { type: string, nullable: true }
         status: { type: string, enum: [todo, in_progress, done, cancelled] }
-        sort_order: { type: integer }
         due_date: { type: string, format: date, nullable: true }
         completed_at: { type: string, format: date-time, nullable: true }
         created_at: { type: string, format: date-time }
@@ -2097,7 +2085,6 @@ components:
         title: { type: string, minLength: 1, maxLength: 200 }
         description: { type: string, maxLength: 5000, nullable: true }
         status: { type: string, enum: [todo, in_progress, done, cancelled] }
-        sort_order: { type: integer }
         due_date: { type: string, format: date, nullable: true }
 
     PatchTaskRequest:
@@ -2115,7 +2102,6 @@ components:
         indicator_id: { type: string, format: uuid }
         assignee_id: { type: string, format: uuid }
         status: { type: string, enum: [todo, in_progress, done, cancelled] }
-        sort_order: { type: integer }
         due_date: { type: string, format: date }
 
     Role:

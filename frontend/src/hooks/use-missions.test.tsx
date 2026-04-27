@@ -173,7 +173,7 @@ describe("useMissions", () => {
     expect(url).toContain(`parent_id=${parentID}`);
   });
 
-  it("propagates status, cycle_id, owner_id, team_id filters to the URL", async () => {
+  it("propagates status, owner_id, team_id filters to the URL", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify(payload()), {
         status: 200,
@@ -187,7 +187,6 @@ describe("useMissions", () => {
       () =>
         useMissions({
           status: "active",
-          cycleId: "cycle-1",
           ownerId: "user-1",
           teamId: "team-1",
         }),
@@ -197,7 +196,6 @@ describe("useMissions", () => {
 
     const url = lastFetchedURL(fetchMock);
     expect(url).toContain("status=active");
-    expect(url).toContain("cycle_id=cycle-1");
     expect(url).toContain("owner_id=user-1");
     expect(url).toContain("team_id=team-1");
   });

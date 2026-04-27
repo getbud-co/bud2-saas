@@ -111,7 +111,6 @@ function apiMissionToMission(api: ApiMission, keyResults: KeyResult[], tasks: Mi
   return {
     id: api.id,
     orgId: api.org_id,
-    cycleId: api.cycle_id ?? null,
     parentId: api.parent_id ?? null,
     depth: 0,
     path: [api.id],
@@ -123,8 +122,8 @@ function apiMissionToMission(api: ApiMission, keyResults: KeyResult[], tasks: Mi
     visibility: api.visibility,
     progress: 0,
     kanbanStatus: api.kanban_status,
-    sortOrder: api.sort_order,
-    dueDate: api.due_date ?? null,
+    startDate: api.start_date,
+    endDate: api.end_date,
     completedAt: api.completed_at ?? null,
     createdAt: api.created_at,
     updatedAt: api.updated_at,

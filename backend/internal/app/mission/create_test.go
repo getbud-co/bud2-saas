@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -12,7 +13,6 @@ import (
 
 	apptx "github.com/getbud-co/bud2/backend/internal/app/tx"
 	"github.com/getbud-co/bud2/backend/internal/domain"
-	domaincycle "github.com/getbud-co/bud2/backend/internal/domain/cycle"
 	domainindicator "github.com/getbud-co/bud2/backend/internal/domain/indicator"
 	domainmission "github.com/getbud-co/bud2/backend/internal/domain/mission"
 	domainorg "github.com/getbud-co/bud2/backend/internal/domain/organization"
@@ -56,11 +56,10 @@ func (m nopTxManager) WithTx(_ context.Context, fn func(repos apptx.Repositories
 	return fn(nopTxRepos{missions: m.missions, indicators: m.indicators, tasks: m.tasks})
 }
 
-// missionDeps is a tiny holder for the four repos a mission Create/Update
+// missionDeps is a tiny holder for the repos a mission Create/Update
 // use case needs. Each test wires only what it cares about.
 type missionDeps struct {
 	missions *mocks.MissionRepository
-	cycles   *mocks.CycleRepository
 	teams    *mocks.TeamRepository
 	users    *mocks.UserRepository
 }
@@ -68,7 +67,6 @@ type missionDeps struct {
 func newMissionDeps() missionDeps {
 	return missionDeps{
 		missions: new(mocks.MissionRepository),
-		cycles:   new(mocks.CycleRepository),
 		teams:    new(mocks.TeamRepository),
 		users:    new(mocks.UserRepository),
 	}
@@ -84,7 +82,7 @@ func (d missionDeps) allowOwner() missionDeps {
 
 func (d missionDeps) newCreateUseCase() *CreateUseCase {
 	txm := nopTxManager{missions: d.missions}
-	return NewCreateUseCase(d.missions, d.cycles, d.teams, d.users, txm, testutil.NewDiscardLogger())
+	return NewCreateUseCase(d.missions, d.teams, d.users, txm, testutil.NewDiscardLogger())
 }
 
 func TestCreateUseCase_Execute_Success_AppliesDefaults(t *testing.T) {
@@ -99,6 +97,8 @@ func TestCreateUseCase_Execute_Success_AppliesDefaults(t *testing.T) {
 		OrganizationID: fixtures.NewTestTenantID(),
 		Title:          "Reduzir churn",
 		OwnerID:        uuid.New(),
+		StartDate:      time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		EndDate:        time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
 	})
 
 	require.NoError(t, err)
@@ -188,23 +188,6 @@ func TestCreateUseCase_Execute_OwnerLookupGenericError_Propagates(t *testing.T) 
 	assert.NotErrorIs(t, err, domainmission.ErrInvalidReference, "real DB errors must NOT be remapped")
 }
 
-func TestCreateUseCase_Execute_CycleInDifferentOrg_ReturnsInvalidReference(t *testing.T) {
-	cycleID := uuid.New()
-	d := newMissionDeps().allowOwner()
-	d.cycles.On("GetByID", mock.Anything, cycleID, mock.Anything).
-		Return(nil, domaincycle.ErrNotFound)
-
-	_, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
-		OrganizationID: fixtures.NewTestTenantID(),
-		OwnerID:        uuid.New(),
-		Title:          "x",
-		CycleID:        &cycleID,
-	})
-
-	assert.ErrorIs(t, err, domainmission.ErrInvalidReference)
-	d.missions.AssertNotCalled(t, "Create")
-}
-
 func TestCreateUseCase_Execute_TeamInDifferentOrg_ReturnsInvalidReference(t *testing.T) {
 	teamID := uuid.New()
 	d := newMissionDeps().allowOwner()
@@ -231,6 +214,8 @@ func TestCreateUseCase_Execute_RepoError_PropagatesError(t *testing.T) {
 		OrganizationID: fixtures.NewTestTenantID(),
 		OwnerID:        uuid.New(),
 		Title:          "ok",
+		StartDate:      time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		EndDate:        time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
 	})
 
 	assert.ErrorIs(t, err, repoErr)

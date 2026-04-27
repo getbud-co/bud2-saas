@@ -46,9 +46,9 @@ func (q *Queries) CountTasks(ctx context.Context, arg CountTasksParams) (int64, 
 }
 
 const createTask = `-- name: CreateTask :one
-INSERT INTO tasks (id, organization_id, mission_id, indicator_id, assignee_id, title, description, status, sort_order, due_date, completed_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-RETURNING id, organization_id, mission_id, indicator_id, assignee_id, title, description, status, sort_order, due_date, completed_at, created_at, updated_at
+INSERT INTO tasks (id, organization_id, mission_id, indicator_id, assignee_id, title, description, status, due_date, completed_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING id, organization_id, mission_id, indicator_id, assignee_id, title, description, status, due_date, completed_at, created_at, updated_at
 `
 
 type CreateTaskParams struct {
@@ -60,7 +60,6 @@ type CreateTaskParams struct {
 	Title          string
 	Description    pgtype.Text
 	Status         string
-	SortOrder      int32
 	DueDate        pgtype.Date
 	CompletedAt    pgtype.Timestamptz
 }
@@ -74,7 +73,6 @@ type CreateTaskRow struct {
 	Title          string
 	Description    pgtype.Text
 	Status         string
-	SortOrder      int32
 	DueDate        pgtype.Date
 	CompletedAt    pgtype.Timestamptz
 	CreatedAt      time.Time
@@ -91,7 +89,6 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (CreateT
 		arg.Title,
 		arg.Description,
 		arg.Status,
-		arg.SortOrder,
 		arg.DueDate,
 		arg.CompletedAt,
 	)
@@ -105,7 +102,6 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (CreateT
 		&i.Title,
 		&i.Description,
 		&i.Status,
-		&i.SortOrder,
 		&i.DueDate,
 		&i.CompletedAt,
 		&i.CreatedAt,
@@ -115,7 +111,7 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (CreateT
 }
 
 const getTaskByID = `-- name: GetTaskByID :one
-SELECT id, organization_id, mission_id, indicator_id, assignee_id, title, description, status, sort_order, due_date, completed_at, created_at, updated_at
+SELECT id, organization_id, mission_id, indicator_id, assignee_id, title, description, status, due_date, completed_at, created_at, updated_at
 FROM tasks
 WHERE id = $1
   AND organization_id = $2
@@ -136,7 +132,6 @@ type GetTaskByIDRow struct {
 	Title          string
 	Description    pgtype.Text
 	Status         string
-	SortOrder      int32
 	DueDate        pgtype.Date
 	CompletedAt    pgtype.Timestamptz
 	CreatedAt      time.Time
@@ -155,7 +150,6 @@ func (q *Queries) GetTaskByID(ctx context.Context, arg GetTaskByIDParams) (GetTa
 		&i.Title,
 		&i.Description,
 		&i.Status,
-		&i.SortOrder,
 		&i.DueDate,
 		&i.CompletedAt,
 		&i.CreatedAt,
@@ -165,7 +159,7 @@ func (q *Queries) GetTaskByID(ctx context.Context, arg GetTaskByIDParams) (GetTa
 }
 
 const listTasks = `-- name: ListTasks :many
-SELECT id, organization_id, mission_id, indicator_id, assignee_id, title, description, status, sort_order, due_date, completed_at, created_at, updated_at
+SELECT id, organization_id, mission_id, indicator_id, assignee_id, title, description, status, due_date, completed_at, created_at, updated_at
 FROM tasks
 WHERE organization_id = $1
   AND deleted_at IS NULL
@@ -173,7 +167,7 @@ WHERE organization_id = $1
   AND ($5::uuid IS NULL OR indicator_id = $5)
   AND ($6::uuid IS NULL OR assignee_id = $6)
   AND ($7::text IS NULL OR status = $7)
-ORDER BY sort_order ASC, created_at ASC
+ORDER BY created_at ASC
 LIMIT $2 OFFSET $3
 `
 
@@ -196,7 +190,6 @@ type ListTasksRow struct {
 	Title          string
 	Description    pgtype.Text
 	Status         string
-	SortOrder      int32
 	DueDate        pgtype.Date
 	CompletedAt    pgtype.Timestamptz
 	CreatedAt      time.Time
@@ -229,7 +222,6 @@ func (q *Queries) ListTasks(ctx context.Context, arg ListTasksParams) ([]ListTas
 			&i.Title,
 			&i.Description,
 			&i.Status,
-			&i.SortOrder,
 			&i.DueDate,
 			&i.CompletedAt,
 			&i.CreatedAt,
@@ -273,14 +265,13 @@ SET title        = $3,
     indicator_id = $5,
     assignee_id  = $6,
     status       = $7,
-    sort_order   = $8,
-    due_date     = $9,
-    completed_at = $10,
+    due_date     = $8,
+    completed_at = $9,
     updated_at   = NOW()
 WHERE id = $1
   AND organization_id = $2
   AND deleted_at IS NULL
-RETURNING id, organization_id, mission_id, indicator_id, assignee_id, title, description, status, sort_order, due_date, completed_at, created_at, updated_at
+RETURNING id, organization_id, mission_id, indicator_id, assignee_id, title, description, status, due_date, completed_at, created_at, updated_at
 `
 
 type UpdateTaskParams struct {
@@ -291,7 +282,6 @@ type UpdateTaskParams struct {
 	IndicatorID    pgtype.UUID
 	AssigneeID     uuid.UUID
 	Status         string
-	SortOrder      int32
 	DueDate        pgtype.Date
 	CompletedAt    pgtype.Timestamptz
 }
@@ -305,7 +295,6 @@ type UpdateTaskRow struct {
 	Title          string
 	Description    pgtype.Text
 	Status         string
-	SortOrder      int32
 	DueDate        pgtype.Date
 	CompletedAt    pgtype.Timestamptz
 	CreatedAt      time.Time
@@ -321,7 +310,6 @@ func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) (UpdateT
 		arg.IndicatorID,
 		arg.AssigneeID,
 		arg.Status,
-		arg.SortOrder,
 		arg.DueDate,
 		arg.CompletedAt,
 	)
@@ -335,7 +323,6 @@ func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) (UpdateT
 		&i.Title,
 		&i.Description,
 		&i.Status,
-		&i.SortOrder,
 		&i.DueDate,
 		&i.CompletedAt,
 		&i.CreatedAt,

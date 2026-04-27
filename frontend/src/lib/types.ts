@@ -1345,7 +1345,6 @@ export interface paths {
                 query?: {
                     page?: number;
                     size?: number;
-                    cycle_id?: string;
                     /** @description Filter by parent. Use 'null' literal to fetch only root missions. */
                     parent_id?: string;
                     status?: "draft" | "active" | "paused" | "completed" | "cancelled";
@@ -2704,8 +2703,6 @@ export interface components {
             /** Format: uuid */
             org_id: string;
             /** Format: uuid */
-            cycle_id: string | null;
-            /** Format: uuid */
             parent_id: string | null;
             /** Format: uuid */
             owner_id: string;
@@ -2719,9 +2716,10 @@ export interface components {
             visibility: "public" | "team_only" | "private";
             /** @enum {string} */
             kanban_status: "uncategorized" | "todo" | "doing" | "done";
-            sort_order: number;
             /** Format: date */
-            due_date: string | null;
+            start_date: string;
+            /** Format: date */
+            end_date: string;
             /** Format: date-time */
             completed_at: string | null;
             /** Format: date-time */
@@ -2758,8 +2756,6 @@ export interface components {
             title: string;
             description?: string | null;
             /** Format: uuid */
-            cycle_id?: string | null;
-            /** Format: uuid */
             parent_id?: string | null;
             /** Format: uuid */
             owner_id: string;
@@ -2771,9 +2767,10 @@ export interface components {
             visibility?: "public" | "team_only" | "private";
             /** @enum {string} */
             kanban_status?: "uncategorized" | "todo" | "doing" | "done";
-            sort_order?: number;
             /** Format: date */
-            due_date?: string | null;
+            start_date: string;
+            /** Format: date */
+            end_date: string;
             indicators?: components["schemas"]["CreateMissionIndicatorInline"][];
             tasks?: components["schemas"]["CreateMissionTaskInline"][];
         };
@@ -2790,7 +2787,6 @@ export interface components {
             unit?: string | null;
             /** @enum {string} */
             status?: "draft" | "active" | "at_risk" | "done" | "archived";
-            sort_order?: number;
             /** Format: date */
             due_date?: string | null;
         };
@@ -2812,7 +2808,6 @@ export interface components {
             description?: string | null;
             /** @enum {string} */
             status?: "todo" | "in_progress" | "done" | "cancelled";
-            sort_order?: number;
             /** Format: date */
             due_date?: string | null;
         };
@@ -2829,8 +2824,6 @@ export interface components {
             title?: string;
             description?: string;
             /** Format: uuid */
-            cycle_id?: string;
-            /** Format: uuid */
             owner_id?: string;
             /** Format: uuid */
             team_id?: string;
@@ -2840,9 +2833,10 @@ export interface components {
             visibility?: "public" | "team_only" | "private";
             /** @enum {string} */
             kanban_status?: "uncategorized" | "todo" | "doing" | "done";
-            sort_order?: number;
             /** Format: date */
-            due_date?: string;
+            start_date?: string;
+            /** Format: date */
+            end_date?: string;
         };
         Indicator: {
             /** Format: uuid */
@@ -2862,7 +2856,6 @@ export interface components {
             unit: string | null;
             /** @enum {string} */
             status: "draft" | "active" | "at_risk" | "done" | "archived";
-            sort_order: number;
             /** Format: date */
             due_date: string | null;
             /** Format: date-time */
@@ -2890,7 +2883,6 @@ export interface components {
             unit?: string | null;
             /** @enum {string} */
             status?: "draft" | "active" | "at_risk" | "done" | "archived";
-            sort_order?: number;
             /** Format: date */
             due_date?: string | null;
         };
@@ -2912,7 +2904,6 @@ export interface components {
             unit?: string;
             /** @enum {string} */
             status?: "draft" | "active" | "at_risk" | "done" | "archived";
-            sort_order?: number;
             /** Format: date */
             due_date?: string;
         };
@@ -2936,7 +2927,6 @@ export interface components {
             description: string | null;
             /** @enum {string} */
             status: "todo" | "in_progress" | "done" | "cancelled";
-            sort_order: number;
             /** Format: date */
             due_date: string | null;
             /** Format: date-time */
@@ -2967,7 +2957,6 @@ export interface components {
             description?: string | null;
             /** @enum {string} */
             status?: "todo" | "in_progress" | "done" | "cancelled";
-            sort_order?: number;
             /** Format: date */
             due_date?: string | null;
         };
@@ -2988,7 +2977,6 @@ export interface components {
             assignee_id?: string;
             /** @enum {string} */
             status?: "todo" | "in_progress" | "done" | "cancelled";
-            sort_order?: number;
             /** Format: date */
             due_date?: string;
         };

@@ -142,10 +142,10 @@ func main() {
 	updateCycle := appcycle.NewUpdateUseCase(cycleRepo, logger)
 	deleteCycle := appcycle.NewDeleteUseCase(cycleRepo, logger)
 
-	createMission := appmission.NewCreateUseCase(missionRepo, cycleRepo, teamRepo, userRepo, txManager, logger)
+	createMission := appmission.NewCreateUseCase(missionRepo, teamRepo, userRepo, txManager, logger)
 	getMission := appmission.NewGetUseCase(missionRepo, logger)
 	listMission := appmission.NewListUseCase(missionRepo, logger)
-	updateMission := appmission.NewUpdateUseCase(missionRepo, cycleRepo, teamRepo, userRepo, logger)
+	updateMission := appmission.NewUpdateUseCase(missionRepo, teamRepo, userRepo, logger)
 	deleteMission := appmission.NewDeleteUseCase(missionRepo, logger)
 
 	createIndicator := appindicator.NewCreateUseCase(indicatorRepo, missionRepo, userRepo, logger)

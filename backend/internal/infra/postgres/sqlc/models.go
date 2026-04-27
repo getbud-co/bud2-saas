@@ -37,7 +37,6 @@ type Indicator struct {
 	CurrentValue   pgtype.Numeric
 	Unit           pgtype.Text
 	Status         string
-	SortOrder      int32
 	DueDate        pgtype.Date
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
@@ -47,7 +46,6 @@ type Indicator struct {
 type Mission struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID
-	CycleID        pgtype.UUID
 	ParentID       pgtype.UUID
 	OwnerID        uuid.UUID
 	TeamID         pgtype.UUID
@@ -56,8 +54,8 @@ type Mission struct {
 	Status         string
 	Visibility     string
 	KanbanStatus   string
-	SortOrder      int32
-	DueDate        pgtype.Date
+	StartDate      pgtype.Date
+	EndDate        pgtype.Date
 	CompletedAt    pgtype.Timestamptz
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
@@ -119,7 +117,6 @@ type Task struct {
 	Title          string
 	Description    pgtype.Text
 	Status         string
-	SortOrder      int32
 	DueDate        pgtype.Date
 	CompletedAt    pgtype.Timestamptz
 	CreatedAt      time.Time
