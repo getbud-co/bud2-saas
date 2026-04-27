@@ -111,6 +111,47 @@ describe("composeMissionTree", () => {
     expect(tree[0]!.tasks).toHaveLength(2);
   });
 
+  it("wires children by parent_id and computes depth/path", () => {
+    const root: ApiMission = { ...apiMission, id: "m-root", title: "root" };
+    const child: ApiMission = { ...apiMission, id: "m-child", title: "child", parent_id: "m-root" };
+    const grand: ApiMission = { ...apiMission, id: "m-grand", title: "grand", parent_id: "m-child" };
+
+    const tree = composeMissionTree([root, child, grand], [], []);
+    expect(tree).toHaveLength(3);
+
+    const r = tree.find((m) => m.id === "m-root")!;
+    const c = tree.find((m) => m.id === "m-child")!;
+    const g = tree.find((m) => m.id === "m-grand")!;
+
+    expect(r.depth).toBe(0);
+    expect(r.path).toEqual(["m-root"]);
+    expect(r.children?.map((m) => m.id)).toEqual(["m-child"]);
+
+    expect(c.depth).toBe(1);
+    expect(c.path).toEqual(["m-root", "m-child"]);
+    expect(c.children?.map((m) => m.id)).toEqual(["m-grand"]);
+
+    expect(g.depth).toBe(2);
+    expect(g.path).toEqual(["m-root", "m-child", "m-grand"]);
+    expect(g.children).toEqual([]);
+  });
+
+  it("orphans (parent missing in input) are promoted to roots", () => {
+    const orphan: ApiMission = { ...apiMission, id: "m-orphan", parent_id: "m-not-in-input" };
+    const tree = composeMissionTree([orphan], [], []);
+    expect(tree[0]!.parentId).toBeNull();
+    expect(tree[0]!.depth).toBe(0);
+  });
+
+  it("two siblings appear in input order under the same parent", () => {
+    const root: ApiMission = { ...apiMission, id: "r" };
+    const a: ApiMission = { ...apiMission, id: "a", parent_id: "r" };
+    const b: ApiMission = { ...apiMission, id: "b", parent_id: "r" };
+    const tree = composeMissionTree([root, a, b], [], []);
+    const r = tree.find((m) => m.id === "r")!;
+    expect(r.children?.map((m) => m.id)).toEqual(["a", "b"]);
+  });
+
   it("handles two missions in one call", () => {
     const m2: ApiMission = { ...apiMission, id: "m-2", title: "Other" };
     const kr2: KeyResult = { ...kr, id: "ind-2", missionId: "m-2" };

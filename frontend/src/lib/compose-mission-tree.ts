@@ -19,6 +19,17 @@ type ApiMission = components["schemas"]["Mission"];
 // depends on missions identity to skip recomputation).
 const EMPTY: Mission[] = Object.freeze([] as Mission[]) as Mission[];
 
+// Returns a flat list with every mission, ordered with each parent before
+// its children. Each Mission carries `children` populated with its direct
+// descendants — also flat-listed elsewhere in the array — and `depth` /
+// `path` derived from the parent chain. Consumers that want only the
+// roots filter by `parentId === null`; consumers that want the subtree
+// of a single mission walk `children` (which is recursive).
+//
+// Why both flat and tree? The page filters/sorts/group on the flat list
+// (team grouping, sort_order at the same level), and the tree view walks
+// `children` directly. Returning both shapes from a single composition
+// avoids duplicate state.
 export function composeMissionTree(
   missions: ApiMission[] | undefined,
   indicators: KeyResult[] | undefined,
@@ -27,7 +38,43 @@ export function composeMissionTree(
   if (!missions || missions.length === 0) return EMPTY;
   const indByMission = groupBy(indicators ?? [], (kr) => kr.missionId);
   const tasksByMission = groupBy(tasks ?? [], (t) => t.missionId ?? "");
-  return missions.map((api) => apiMissionToMission(api, indByMission.get(api.id) ?? [], tasksByMission.get(api.id) ?? []));
+
+  // Build raw nodes in input order so siblings keep API ordering (the API
+  // already returns them sorted by sort_order, created_at).
+  const byId = new Map<string, Mission>();
+  const orderedIds: string[] = [];
+  for (const api of missions) {
+    const node = apiMissionToMission(
+      api,
+      indByMission.get(api.id) ?? [],
+      tasksByMission.get(api.id) ?? [],
+    );
+    byId.set(api.id, node);
+    orderedIds.push(api.id);
+  }
+
+  // Wire children + compute depth/path. A child's `children` field is
+  // assigned to the same array reference held in the flat list, so
+  // mutating one view updates the other (intended — the page reads from
+  // the flat list during filter/sort and from `children` during render).
+  for (const id of orderedIds) {
+    const node = byId.get(id)!;
+    if (node.parentId == null) continue;
+    const parent = byId.get(node.parentId);
+    if (!parent) {
+      // Parent is in another org or has been deleted — promote the
+      // orphan to a root rather than dropping it. Avoids data loss in
+      // the UI when the API returns a partial subtree (rare).
+      node.parentId = null;
+      continue;
+    }
+    parent.children = parent.children ?? [];
+    parent.children.push(node);
+    node.depth = parent.depth + 1;
+    node.path = [...parent.path, node.id];
+  }
+
+  return orderedIds.map((id) => byId.get(id)!);
 }
 
 // Same composer but accepting raw API payloads for indicators/tasks. Useful
