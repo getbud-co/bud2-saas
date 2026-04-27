@@ -19,6 +19,7 @@ import (
 	apiorg "github.com/getbud-co/bud2/backend/internal/api/organization"
 	apiperm "github.com/getbud-co/bud2/backend/internal/api/permission"
 	apirole "github.com/getbud-co/bud2/backend/internal/api/role"
+	apitask "github.com/getbud-co/bud2/backend/internal/api/task"
 	apiteam "github.com/getbud-co/bud2/backend/internal/api/team"
 	apiuser "github.com/getbud-co/bud2/backend/internal/api/user"
 	"github.com/getbud-co/bud2/backend/internal/infra/postgres/sqlc"
@@ -39,7 +40,7 @@ type RouterConfig struct {
 	RequestTimeout time.Duration
 }
 
-func NewRouter(bootstrapHandler BootstrapHandler, authHandler *auth.Handler, orgHandler *apiorg.Handler, userHandler *apiuser.Handler, teamHandler *apiteam.Handler, roleHandler *apirole.Handler, permissionHandler *apiperm.Handler, cycleHandler *apicycle.Handler, missionHandler *apimission.Handler, indicatorHandler *apiindicator.Handler, cfg RouterConfig) *chi.Mux {
+func NewRouter(bootstrapHandler BootstrapHandler, authHandler *auth.Handler, orgHandler *apiorg.Handler, userHandler *apiuser.Handler, teamHandler *apiteam.Handler, roleHandler *apirole.Handler, permissionHandler *apiperm.Handler, cycleHandler *apicycle.Handler, missionHandler *apimission.Handler, indicatorHandler *apiindicator.Handler, taskHandler *apitask.Handler, cfg RouterConfig) *chi.Mux {
 	r := chi.NewRouter()
 
 	allowedOrigins := cfg.AllowedOrigins
@@ -164,6 +165,17 @@ func NewRouter(bootstrapHandler BootstrapHandler, authHandler *auth.Handler, org
 			r.With(middleware.RequirePermission(cfg.Enforcer, "indicators", "read")).Get("/{id}", indicatorHandler.Get)
 			r.With(middleware.RequirePermission(cfg.Enforcer, "indicators", "write")).Patch("/{id}", indicatorHandler.Update)
 			r.With(middleware.RequirePermission(cfg.Enforcer, "indicators", "delete")).Delete("/{id}", indicatorHandler.Delete)
+		})
+
+		r.Route("/tasks", func(r chi.Router) {
+			r.Use(middleware.AuthMiddleware(middleware.AuthMiddlewareConfig{JWTSecret: cfg.JWTSecret}))
+			r.Use(middleware.TenantMiddleware)
+			r.Use(middleware.ActiveOrganizationMiddleware(sqlc.New(cfg.Pool)))
+			r.With(middleware.RequirePermission(cfg.Enforcer, "tasks", "write")).Post("/", taskHandler.Create)
+			r.With(middleware.RequirePermission(cfg.Enforcer, "tasks", "read")).Get("/", taskHandler.List)
+			r.With(middleware.RequirePermission(cfg.Enforcer, "tasks", "read")).Get("/{id}", taskHandler.Get)
+			r.With(middleware.RequirePermission(cfg.Enforcer, "tasks", "write")).Patch("/{id}", taskHandler.Update)
+			r.With(middleware.RequirePermission(cfg.Enforcer, "tasks", "delete")).Delete("/{id}", taskHandler.Delete)
 		})
 	})
 

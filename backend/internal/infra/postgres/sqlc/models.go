@@ -110,6 +110,22 @@ type Role struct {
 	UpdatedAt   time.Time
 }
 
+type Task struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	MissionID      uuid.UUID
+	AssigneeID     uuid.UUID
+	Title          string
+	Description    pgtype.Text
+	Status         string
+	SortOrder      int32
+	DueDate        pgtype.Date
+	CompletedAt    pgtype.Timestamptz
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	DeletedAt      pgtype.Timestamptz
+}
+
 type Team struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID

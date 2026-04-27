@@ -23,6 +23,7 @@ type Querier interface {
 	CountOrganizationsByStatus(ctx context.Context, status string) (int64, error)
 	CountOrganizationsByUser(ctx context.Context, userID uuid.UUID) (int64, error)
 	CountOrganizationsByUserAndStatus(ctx context.Context, arg CountOrganizationsByUserAndStatusParams) (int64, error)
+	CountTasks(ctx context.Context, arg CountTasksParams) (int64, error)
 	CountTeams(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	CountTeamsByStatus(ctx context.Context, arg CountTeamsByStatusParams) (int64, error)
 	CreateCycle(ctx context.Context, arg CreateCycleParams) (CreateCycleRow, error)
@@ -31,6 +32,7 @@ type Querier interface {
 	CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (CreateOrganizationRow, error)
 	CreateOrganizationMembership(ctx context.Context, arg CreateOrganizationMembershipParams) (CreateOrganizationMembershipRow, error)
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (CreateRefreshTokenRow, error)
+	CreateTask(ctx context.Context, arg CreateTaskParams) (CreateTaskRow, error)
 	CreateTeam(ctx context.Context, arg CreateTeamParams) (CreateTeamRow, error)
 	CreateTeamMember(ctx context.Context, arg CreateTeamMemberParams) (CreateTeamMemberRow, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
@@ -44,6 +46,7 @@ type Querier interface {
 	GetOrganizationByIDForUser(ctx context.Context, arg GetOrganizationByIDForUserParams) (GetOrganizationByIDForUserRow, error)
 	GetOrganizationByWorkspace(ctx context.Context, workspace string) (GetOrganizationByWorkspaceRow, error)
 	GetRefreshTokenByTokenHash(ctx context.Context, tokenHash string) (GetRefreshTokenByTokenHashRow, error)
+	GetTaskByID(ctx context.Context, arg GetTaskByIDParams) (GetTaskByIDRow, error)
 	GetTeamByID(ctx context.Context, arg GetTeamByIDParams) (GetTeamByIDRow, error)
 	GetTeamByName(ctx context.Context, arg GetTeamByNameParams) (GetTeamByNameRow, error)
 	GetTeamMemberByTeamAndUser(ctx context.Context, arg GetTeamMemberByTeamAndUserParams) (GetTeamMemberByTeamAndUserRow, error)
@@ -61,6 +64,7 @@ type Querier interface {
 	ListOrganizationsByUser(ctx context.Context, arg ListOrganizationsByUserParams) ([]ListOrganizationsByUserRow, error)
 	ListOrganizationsByUserAndStatus(ctx context.Context, arg ListOrganizationsByUserAndStatusParams) ([]ListOrganizationsByUserAndStatusRow, error)
 	ListRoles(ctx context.Context, organizationID uuid.UUID) ([]ListRolesRow, error)
+	ListTasks(ctx context.Context, arg ListTasksParams) ([]ListTasksRow, error)
 	ListTeamMembers(ctx context.Context, arg ListTeamMembersParams) ([]ListTeamMembersRow, error)
 	ListTeamMembersByOrganizationUser(ctx context.Context, arg ListTeamMembersByOrganizationUserParams) ([]ListTeamMembersByOrganizationUserRow, error)
 	ListTeamMembersByOrganizationUsers(ctx context.Context, arg ListTeamMembersByOrganizationUsersParams) ([]ListTeamMembersByOrganizationUsersRow, error)
@@ -76,6 +80,7 @@ type Querier interface {
 	SoftDeleteOrganization(ctx context.Context, id uuid.UUID) error
 	SoftDeleteOrganizationMembership(ctx context.Context, arg SoftDeleteOrganizationMembershipParams) error
 	SoftDeleteOrganizationMembershipsByOrganization(ctx context.Context, organizationID uuid.UUID) error
+	SoftDeleteTask(ctx context.Context, arg SoftDeleteTaskParams) (int64, error)
 	SoftDeleteTeam(ctx context.Context, arg SoftDeleteTeamParams) error
 	SoftDeleteTeamMember(ctx context.Context, id uuid.UUID) error
 	SoftDeleteTeamMembersByOrganizationUser(ctx context.Context, arg SoftDeleteTeamMembersByOrganizationUserParams) error
@@ -85,6 +90,7 @@ type Querier interface {
 	UpdateMission(ctx context.Context, arg UpdateMissionParams) (UpdateMissionRow, error)
 	UpdateOrganization(ctx context.Context, arg UpdateOrganizationParams) (UpdateOrganizationRow, error)
 	UpdateOrganizationMembership(ctx context.Context, arg UpdateOrganizationMembershipParams) (UpdateOrganizationMembershipRow, error)
+	UpdateTask(ctx context.Context, arg UpdateTaskParams) (UpdateTaskRow, error)
 	UpdateTeam(ctx context.Context, arg UpdateTeamParams) (UpdateTeamRow, error)
 	UpdateTeamMember(ctx context.Context, arg UpdateTeamMemberParams) (UpdateTeamMemberRow, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (UpdateUserRow, error)
