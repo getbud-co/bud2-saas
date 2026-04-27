@@ -1,15 +1,12 @@
 package indicator
 
 import (
-	"time"
-
 	"github.com/google/uuid"
 
+	"github.com/getbud-co/bud2/backend/internal/api/httputil"
 	appindicator "github.com/getbud-co/bud2/backend/internal/app/indicator"
 	"github.com/getbud-co/bud2/backend/internal/domain"
 )
-
-const dateLayout = "2006-01-02"
 
 type createRequest struct {
 	MissionID    uuid.UUID `json:"mission_id" validate:"required"`
@@ -45,16 +42,7 @@ func (r updateRequest) isEmpty() bool {
 		r.Status == nil && r.SortOrder == nil && r.DueDate == nil
 }
 
-func parseOptionalDate(value *string) *time.Time {
-	if value == nil {
-		return nil
-	}
-	parsed, err := time.Parse(dateLayout, *value)
-	if err != nil {
-		return nil
-	}
-	return &parsed
-}
+var parseOptionalDate = httputil.ParseOptionalDate
 
 func (r createRequest) toCommand(organizationID domain.TenantID) appindicator.CreateCommand {
 	return appindicator.CreateCommand{

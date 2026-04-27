@@ -10,6 +10,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApiClient } from "./use-api-client";
 import { useAuth } from "@/contexts/AuthContext";
+import { parseNumberOrUndefined } from "@/lib/parse-utils";
 import type { components } from "@/lib/types";
 import type { KeyResult, KRUnit, KRStatus } from "@/types";
 
@@ -214,12 +215,6 @@ export function keyResultToPatchIndicatorBody(patch: UpdateIndicatorInput): Patc
   if (patch.sortOrder !== undefined) body.sort_order = patch.sortOrder;
   if (patch.dueDate !== undefined) body.due_date = patch.dueDate ?? undefined;
   return body;
-}
-
-function parseNumberOrUndefined(value: string | null | undefined): number | undefined {
-  if (value == null || value === "") return undefined;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : undefined;
 }
 
 function inferUnit(unitLabel: string | null | undefined): KRUnit {

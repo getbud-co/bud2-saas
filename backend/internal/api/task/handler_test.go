@@ -137,6 +137,57 @@ func TestHandler_Patch_EmptyBody_Returns400(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, rr.Code)
 }
 
+func TestHandler_Get_Success_Returns200(t *testing.T) {
+	tenantID := fixtures.NewTestTenantID()
+	uc := new(mockGetUC)
+	id := uuid.New()
+	uc.On("Execute", mock.Anything, mock.Anything, id).Return(sample(id), nil)
+	h := NewHandler(nil, uc, nil, nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/tasks/"+id.String(), nil)
+	req = withRoute(req, tenantID, id.String())
+	rr := httptest.NewRecorder()
+
+	h.Get(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var resp Response
+	assert.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	assert.Equal(t, id.String(), resp.ID)
+}
+
+func TestHandler_List_PropagatesQueryFilters(t *testing.T) {
+	tenantID := fixtures.NewTestTenantID()
+	uc := new(mockListUC)
+	missionID := uuid.New()
+	assigneeID := uuid.New()
+	uc.On("Execute", mock.Anything, mock.MatchedBy(func(cmd apptask.ListCommand) bool {
+		return cmd.MissionID != nil && *cmd.MissionID == missionID &&
+			cmd.AssigneeID != nil && *cmd.AssigneeID == assigneeID &&
+			cmd.Status != nil && *cmd.Status == "todo"
+	})).Return(domaintask.ListResult{}, nil)
+	h := NewHandler(nil, nil, uc, nil, nil)
+
+	url := "/tasks?mission_id=" + missionID.String() + "&assignee_id=" + assigneeID.String() + "&status=todo"
+	req := httptest.NewRequest(http.MethodGet, url, nil)
+	req = req.WithContext(domain.TenantIDToContext(req.Context(), tenantID))
+	rr := httptest.NewRecorder()
+
+	h.List(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+}
+
+func TestHandler_List_RejectsInvalidStatusFilter(t *testing.T) {
+	tenantID := fixtures.NewTestTenantID()
+	h := NewHandler(nil, nil, new(mockListUC), nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/tasks?status=bogus", nil)
+	req = req.WithContext(domain.TenantIDToContext(req.Context(), tenantID))
+	rr := httptest.NewRecorder()
+
+	h.List(rr, req)
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+}
+
 func TestHandler_Delete_Returns204(t *testing.T) {
 	tenantID := fixtures.NewTestTenantID()
 	uc := new(mockDeleteUC)

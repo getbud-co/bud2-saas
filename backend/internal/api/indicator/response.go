@@ -3,6 +3,7 @@ package indicator
 import (
 	"time"
 
+	"github.com/getbud-co/bud2/backend/internal/api/httputil"
 	domainindicator "github.com/getbud-co/bud2/backend/internal/domain/indicator"
 )
 
@@ -49,11 +50,5 @@ func toResponse(i *domainindicator.Indicator) Response {
 	}
 }
 
-func formatOptionalDate(value *time.Time) *string {
-	if value == nil {
-		return nil
-	}
-	formatted := value.Format(dateLayout)
-	return &formatted
-}
+var formatOptionalDate = httputil.FormatOptionalDate
 

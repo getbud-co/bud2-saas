@@ -3,6 +3,7 @@ package task
 import (
 	"time"
 
+	"github.com/getbud-co/bud2/backend/internal/api/httputil"
 	domaintask "github.com/getbud-co/bud2/backend/internal/domain/task"
 )
 
@@ -45,18 +46,5 @@ func toResponse(t *domaintask.Task) Response {
 	}
 }
 
-func formatOptionalDate(value *time.Time) *string {
-	if value == nil {
-		return nil
-	}
-	formatted := value.Format(dateLayout)
-	return &formatted
-}
-
-func formatOptionalTimestamp(value *time.Time) *string {
-	if value == nil {
-		return nil
-	}
-	formatted := value.Format(time.RFC3339)
-	return &formatted
-}
+var formatOptionalDate = httputil.FormatOptionalDate
+var formatOptionalTimestamp = httputil.FormatOptionalTimestamp

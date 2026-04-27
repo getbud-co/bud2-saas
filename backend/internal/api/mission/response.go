@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/getbud-co/bud2/backend/internal/api/httputil"
 	appmission "github.com/getbud-co/bud2/backend/internal/app/mission"
 	domainindicator "github.com/getbud-co/bud2/backend/internal/domain/indicator"
 	domainmission "github.com/getbud-co/bud2/backend/internal/domain/mission"
@@ -158,18 +159,5 @@ func uuidPtrString(id *uuid.UUID) *string {
 	return &s
 }
 
-func formatOptionalDate(value *time.Time) *string {
-	if value == nil {
-		return nil
-	}
-	formatted := value.Format(dateLayout)
-	return &formatted
-}
-
-func formatOptionalTimestamp(value *time.Time) *string {
-	if value == nil {
-		return nil
-	}
-	formatted := value.Format(time.RFC3339)
-	return &formatted
-}
+var formatOptionalDate = httputil.FormatOptionalDate
+var formatOptionalTimestamp = httputil.FormatOptionalTimestamp

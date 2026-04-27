@@ -94,6 +94,7 @@ import { useCreateIndicator, useUpdateIndicator, useDeleteIndicator } from "@/ho
 import { useCreateTask, useUpdateTask, useDeleteTask } from "@/hooks/use-tasks";
 import { diffMission } from "@/lib/missions-diff";
 import { isLocalMissionId } from "@/lib/local-ids";
+import { parseNumberOrUndefined } from "@/lib/parse-utils";
 import { apiErrorToMessage } from "@/lib/api-error";
 import type { SavedView } from "@/contexts/SavedViewsContext";
 import type { Mission, KeyResult, MissionTask, MissionMember, KanbanStatus, ConfidenceLevel, ExternalContribution } from "@/types"; // MissionMember used in buildMissionFromForm
@@ -1905,11 +1906,6 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
     return body;
   }
 
-  function parseNumberOrUndefined(value: string | null | undefined): number | undefined {
-    if (value == null || value === "") return undefined;
-    const n = Number(value);
-    return Number.isFinite(n) ? n : undefined;
-  }
 
   // toPatchMissionBody is no longer used: the EDIT FLOW now goes through
   // diffMission/runMissionEditOps. Removed.

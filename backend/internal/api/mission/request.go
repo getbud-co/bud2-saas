@@ -1,15 +1,12 @@
 package mission
 
 import (
-	"time"
-
 	"github.com/google/uuid"
 
+	"github.com/getbud-co/bud2/backend/internal/api/httputil"
 	appmission "github.com/getbud-co/bud2/backend/internal/app/mission"
 	"github.com/getbud-co/bud2/backend/internal/domain"
 )
-
-const dateLayout = "2006-01-02"
 
 type createRequest struct {
 	Title        string                  `json:"title" validate:"required,min=1,max=200"`
@@ -84,16 +81,7 @@ func (r updateRequest) isEmpty() bool {
 		r.DueDate == nil
 }
 
-func parseOptionalDate(value *string) *time.Time {
-	if value == nil {
-		return nil
-	}
-	parsed, err := time.Parse(dateLayout, *value)
-	if err != nil {
-		return nil
-	}
-	return &parsed
-}
+var parseOptionalDate = httputil.ParseOptionalDate
 
 func (r createRequest) toCommand(organizationID domain.TenantID) appmission.CreateCommand {
 	cmd := appmission.CreateCommand{
