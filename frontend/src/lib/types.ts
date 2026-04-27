@@ -1657,6 +1657,328 @@ export interface paths {
         };
         trace?: never;
     };
+    "/indicators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List indicators in active organization */
+        get: {
+            parameters: {
+                query?: {
+                    page?: number;
+                    size?: number;
+                    mission_id?: string;
+                    owner_id?: string;
+                    status?: "draft" | "active" | "at_risk" | "done" | "archived";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["IndicatorListResponse"];
+                    };
+                };
+                /** @description Bad request (invalid UUID, invalid status filter) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create indicator in active organization */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateIndicatorRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        /** @description URL do recurso criado */
+                        Location?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Indicator"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Validation error or invalid reference (mission_id/owner_id) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/indicators/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** Get indicator from active organization */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Indicator"];
+                    };
+                };
+                /** @description Bad request (invalid UUID in path) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Soft delete indicator from active organization */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad request (invalid UUID in path) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Partially update indicator in active organization
+         * @description JSON Merge Patch semantics (RFC 7396): only fields present in the body
+         *     are applied; absent fields preserve their current value. `mission_id`
+         *     is intentionally NOT exposed — moving an indicator between missions
+         *     is not supported via this endpoint.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PatchIndicatorRequest"];
+                };
+            };
+            responses: {
+                /** @description Updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Indicator"];
+                    };
+                };
+                /** @description Bad request (invalid UUID in path or empty body) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Validation error or invalid reference (owner_id) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/permissions": {
         parameters: {
             query?: never;
@@ -2136,6 +2458,78 @@ export interface components {
             visibility?: "public" | "team_only" | "private";
             /** @enum {string} */
             kanban_status?: "uncategorized" | "todo" | "doing" | "done";
+            sort_order?: number;
+            /** Format: date */
+            due_date?: string;
+        };
+        Indicator: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            org_id: string;
+            /** Format: uuid */
+            mission_id: string;
+            /** Format: uuid */
+            owner_id: string;
+            title: string;
+            description: string | null;
+            /** Format: double */
+            target_value: number | null;
+            /** Format: double */
+            current_value: number | null;
+            unit: string | null;
+            /** @enum {string} */
+            status: "draft" | "active" | "at_risk" | "done" | "archived";
+            sort_order: number;
+            /** Format: date */
+            due_date: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        IndicatorListResponse: {
+            data: components["schemas"]["Indicator"][];
+            total: number;
+            page: number;
+            size: number;
+        };
+        CreateIndicatorRequest: {
+            /** Format: uuid */
+            mission_id: string;
+            /** Format: uuid */
+            owner_id: string;
+            title: string;
+            description?: string | null;
+            /** Format: double */
+            target_value?: number | null;
+            /** Format: double */
+            current_value?: number | null;
+            unit?: string | null;
+            /** @enum {string} */
+            status?: "draft" | "active" | "at_risk" | "done" | "archived";
+            sort_order?: number;
+            /** Format: date */
+            due_date?: string | null;
+        };
+        /**
+         * @description JSON Merge Patch body. All fields are optional; only fields present in
+         *     the request are applied. `mission_id` is intentionally NOT exposed —
+         *     moving an indicator between missions is not supported via this endpoint.
+         *     Same null-vs-absent limitation as the mission patch endpoint.
+         */
+        PatchIndicatorRequest: {
+            title?: string;
+            description?: string;
+            /** Format: uuid */
+            owner_id?: string;
+            /** Format: double */
+            target_value?: number;
+            /** Format: double */
+            current_value?: number;
+            unit?: string;
+            /** @enum {string} */
+            status?: "draft" | "active" | "at_risk" | "done" | "archived";
             sort_order?: number;
             /** Format: date */
             due_date?: string;

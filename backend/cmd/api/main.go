@@ -21,6 +21,7 @@ import (
 	apiauth "github.com/getbud-co/bud2/backend/internal/api/auth"
 	apibootstrap "github.com/getbud-co/bud2/backend/internal/api/bootstrap"
 	apicycle "github.com/getbud-co/bud2/backend/internal/api/cycle"
+	apiindicator "github.com/getbud-co/bud2/backend/internal/api/indicator"
 	apimission "github.com/getbud-co/bud2/backend/internal/api/mission"
 	apiorg "github.com/getbud-co/bud2/backend/internal/api/organization"
 	apiperm "github.com/getbud-co/bud2/backend/internal/api/permission"
@@ -30,6 +31,7 @@ import (
 	appauth "github.com/getbud-co/bud2/backend/internal/app/auth"
 	appbootstrap "github.com/getbud-co/bud2/backend/internal/app/bootstrap"
 	appcycle "github.com/getbud-co/bud2/backend/internal/app/cycle"
+	appindicator "github.com/getbud-co/bud2/backend/internal/app/indicator"
 	appmission "github.com/getbud-co/bud2/backend/internal/app/mission"
 	apporg "github.com/getbud-co/bud2/backend/internal/app/organization"
 	appperm "github.com/getbud-co/bud2/backend/internal/app/permission"
@@ -101,6 +103,7 @@ func main() {
 	roleRepo := postgres.NewRoleRepository(queries)
 	cycleRepo := postgres.NewCycleRepository(queries)
 	missionRepo := postgres.NewMissionRepository(queries, pool)
+	indicatorRepo := postgres.NewIndicatorRepository(queries)
 	refreshTokenRepo := postgres.NewRefreshTokenRepository(queries)
 	txManager := postgres.NewTxManager(pool)
 	tokenIssuer := infraauth.NewTokenIssuer(cfg.JWTSecret)
@@ -142,6 +145,12 @@ func main() {
 	updateMission := appmission.NewUpdateUseCase(missionRepo, cycleRepo, teamRepo, userRepo, logger)
 	deleteMission := appmission.NewDeleteUseCase(missionRepo, logger)
 
+	createIndicator := appindicator.NewCreateUseCase(indicatorRepo, missionRepo, userRepo, logger)
+	getIndicator := appindicator.NewGetUseCase(indicatorRepo, logger)
+	listIndicator := appindicator.NewListUseCase(indicatorRepo, logger)
+	updateIndicator := appindicator.NewUpdateUseCase(indicatorRepo, userRepo, logger)
+	deleteIndicator := appindicator.NewDeleteUseCase(indicatorRepo, logger)
+
 	bootstrapUC := appbootstrap.NewUseCase(orgRepo, txManager, tokenIssuer, passwordHasher, logger)
 	loginUC := appauth.NewLoginUseCase(userRepo, orgRepo, tokenIssuer, passwordHasher, refreshTokenRepo, tokenHasher, logger)
 	getSessionUC := appauth.NewGetSessionUseCase(userRepo, orgRepo, tokenIssuer, passwordHasher, logger)
@@ -158,7 +167,8 @@ func main() {
 	permissionHandler := apiperm.NewHandler(listPermission)
 	cycleHandler := apicycle.NewHandler(createCycle, getCycle, listCycle, updateCycle, deleteCycle)
 	missionHandler := apimission.NewHandler(createMission, getMission, listMission, updateMission, deleteMission)
-	router := api.NewRouter(bootstrapHandler, authHandler, orgHandler, userHandler, teamHandler, roleHandler, permissionHandler, cycleHandler, missionHandler, api.RouterConfig{
+	indicatorHandler := apiindicator.NewHandler(createIndicator, getIndicator, listIndicator, updateIndicator, deleteIndicator)
+	router := api.NewRouter(bootstrapHandler, authHandler, orgHandler, userHandler, teamHandler, roleHandler, permissionHandler, cycleHandler, missionHandler, indicatorHandler, api.RouterConfig{
 		Env:            cfg.Env,
 		AllowedOrigins: strings.Split(cfg.AllowedOrigins, ","),
 		OpenAPISpec:    apispec.Spec,

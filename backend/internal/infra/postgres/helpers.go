@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"errors"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -68,6 +69,35 @@ func pgtypeTimestamptzToTime(t pgtype.Timestamptz) *time.Time {
 		return nil
 	}
 	v := t.Time
+	return &v
+}
+
+// float64PtrToPgtypeNumeric converts an optional float64 to a NUMERIC value.
+// Goes through the textual representation because pgtype.Numeric does not
+// expose a direct float64 setter — Float64Value reads, Scan writes from text.
+func float64PtrToPgtypeNumeric(v *float64) pgtype.Numeric {
+	if v == nil {
+		return pgtype.Numeric{Valid: false}
+	}
+	var n pgtype.Numeric
+	if err := n.Scan(strconv.FormatFloat(*v, 'f', -1, 64)); err != nil {
+		return pgtype.Numeric{Valid: false}
+	}
+	return n
+}
+
+// pgtypeNumericToFloat64Ptr converts a NUMERIC back to *float64. Returns nil
+// for NULL / NaN / Infinity (callers that need exact precision should use a
+// decimal type instead — none in the codebase yet).
+func pgtypeNumericToFloat64Ptr(n pgtype.Numeric) *float64 {
+	if !n.Valid || n.NaN || n.InfinityModifier != pgtype.Finite {
+		return nil
+	}
+	f8, err := n.Float64Value()
+	if err != nil || !f8.Valid {
+		return nil
+	}
+	v := f8.Float64
 	return &v
 }
 

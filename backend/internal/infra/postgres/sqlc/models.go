@@ -26,6 +26,24 @@ type Cycle struct {
 	DeletedAt             pgtype.Timestamptz
 }
 
+type Indicator struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	MissionID      uuid.UUID
+	OwnerID        uuid.UUID
+	Title          string
+	Description    pgtype.Text
+	TargetValue    pgtype.Numeric
+	CurrentValue   pgtype.Numeric
+	Unit           pgtype.Text
+	Status         string
+	SortOrder      int32
+	DueDate        pgtype.Date
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	DeletedAt      pgtype.Timestamptz
+}
+
 type Mission struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID
