@@ -119,6 +119,14 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		}
 		cmd.MissionID = &id
 	}
+	if v := q.Get("indicator_id"); v != "" {
+		id, parseErr := uuid.Parse(v)
+		if parseErr != nil {
+			httputil.WriteProblem(w, http.StatusBadRequest, "Bad Request", "invalid indicator_id format")
+			return
+		}
+		cmd.IndicatorID = &id
+	}
 	if v := q.Get("assignee_id"); v != "" {
 		id, parseErr := uuid.Parse(v)
 		if parseErr != nil {

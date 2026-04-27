@@ -154,10 +154,10 @@ func main() {
 	updateIndicator := appindicator.NewUpdateUseCase(indicatorRepo, userRepo, logger)
 	deleteIndicator := appindicator.NewDeleteUseCase(indicatorRepo, logger)
 
-	createTask := apptask.NewCreateUseCase(taskRepo, missionRepo, userRepo, logger)
+	createTask := apptask.NewCreateUseCase(taskRepo, missionRepo, indicatorRepo, userRepo, logger)
 	getTask := apptask.NewGetUseCase(taskRepo, logger)
 	listTask := apptask.NewListUseCase(taskRepo, logger)
-	updateTask := apptask.NewUpdateUseCase(taskRepo, userRepo, logger)
+	updateTask := apptask.NewUpdateUseCase(taskRepo, indicatorRepo, userRepo, logger)
 	deleteTask := apptask.NewDeleteUseCase(taskRepo, logger)
 
 	bootstrapUC := appbootstrap.NewUseCase(orgRepo, txManager, tokenIssuer, passwordHasher, logger)

@@ -1938,9 +1938,20 @@ components:
     CreateMissionTaskInline:
       type: object
       required: [title]
-      description: Task created inline with its parent mission. mission_id is supplied by the parent.
+      description: |
+        Task created inline with its parent mission. mission_id is supplied
+        by the parent. The task may be nested under one of the inline
+        indicators (use indicator_index, the position in the parent
+        request's indicators array) or under an existing indicator
+        already on the server (indicator_id). The two are mutually
+        exclusive; both null means the task lives at the mission level.
       properties:
         assignee_id: { type: string, format: uuid, nullable: true }
+        indicator_id: { type: string, format: uuid, nullable: true }
+        indicator_index:
+          type: integer
+          minimum: 0
+          nullable: true
         title: { type: string, minLength: 1, maxLength: 200 }
         description: { type: string, maxLength: 5000, nullable: true }
         status: { type: string, enum: [todo, in_progress, done, cancelled] }
@@ -2035,11 +2046,19 @@ components:
 
     Task:
       type: object
-      required: [id, org_id, mission_id, assignee_id, title, description, status, sort_order, due_date, completed_at, created_at, updated_at]
+      required: [id, org_id, mission_id, indicator_id, assignee_id, title, description, status, sort_order, due_date, completed_at, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         org_id: { type: string, format: uuid }
         mission_id: { type: string, format: uuid }
+        indicator_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: |
+            When set, the task is nested under one of the mission's
+            indicators (UI shows it inside the indicator card). When null,
+            the task lives at the mission level.
         assignee_id: { type: string, format: uuid }
         title: { type: string }
         description: { type: string, nullable: true }
@@ -2067,6 +2086,13 @@ components:
       required: [mission_id, assignee_id, title]
       properties:
         mission_id: { type: string, format: uuid }
+        indicator_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: |
+            Optional. When set, the task is nested under the indicator;
+            the indicator must belong to the same mission.
         assignee_id: { type: string, format: uuid }
         title: { type: string, minLength: 1, maxLength: 200 }
         description: { type: string, maxLength: 5000, nullable: true }
@@ -2079,10 +2105,14 @@ components:
       description: |
         JSON Merge Patch body. All fields are optional; only fields present in
         the request are applied. `mission_id` is intentionally NOT exposed.
+        `indicator_id` can be set to re-assign the task within the same
+        mission; clearing it (moving back to the mission root) requires a
+        future endpoint that supports null/absent distinction.
         completed_at is managed by the server based on status transitions.
       properties:
         title: { type: string, minLength: 1, maxLength: 200 }
         description: { type: string, maxLength: 5000 }
+        indicator_id: { type: string, format: uuid }
         assignee_id: { type: string, format: uuid }
         status: { type: string, enum: [todo, in_progress, done, cancelled] }
         sort_order: { type: integer }

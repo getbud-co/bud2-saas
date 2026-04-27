@@ -1860,6 +1860,7 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
       }>;
       tasks?: Array<{
         assignee_id?: string;
+        indicator_index?: number;
         title: string;
         description?: string;
         status?: "todo" | "in_progress" | "done" | "cancelled";
@@ -1892,17 +1893,27 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
       });
     }
 
-    if (m.tasks && m.tasks.length > 0) {
-      body.tasks = m.tasks.map((t) => {
-        const inline: NonNullable<typeof body.tasks>[number] = { title: t.title };
-        if (t.ownerId && t.ownerId !== m.ownerId) inline.assignee_id = t.ownerId;
-        if (t.description) inline.description = t.description;
-        if (t.isDone) inline.status = "done";
-        if (typeof t.sortOrder === "number") inline.sort_order = t.sortOrder;
-        if (t.dueDate) inline.due_date = t.dueDate;
-        return inline;
-      });
-    }
+    // Inline tasks come from two places in the form: directly under the
+    // mission (m.tasks) and nested under each indicator (kr.tasks). The
+    // second group needs indicator_index so the backend can wire each
+    // task to the correct inline indicator that is being created in the
+    // same transaction.
+    const inlineTasks: NonNullable<typeof body.tasks> = [];
+    const pushTask = (t: MissionTask, indicatorIndex?: number) => {
+      const inline: NonNullable<typeof body.tasks>[number] = { title: t.title };
+      if (t.ownerId && t.ownerId !== m.ownerId) inline.assignee_id = t.ownerId;
+      if (t.description) inline.description = t.description;
+      if (t.isDone) inline.status = "done";
+      if (typeof t.sortOrder === "number") inline.sort_order = t.sortOrder;
+      if (t.dueDate) inline.due_date = t.dueDate;
+      if (indicatorIndex !== undefined) inline.indicator_index = indicatorIndex;
+      inlineTasks.push(inline);
+    };
+    for (const t of m.tasks ?? []) pushTask(t);
+    (m.keyResults ?? []).forEach((kr, idx) => {
+      for (const t of kr.tasks ?? []) pushTask(t, idx);
+    });
+    if (inlineTasks.length > 0) body.tasks = inlineTasks;
     return body;
   }
 

@@ -33,3 +33,7 @@ CREATE INDEX idx_indicators_deleted_at      ON indicators (deleted_at) WHERE del
 CREATE INDEX idx_indicators_org_mission_active
     ON indicators (organization_id, mission_id)
     WHERE deleted_at IS NULL;
+
+-- Anchor for the composite FK from tasks(indicator_id) — see teams
+-- migration for the same rationale.
+ALTER TABLE indicators ADD CONSTRAINT indicators_org_id_key UNIQUE (organization_id, id);

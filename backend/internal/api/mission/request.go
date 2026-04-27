@@ -40,14 +40,20 @@ type createIndicatorInline struct {
 }
 
 // createTaskInline mirrors CreateTaskRequest minus mission_id. assignee_id is
-// optional and defaults to the mission owner.
+// optional and defaults to the mission owner. indicator_index references one
+// of the inline indicators by its position in the request body so a task
+// can be nested under an indicator that is being created in the same call;
+// indicator_id can be set instead when the task is being attached to an
+// indicator that already exists. Exactly one (or neither) is expected.
 type createTaskInline struct {
-	AssigneeID  *uuid.UUID `json:"assignee_id" validate:"omitempty"`
-	Title       string     `json:"title" validate:"required,min=1,max=200"`
-	Description *string    `json:"description" validate:"omitempty,max=5000"`
-	Status      string     `json:"status" validate:"omitempty,oneof=todo in_progress done cancelled"`
-	SortOrder   int        `json:"sort_order"`
-	DueDate     *string    `json:"due_date" validate:"omitempty,datetime=2006-01-02"`
+	AssigneeID     *uuid.UUID `json:"assignee_id" validate:"omitempty"`
+	IndicatorID    *uuid.UUID `json:"indicator_id" validate:"omitempty"`
+	IndicatorIndex *int       `json:"indicator_index" validate:"omitempty,min=0"`
+	Title          string     `json:"title" validate:"required,min=1,max=200"`
+	Description    *string    `json:"description" validate:"omitempty,max=5000"`
+	Status         string     `json:"status" validate:"omitempty,oneof=todo in_progress done cancelled"`
+	SortOrder      int        `json:"sort_order"`
+	DueDate        *string    `json:"due_date" validate:"omitempty,datetime=2006-01-02"`
 }
 
 // updateRequest models JSON Merge Patch (RFC 7396) semantics: every field is
@@ -118,12 +124,14 @@ func (r createRequest) toCommand(organizationID domain.TenantID) appmission.Crea
 		cmd.Tasks = make([]appmission.CreateTaskInput, len(r.Tasks))
 		for i, tk := range r.Tasks {
 			cmd.Tasks[i] = appmission.CreateTaskInput{
-				AssigneeID:  tk.AssigneeID,
-				Title:       tk.Title,
-				Description: tk.Description,
-				Status:      tk.Status,
-				SortOrder:   tk.SortOrder,
-				DueDate:     parseOptionalDate(tk.DueDate),
+				AssigneeID:     tk.AssigneeID,
+				IndicatorID:    tk.IndicatorID,
+				IndicatorIndex: tk.IndicatorIndex,
+				Title:          tk.Title,
+				Description:    tk.Description,
+				Status:         tk.Status,
+				SortOrder:      tk.SortOrder,
+				DueDate:        parseOptionalDate(tk.DueDate),
 			}
 		}
 	}

@@ -26,6 +26,7 @@ const apiTask: ApiTask = {
   id: "t-1",
   org_id: "org-1",
   mission_id: "m-1",
+  indicator_id: null,
   assignee_id: "u-1",
   title: "Triage",
   description: null,

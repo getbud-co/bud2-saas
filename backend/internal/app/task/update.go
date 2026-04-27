@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/getbud-co/bud2/backend/internal/domain"
+	domainindicator "github.com/getbud-co/bud2/backend/internal/domain/indicator"
 	domaintask "github.com/getbud-co/bud2/backend/internal/domain/task"
 	domainuser "github.com/getbud-co/bud2/backend/internal/domain/user"
 )
@@ -21,6 +22,7 @@ type UpdateCommand struct {
 	ID             uuid.UUID
 	Title          *string
 	Description    *string
+	IndicatorID    *uuid.UUID
 	AssigneeID     *uuid.UUID
 	Status         *string
 	SortOrder      *int
@@ -28,17 +30,19 @@ type UpdateCommand struct {
 }
 
 type UpdateUseCase struct {
-	tasks  domaintask.Repository
-	users  domainuser.Repository
-	logger *slog.Logger
+	tasks      domaintask.Repository
+	indicators domainindicator.Repository
+	users      domainuser.Repository
+	logger     *slog.Logger
 }
 
 func NewUpdateUseCase(
 	tasks domaintask.Repository,
+	indicators domainindicator.Repository,
 	users domainuser.Repository,
 	logger *slog.Logger,
 ) *UpdateUseCase {
-	return &UpdateUseCase{tasks: tasks, users: users, logger: logger}
+	return &UpdateUseCase{tasks: tasks, indicators: indicators, users: users, logger: logger}
 }
 
 func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*domaintask.Task, error) {
@@ -58,6 +62,22 @@ func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*domai
 			return nil, err
 		}
 	}
+	// Reparenting between indicators on the same mission requires
+	// re-validating the new indicator. The single-pointer convention
+	// means a nil cmd.IndicatorID is "no change" — clearing the parent
+	// is not exposed through this endpoint (would require **T).
+	if cmd.IndicatorID != nil {
+		ind, err := uc.indicators.GetByID(ctx, *cmd.IndicatorID, orgID)
+		if err != nil {
+			if errors.Is(err, domainindicator.ErrNotFound) {
+				return nil, domaintask.ErrInvalidReference
+			}
+			return nil, err
+		}
+		if ind.MissionID != existing.MissionID {
+			return nil, domaintask.ErrInvalidReference
+		}
+	}
 
 	if cmd.Title != nil {
 		existing.Title = *cmd.Title
@@ -67,6 +87,9 @@ func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*domai
 	}
 	if cmd.AssigneeID != nil {
 		existing.AssigneeID = *cmd.AssigneeID
+	}
+	if cmd.IndicatorID != nil {
+		existing.IndicatorID = cmd.IndicatorID
 	}
 	if cmd.Status != nil {
 		existing.Status = domaintask.Status(*cmd.Status)

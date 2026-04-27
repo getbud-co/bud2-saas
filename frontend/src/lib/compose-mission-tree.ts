@@ -36,8 +36,24 @@ export function composeMissionTree(
   tasks: MissionTask[] | undefined,
 ): Mission[] {
   if (!missions || missions.length === 0) return EMPTY;
-  const indByMission = groupBy(indicators ?? [], (kr) => kr.missionId);
-  const tasksByMission = groupBy(tasks ?? [], (t) => t.missionId ?? "");
+
+  // Tasks split by parent: tasks attached to an indicator (keyResultId set)
+  // are bucketed onto that indicator; the rest stay at the mission level.
+  // Indicators always get a `tasks` array — empty if no children — so the
+  // UI can iterate without null checks.
+  const tasksByIndicator = groupBy(
+    (tasks ?? []).filter((t) => t.keyResultId != null),
+    (t) => t.keyResultId as string,
+  );
+  const indicatorsWithTasks = (indicators ?? []).map((kr) => ({
+    ...kr,
+    tasks: tasksByIndicator.get(kr.id) ?? [],
+  }));
+  const indByMission = groupBy(indicatorsWithTasks, (kr) => kr.missionId);
+  const tasksByMission = groupBy(
+    (tasks ?? []).filter((t) => t.keyResultId == null),
+    (t) => t.missionId ?? "",
+  );
 
   // Build raw nodes in input order so siblings keep API ordering (the API
   // already returns them sorted by sort_order, created_at).

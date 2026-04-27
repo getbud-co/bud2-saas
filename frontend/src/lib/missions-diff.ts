@@ -44,8 +44,22 @@ export function diffMission(current: Mission, form: Mission): MissionDiff {
   return {
     missionPatch: diffMissionRow(current, form),
     indicatorOps: diffIndicators(form.id, current.keyResults ?? [], form.keyResults ?? []),
-    taskOps: diffTasks(form.id, current.tasks ?? [], form.tasks ?? []),
+    // Tasks live both directly under the mission (m.tasks) and nested
+    // under each indicator (kr.tasks with keyResultId set). The diff
+    // flattens both shapes to a single list per side so creates,
+    // updates, and deletes are computed across the whole task surface.
+    taskOps: diffTasks(form.id, flattenTasks(current), flattenTasks(form)),
   };
+}
+
+function flattenTasks(m: Mission): MissionTask[] {
+  const out: MissionTask[] = [...(m.tasks ?? [])];
+  for (const kr of m.keyResults ?? []) {
+    for (const t of kr.tasks ?? []) {
+      out.push({ ...t, keyResultId: kr.id });
+    }
+  }
+  return out;
 }
 
 // ── mission row ────────────────────────────────────────────────────────────
@@ -178,6 +192,11 @@ function taskPatch(current: MissionTask, form: MissionTask): UpdateTaskInput | n
   if ((current.ownerId ?? null) !== (form.ownerId ?? null)) {
     if (form.ownerId != null) patch.assigneeId = form.ownerId;
   }
+  if ((current.keyResultId ?? null) !== (form.keyResultId ?? null)) {
+    if (form.keyResultId != null) patch.indicatorId = form.keyResultId;
+    // (clearing indicator_id back to mission-level needs the future
+    // null-vs-absent distinction in PATCH; deferred.)
+  }
   if (current.isDone !== form.isDone) patch.isDone = form.isDone;
   if (current.sortOrder !== form.sortOrder) patch.sortOrder = form.sortOrder;
   if ((current.dueDate ?? null) !== (form.dueDate ?? null)) patch.dueDate = form.dueDate ?? null;
@@ -187,6 +206,7 @@ function taskPatch(current: MissionTask, form: MissionTask): UpdateTaskInput | n
 function missionTaskToCreateInput(missionId: string, t: MissionTask): CreateTaskInput {
   return {
     missionId,
+    indicatorId: t.keyResultId ?? null,
     assigneeId: t.ownerId ?? "",
     title: t.title,
     description: t.description,

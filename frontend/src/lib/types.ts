@@ -2794,10 +2794,20 @@ export interface components {
             /** Format: date */
             due_date?: string | null;
         };
-        /** @description Task created inline with its parent mission. mission_id is supplied by the parent. */
+        /**
+         * @description Task created inline with its parent mission. mission_id is supplied
+         *     by the parent. The task may be nested under one of the inline
+         *     indicators (use indicator_index, the position in the parent
+         *     request's indicators array) or under an existing indicator
+         *     already on the server (indicator_id). The two are mutually
+         *     exclusive; both null means the task lives at the mission level.
+         */
         CreateMissionTaskInline: {
             /** Format: uuid */
             assignee_id?: string | null;
+            /** Format: uuid */
+            indicator_id?: string | null;
+            indicator_index?: number | null;
             title: string;
             description?: string | null;
             /** @enum {string} */
@@ -2913,6 +2923,13 @@ export interface components {
             org_id: string;
             /** Format: uuid */
             mission_id: string;
+            /**
+             * Format: uuid
+             * @description When set, the task is nested under one of the mission's
+             *     indicators (UI shows it inside the indicator card). When null,
+             *     the task lives at the mission level.
+             */
+            indicator_id: string | null;
             /** Format: uuid */
             assignee_id: string;
             title: string;
@@ -2938,6 +2955,12 @@ export interface components {
         CreateTaskRequest: {
             /** Format: uuid */
             mission_id: string;
+            /**
+             * Format: uuid
+             * @description Optional. When set, the task is nested under the indicator;
+             *     the indicator must belong to the same mission.
+             */
+            indicator_id?: string | null;
             /** Format: uuid */
             assignee_id: string;
             title: string;
@@ -2951,11 +2974,16 @@ export interface components {
         /**
          * @description JSON Merge Patch body. All fields are optional; only fields present in
          *     the request are applied. `mission_id` is intentionally NOT exposed.
+         *     `indicator_id` can be set to re-assign the task within the same
+         *     mission; clearing it (moving back to the mission root) requires a
+         *     future endpoint that supports null/absent distinction.
          *     completed_at is managed by the server based on status transitions.
          */
         PatchTaskRequest: {
             title?: string;
             description?: string;
+            /** Format: uuid */
+            indicator_id?: string;
             /** Format: uuid */
             assignee_id?: string;
             /** @enum {string} */

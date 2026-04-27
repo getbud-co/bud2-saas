@@ -33,14 +33,20 @@ type CreateIndicatorInput struct {
 }
 
 // CreateTaskInput is the inline shape for tasks created together with a
-// mission. assignee_id defaults to the mission owner when omitted.
+// mission. assignee_id defaults to the mission owner when omitted. The
+// task may also be nested under one of the inline indicators (referenced
+// by IndicatorIndex into Indicators[]) or under an existing indicator
+// already on the server (IndicatorID); both are optional and only one
+// should be set.
 type CreateTaskInput struct {
-	AssigneeID  *uuid.UUID
-	Title       string
-	Description *string
-	Status      string
-	SortOrder   int
-	DueDate     *time.Time
+	AssigneeID     *uuid.UUID
+	IndicatorID    *uuid.UUID
+	IndicatorIndex *int
+	Title          string
+	Description    *string
+	Status         string
+	SortOrder      int
+	DueDate        *time.Time
 }
 
 // CreateResult is what the use case returns when the request includes nested
@@ -241,10 +247,31 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*Creat
 		if taskStatus == "" {
 			taskStatus = domaintask.StatusTodo
 		}
+		// Resolve the task's parent indicator. IndicatorIndex points at one
+		// of the inline indicators in this same payload (created together
+		// in the transaction); IndicatorID points at an indicator already
+		// on the server. They are mutually exclusive — if both are set we
+		// reject with InvalidReference. Either is optional; absence means
+		// the task lives at the mission level.
+		var indicatorID *uuid.UUID
+		switch {
+		case tk.IndicatorIndex != nil && tk.IndicatorID != nil:
+			return nil, domaintask.ErrInvalidReference
+		case tk.IndicatorIndex != nil:
+			idx := *tk.IndicatorIndex
+			if idx < 0 || idx >= len(indicators) {
+				return nil, domaintask.ErrInvalidReference
+			}
+			id := indicators[idx].ID
+			indicatorID = &id
+		case tk.IndicatorID != nil:
+			indicatorID = tk.IndicatorID
+		}
 		t := &domaintask.Task{
 			ID:             uuid.New(),
 			OrganizationID: orgID,
 			MissionID:      m.ID,
+			IndicatorID:    indicatorID,
 			AssigneeID:     assignee,
 			Title:          tk.Title,
 			Description:    tk.Description,

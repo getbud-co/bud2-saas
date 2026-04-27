@@ -13,6 +13,7 @@ import (
 type ListCommand struct {
 	OrganizationID domain.TenantID
 	MissionID      *uuid.UUID
+	IndicatorID    *uuid.UUID
 	AssigneeID     *uuid.UUID
 	Status         *string
 	Page           int
@@ -48,6 +49,7 @@ func (uc *ListUseCase) Execute(ctx context.Context, cmd ListCommand) (domaintask
 	res, err := uc.tasks.List(ctx, domaintask.ListFilter{
 		OrganizationID: cmd.OrganizationID.UUID(),
 		MissionID:      cmd.MissionID,
+		IndicatorID:    cmd.IndicatorID,
 		AssigneeID:     cmd.AssigneeID,
 		Status:         status,
 		Page:           cmd.Page,

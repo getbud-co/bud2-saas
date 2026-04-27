@@ -20,16 +20,18 @@ import (
 )
 
 type taskDeps struct {
-	tasks    *mocks.TaskRepository
-	missions *mocks.MissionRepository
-	users    *mocks.UserRepository
+	tasks      *mocks.TaskRepository
+	missions   *mocks.MissionRepository
+	indicators *mocks.IndicatorRepository
+	users      *mocks.UserRepository
 }
 
 func newTaskDeps() taskDeps {
 	return taskDeps{
-		tasks:    new(mocks.TaskRepository),
-		missions: new(mocks.MissionRepository),
-		users:    new(mocks.UserRepository),
+		tasks:      new(mocks.TaskRepository),
+		missions:   new(mocks.MissionRepository),
+		indicators: new(mocks.IndicatorRepository),
+		users:      new(mocks.UserRepository),
 	}
 }
 
@@ -46,7 +48,7 @@ func (d taskDeps) allowAssignee() taskDeps {
 }
 
 func (d taskDeps) newCreateUseCase() *CreateUseCase {
-	return NewCreateUseCase(d.tasks, d.missions, d.users, testutil.NewDiscardLogger())
+	return NewCreateUseCase(d.tasks, d.missions, d.indicators, d.users, testutil.NewDiscardLogger())
 }
 
 func validCmd() CreateCommand {

@@ -32,15 +32,20 @@ type Task struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID
 	MissionID      uuid.UUID
-	AssigneeID     uuid.UUID
-	Title          string
-	Description    *string
-	Status         Status
-	SortOrder      int
-	DueDate        *time.Time
-	CompletedAt    *time.Time
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	// IndicatorID is set when the task lives under one of the mission's
+	// indicators (the UI nests it visually inside the indicator card);
+	// nil when the task is at the mission level. mission_id is set
+	// either way — the indicator parent is purely a UI affordance.
+	IndicatorID *uuid.UUID
+	AssigneeID  uuid.UUID
+	Title       string
+	Description *string
+	Status      Status
+	SortOrder   int
+	DueDate     *time.Time
+	CompletedAt *time.Time
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 func (t *Task) Validate() error {
@@ -65,6 +70,7 @@ func (t *Task) Validate() error {
 type ListFilter struct {
 	OrganizationID uuid.UUID
 	MissionID      *uuid.UUID
+	IndicatorID    *uuid.UUID
 	AssigneeID     *uuid.UUID
 	Status         *Status
 	Page           int

@@ -114,6 +114,7 @@ type Task struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID
 	MissionID      uuid.UUID
+	IndicatorID    pgtype.UUID
 	AssigneeID     uuid.UUID
 	Title          string
 	Description    pgtype.Text

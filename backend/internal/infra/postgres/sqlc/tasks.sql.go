@@ -19,13 +19,15 @@ FROM tasks
 WHERE organization_id = $1
   AND deleted_at IS NULL
   AND ($2::uuid IS NULL OR mission_id = $2)
-  AND ($3::uuid IS NULL OR assignee_id = $3)
-  AND ($4::text IS NULL OR status = $4)
+  AND ($3::uuid IS NULL OR indicator_id = $3)
+  AND ($4::uuid IS NULL OR assignee_id = $4)
+  AND ($5::text IS NULL OR status = $5)
 `
 
 type CountTasksParams struct {
 	OrganizationID uuid.UUID
 	MissionID      pgtype.UUID
+	IndicatorID    pgtype.UUID
 	AssigneeID     pgtype.UUID
 	Status         pgtype.Text
 }
@@ -34,6 +36,7 @@ func (q *Queries) CountTasks(ctx context.Context, arg CountTasksParams) (int64, 
 	row := q.db.QueryRow(ctx, countTasks,
 		arg.OrganizationID,
 		arg.MissionID,
+		arg.IndicatorID,
 		arg.AssigneeID,
 		arg.Status,
 	)
@@ -43,15 +46,16 @@ func (q *Queries) CountTasks(ctx context.Context, arg CountTasksParams) (int64, 
 }
 
 const createTask = `-- name: CreateTask :one
-INSERT INTO tasks (id, organization_id, mission_id, assignee_id, title, description, status, sort_order, due_date, completed_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING id, organization_id, mission_id, assignee_id, title, description, status, sort_order, due_date, completed_at, created_at, updated_at
+INSERT INTO tasks (id, organization_id, mission_id, indicator_id, assignee_id, title, description, status, sort_order, due_date, completed_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+RETURNING id, organization_id, mission_id, indicator_id, assignee_id, title, description, status, sort_order, due_date, completed_at, created_at, updated_at
 `
 
 type CreateTaskParams struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID
 	MissionID      uuid.UUID
+	IndicatorID    pgtype.UUID
 	AssigneeID     uuid.UUID
 	Title          string
 	Description    pgtype.Text
@@ -65,6 +69,7 @@ type CreateTaskRow struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID
 	MissionID      uuid.UUID
+	IndicatorID    pgtype.UUID
 	AssigneeID     uuid.UUID
 	Title          string
 	Description    pgtype.Text
@@ -81,6 +86,7 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (CreateT
 		arg.ID,
 		arg.OrganizationID,
 		arg.MissionID,
+		arg.IndicatorID,
 		arg.AssigneeID,
 		arg.Title,
 		arg.Description,
@@ -94,6 +100,7 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (CreateT
 		&i.ID,
 		&i.OrganizationID,
 		&i.MissionID,
+		&i.IndicatorID,
 		&i.AssigneeID,
 		&i.Title,
 		&i.Description,
@@ -108,7 +115,7 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (CreateT
 }
 
 const getTaskByID = `-- name: GetTaskByID :one
-SELECT id, organization_id, mission_id, assignee_id, title, description, status, sort_order, due_date, completed_at, created_at, updated_at
+SELECT id, organization_id, mission_id, indicator_id, assignee_id, title, description, status, sort_order, due_date, completed_at, created_at, updated_at
 FROM tasks
 WHERE id = $1
   AND organization_id = $2
@@ -124,6 +131,7 @@ type GetTaskByIDRow struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID
 	MissionID      uuid.UUID
+	IndicatorID    pgtype.UUID
 	AssigneeID     uuid.UUID
 	Title          string
 	Description    pgtype.Text
@@ -142,6 +150,7 @@ func (q *Queries) GetTaskByID(ctx context.Context, arg GetTaskByIDParams) (GetTa
 		&i.ID,
 		&i.OrganizationID,
 		&i.MissionID,
+		&i.IndicatorID,
 		&i.AssigneeID,
 		&i.Title,
 		&i.Description,
@@ -156,13 +165,14 @@ func (q *Queries) GetTaskByID(ctx context.Context, arg GetTaskByIDParams) (GetTa
 }
 
 const listTasks = `-- name: ListTasks :many
-SELECT id, organization_id, mission_id, assignee_id, title, description, status, sort_order, due_date, completed_at, created_at, updated_at
+SELECT id, organization_id, mission_id, indicator_id, assignee_id, title, description, status, sort_order, due_date, completed_at, created_at, updated_at
 FROM tasks
 WHERE organization_id = $1
   AND deleted_at IS NULL
   AND ($4::uuid IS NULL OR mission_id = $4)
-  AND ($5::uuid IS NULL OR assignee_id = $5)
-  AND ($6::text IS NULL OR status = $6)
+  AND ($5::uuid IS NULL OR indicator_id = $5)
+  AND ($6::uuid IS NULL OR assignee_id = $6)
+  AND ($7::text IS NULL OR status = $7)
 ORDER BY sort_order ASC, created_at ASC
 LIMIT $2 OFFSET $3
 `
@@ -172,6 +182,7 @@ type ListTasksParams struct {
 	Limit          int32
 	Offset         int32
 	MissionID      pgtype.UUID
+	IndicatorID    pgtype.UUID
 	AssigneeID     pgtype.UUID
 	Status         pgtype.Text
 }
@@ -180,6 +191,7 @@ type ListTasksRow struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID
 	MissionID      uuid.UUID
+	IndicatorID    pgtype.UUID
 	AssigneeID     uuid.UUID
 	Title          string
 	Description    pgtype.Text
@@ -197,6 +209,7 @@ func (q *Queries) ListTasks(ctx context.Context, arg ListTasksParams) ([]ListTas
 		arg.Limit,
 		arg.Offset,
 		arg.MissionID,
+		arg.IndicatorID,
 		arg.AssigneeID,
 		arg.Status,
 	)
@@ -211,6 +224,7 @@ func (q *Queries) ListTasks(ctx context.Context, arg ListTasksParams) ([]ListTas
 			&i.ID,
 			&i.OrganizationID,
 			&i.MissionID,
+			&i.IndicatorID,
 			&i.AssigneeID,
 			&i.Title,
 			&i.Description,
@@ -256,16 +270,17 @@ const updateTask = `-- name: UpdateTask :one
 UPDATE tasks
 SET title        = $3,
     description  = $4,
-    assignee_id  = $5,
-    status       = $6,
-    sort_order   = $7,
-    due_date     = $8,
-    completed_at = $9,
+    indicator_id = $5,
+    assignee_id  = $6,
+    status       = $7,
+    sort_order   = $8,
+    due_date     = $9,
+    completed_at = $10,
     updated_at   = NOW()
 WHERE id = $1
   AND organization_id = $2
   AND deleted_at IS NULL
-RETURNING id, organization_id, mission_id, assignee_id, title, description, status, sort_order, due_date, completed_at, created_at, updated_at
+RETURNING id, organization_id, mission_id, indicator_id, assignee_id, title, description, status, sort_order, due_date, completed_at, created_at, updated_at
 `
 
 type UpdateTaskParams struct {
@@ -273,6 +288,7 @@ type UpdateTaskParams struct {
 	OrganizationID uuid.UUID
 	Title          string
 	Description    pgtype.Text
+	IndicatorID    pgtype.UUID
 	AssigneeID     uuid.UUID
 	Status         string
 	SortOrder      int32
@@ -284,6 +300,7 @@ type UpdateTaskRow struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID
 	MissionID      uuid.UUID
+	IndicatorID    pgtype.UUID
 	AssigneeID     uuid.UUID
 	Title          string
 	Description    pgtype.Text
@@ -301,6 +318,7 @@ func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) (UpdateT
 		arg.OrganizationID,
 		arg.Title,
 		arg.Description,
+		arg.IndicatorID,
 		arg.AssigneeID,
 		arg.Status,
 		arg.SortOrder,
@@ -312,6 +330,7 @@ func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) (UpdateT
 		&i.ID,
 		&i.OrganizationID,
 		&i.MissionID,
+		&i.IndicatorID,
 		&i.AssigneeID,
 		&i.Title,
 		&i.Description,

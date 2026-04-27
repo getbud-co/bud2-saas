@@ -122,6 +122,10 @@ export function useDeleteTask() {
 
 export interface CreateTaskInput {
   missionId: string;
+  // indicatorId is optional: when set, the task is nested under that
+  // indicator (UI shows it inside the indicator block) and the backend
+  // verifies the indicator belongs to the same mission.
+  indicatorId?: string | null;
   assigneeId: string;
   title: string;
   description?: string | null;
@@ -145,7 +149,10 @@ export function apiTaskToMissionTask(api: ApiTask): MissionTask {
   return {
     id: api.id,
     missionId: api.mission_id,
-    keyResultId: null,
+    // The API now carries indicator_id (nullable). When set, the task is
+    // visually nested under that indicator; when null, it lives at the
+    // mission level. The UI's existing keyResultId field maps 1:1.
+    keyResultId: api.indicator_id ?? null,
     title: api.title,
     description: api.description ?? null,
     ownerId: api.assignee_id,
@@ -162,6 +169,7 @@ export function apiTaskToMissionTask(api: ApiTask): MissionTask {
 export function missionTaskToCreateTaskBody(input: CreateTaskInput): CreateTaskBody {
   return {
     mission_id: input.missionId,
+    indicator_id: input.indicatorId ?? undefined,
     assignee_id: input.assigneeId,
     title: input.title,
     description: input.description ?? undefined,
@@ -175,6 +183,7 @@ export function missionTaskToPatchTaskBody(patch: UpdateTaskInput): PatchTaskBod
   const body: PatchTaskBody = {};
   if (patch.title !== undefined) body.title = patch.title;
   if (patch.description !== undefined) body.description = patch.description ?? undefined;
+  if (patch.indicatorId !== undefined && patch.indicatorId !== null) body.indicator_id = patch.indicatorId;
   if (patch.assigneeId !== undefined) body.assignee_id = patch.assigneeId;
   if (patch.isDone !== undefined) body.status = patch.isDone ? "done" : "todo";
   if (patch.sortOrder !== undefined) body.sort_order = patch.sortOrder;

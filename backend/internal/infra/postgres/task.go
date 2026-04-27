@@ -35,6 +35,7 @@ func (r *TaskRepository) Create(ctx context.Context, t *task.Task) (*task.Task, 
 		ID:             t.ID,
 		OrganizationID: t.OrganizationID,
 		MissionID:      t.MissionID,
+		IndicatorID:    uuidPtrToPgtype(t.IndicatorID),
 		AssigneeID:     t.AssigneeID,
 		Title:          t.Title,
 		Description:    textToPgtype(t.Description),
@@ -85,6 +86,7 @@ func (r *TaskRepository) List(ctx context.Context, f task.ListFilter) (task.List
 		Limit:          limit,
 		Offset:         offset,
 		MissionID:      uuidPtrToPgtype(f.MissionID),
+		IndicatorID:    uuidPtrToPgtype(f.IndicatorID),
 		AssigneeID:     uuidPtrToPgtype(f.AssigneeID),
 		Status:         statusParam,
 	}
@@ -96,6 +98,7 @@ func (r *TaskRepository) List(ctx context.Context, f task.ListFilter) (task.List
 	total, err := r.q.CountTasks(ctx, sqlc.CountTasksParams{
 		OrganizationID: f.OrganizationID,
 		MissionID:      listParams.MissionID,
+		IndicatorID:    listParams.IndicatorID,
 		AssigneeID:     listParams.AssigneeID,
 		Status:         listParams.Status,
 	})
@@ -116,6 +119,7 @@ func (r *TaskRepository) Update(ctx context.Context, t *task.Task) (*task.Task, 
 		OrganizationID: t.OrganizationID,
 		Title:          t.Title,
 		Description:    textToPgtype(t.Description),
+		IndicatorID:    uuidPtrToPgtype(t.IndicatorID),
 		AssigneeID:     t.AssigneeID,
 		Status:         string(t.Status),
 		SortOrder:      int32(t.SortOrder),
@@ -145,6 +149,7 @@ type taskRowData struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID
 	MissionID      uuid.UUID
+	IndicatorID    pgtype.UUID
 	AssigneeID     uuid.UUID
 	Title          string
 	Description    pgtype.Text
@@ -161,6 +166,7 @@ func taskRowToDomain(row taskRowData) *task.Task {
 		ID:             row.ID,
 		OrganizationID: row.OrganizationID,
 		MissionID:      row.MissionID,
+		IndicatorID:    pgtypeToUUIDPtr(row.IndicatorID),
 		AssigneeID:     row.AssigneeID,
 		Title:          row.Title,
 		Description:    pgtypeToText(row.Description),

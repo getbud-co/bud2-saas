@@ -11,6 +11,7 @@ type Response struct {
 	ID          string  `json:"id"`
 	OrgID       string  `json:"org_id"`
 	MissionID   string  `json:"mission_id"`
+	IndicatorID *string `json:"indicator_id"`
 	AssigneeID  string  `json:"assignee_id"`
 	Title       string  `json:"title"`
 	Description *string `json:"description"`
@@ -30,10 +31,16 @@ type ListResponse struct {
 }
 
 func toResponse(t *domaintask.Task) Response {
+	var indicatorID *string
+	if t.IndicatorID != nil {
+		s := t.IndicatorID.String()
+		indicatorID = &s
+	}
 	return Response{
 		ID:          t.ID.String(),
 		OrgID:       t.OrganizationID.String(),
 		MissionID:   t.MissionID.String(),
+		IndicatorID: indicatorID,
 		AssigneeID:  t.AssigneeID.String(),
 		Title:       t.Title,
 		Description: t.Description,

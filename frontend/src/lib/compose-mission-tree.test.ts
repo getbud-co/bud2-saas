@@ -80,12 +80,24 @@ describe("composeMissionTree", () => {
     expect(composeMissionTree([], [kr], [task])).toEqual([]);
   });
 
-  it("attaches indicators and tasks by mission_id", () => {
+  it("attaches indicators and mission-level tasks by mission_id", () => {
     const tree = composeMissionTree([apiMission], [kr], [task]);
     expect(tree).toHaveLength(1);
     expect(tree[0]!.id).toBe("m-1");
-    expect(tree[0]!.keyResults).toEqual([kr]);
+    expect(tree[0]!.keyResults).toHaveLength(1);
+    expect(tree[0]!.keyResults![0]!.id).toBe(kr.id);
+    // Indicators are returned with their own tasks array (empty when no
+    // tasks are nested under that indicator).
+    expect(tree[0]!.keyResults![0]!.tasks).toEqual([]);
     expect(tree[0]!.tasks).toEqual([task]);
+  });
+
+  it("attaches a task to its indicator when keyResultId is set", () => {
+    const indTask: MissionTask = { ...task, id: "t-ind", keyResultId: kr.id };
+    const tree = composeMissionTree([apiMission], [kr], [indTask]);
+    expect(tree[0]!.tasks).toEqual([]);
+    expect(tree[0]!.keyResults![0]!.tasks).toHaveLength(1);
+    expect(tree[0]!.keyResults![0]!.tasks![0]!.id).toBe("t-ind");
   });
 
   it("returns mission with empty children arrays when no matches", () => {

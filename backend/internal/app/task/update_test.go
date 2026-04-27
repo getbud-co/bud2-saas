@@ -31,7 +31,7 @@ func TestUpdateUseCase_Execute_TransitionToDone_AutoFillsCompletedAt(t *testing.
 	})).Return(existing, nil)
 
 	doneStatus := string(domaintask.StatusDone)
-	_, err := NewUpdateUseCase(repo, users, testutil.NewDiscardLogger()).Execute(context.Background(), UpdateCommand{
+	_, err := NewUpdateUseCase(repo, new(mocks.IndicatorRepository), users, testutil.NewDiscardLogger()).Execute(context.Background(), UpdateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
 		ID:             existing.ID,
 		Status:         &doneStatus,
@@ -56,7 +56,7 @@ func TestUpdateUseCase_Execute_TransitionOutOfDone_ClearsCompletedAt(t *testing.
 	})).Return(existing, nil)
 
 	inProgress := string(domaintask.StatusInProgress)
-	_, err := NewUpdateUseCase(repo, users, testutil.NewDiscardLogger()).Execute(context.Background(), UpdateCommand{
+	_, err := NewUpdateUseCase(repo, new(mocks.IndicatorRepository), users, testutil.NewDiscardLogger()).Execute(context.Background(), UpdateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
 		ID:             existing.ID,
 		Status:         &inProgress,
@@ -73,7 +73,7 @@ func TestUpdateUseCase_Execute_AssigneeChange_NotMember_ReturnsInvalidReference(
 	users.On("GetActiveMemberByID", mock.Anything, mock.Anything, mock.Anything).Return(nil, domainuser.ErrNotFound)
 
 	newAssignee := uuid.New()
-	_, err := NewUpdateUseCase(repo, users, testutil.NewDiscardLogger()).Execute(context.Background(), UpdateCommand{
+	_, err := NewUpdateUseCase(repo, new(mocks.IndicatorRepository), users, testutil.NewDiscardLogger()).Execute(context.Background(), UpdateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
 		ID:             existing.ID,
 		AssigneeID:     &newAssignee,
