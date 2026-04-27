@@ -17,7 +17,7 @@ type ApiMission = components["schemas"]["Mission"];
 // Stable reference returned when there is nothing to compose. Lets callers
 // rely on Object.is identity for memoization (e.g., useBriefingReadModel
 // depends on missions identity to skip recomputation).
-const EMPTY: Mission[] = Object.freeze([]) as Mission[];
+const EMPTY: Mission[] = Object.freeze([] as Mission[]) as Mission[];
 
 export function composeMissionTree(
   missions: ApiMission[] | undefined,

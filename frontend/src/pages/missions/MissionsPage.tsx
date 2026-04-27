@@ -1754,11 +1754,12 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
   }
 
   // ── API body adapters ─────────────────────────────────────────────────
-  // Convert a fully-built local Mission (camelCase, with KR/task/etc.) to the
-  // wire shape the backend expects. KRs/tasks/tags/members and the local
-  // "progress" / "depth" / "path" stay client-side — the API only owns the
-  // mission row itself. parent_id is intentionally omitted in PATCH (reparent
-  // is not exposed via this endpoint per the missions API contract).
+  // POST /missions accepts inline indicators[] and tasks[] so the whole tree
+  // is created atomically. The page builds a local Mission with KRs/tasks/
+  // members/tags from the form; we project only the API-aware subset here.
+  // members and tags do not have APIs yet — they are dropped and will not
+  // round-trip after the next refetch (will land when those resources
+  // exist). depth/path/progress stay client-side as well.
   function toCreateMissionBody(m: Mission) {
     const body: {
       title: string;
@@ -1772,6 +1773,24 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
       kanban_status?: typeof m.kanbanStatus;
       sort_order?: number;
       due_date?: string;
+      indicators?: Array<{
+        owner_id?: string;
+        title: string;
+        description?: string;
+        target_value?: number;
+        current_value?: number;
+        unit?: string;
+        sort_order?: number;
+        due_date?: string;
+      }>;
+      tasks?: Array<{
+        assignee_id?: string;
+        title: string;
+        description?: string;
+        status?: "todo" | "in_progress" | "done" | "cancelled";
+        sort_order?: number;
+        due_date?: string;
+      }>;
     } = { title: m.title, owner_id: m.ownerId };
     if (m.description) body.description = m.description;
     if (m.cycleId) body.cycle_id = m.cycleId;
@@ -1782,7 +1801,40 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
     if (m.kanbanStatus) body.kanban_status = m.kanbanStatus;
     if (typeof m.sortOrder === "number") body.sort_order = m.sortOrder;
     if (m.dueDate) body.due_date = m.dueDate;
+
+    if (m.keyResults && m.keyResults.length > 0) {
+      body.indicators = m.keyResults.map((kr) => {
+        const inline: NonNullable<typeof body.indicators>[number] = { title: kr.title };
+        if (kr.ownerId && kr.ownerId !== m.ownerId) inline.owner_id = kr.ownerId;
+        if (kr.description) inline.description = kr.description;
+        const target = parseNumberOrUndefined(kr.targetValue);
+        if (target !== undefined) inline.target_value = target;
+        const current = parseNumberOrUndefined(kr.currentValue);
+        if (current !== undefined) inline.current_value = current;
+        if (kr.unitLabel) inline.unit = kr.unitLabel;
+        if (typeof kr.sortOrder === "number") inline.sort_order = kr.sortOrder;
+        return inline;
+      });
+    }
+
+    if (m.tasks && m.tasks.length > 0) {
+      body.tasks = m.tasks.map((t) => {
+        const inline: NonNullable<typeof body.tasks>[number] = { title: t.title };
+        if (t.ownerId && t.ownerId !== m.ownerId) inline.assignee_id = t.ownerId;
+        if (t.description) inline.description = t.description;
+        if (t.isDone) inline.status = "done";
+        if (typeof t.sortOrder === "number") inline.sort_order = t.sortOrder;
+        if (t.dueDate) inline.due_date = t.dueDate;
+        return inline;
+      });
+    }
     return body;
+  }
+
+  function parseNumberOrUndefined(value: string | null | undefined): number | undefined {
+    if (value == null || value === "") return undefined;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : undefined;
   }
 
   function toPatchMissionBody(m: Mission) {
@@ -4344,21 +4396,22 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
                   toast.success("Missão atualizada com sucesso!");
                   resetCreateForm();
                 } else {
-                  // CREATE FLOW
+                  // CREATE FLOW — single nested POST creates the mission with
+                  // its indicators and tasks atomically; the response carries
+                  // every server-generated id. We do NOT push into the local
+                  // snapshot anymore: the cache invalidation triggered by the
+                  // mutation re-runs useMissions/useIndicators/useTasks and
+                  // the context's composeMissionTree picks the new tree up on
+                  // the next render. members/tags from the form are dropped
+                  // because the API does not own them yet — they'll come back
+                  // when those resources land.
                   const built = { ...buildMissionFromForm(), status: "active" as const };
-                  let serverId: string;
                   try {
-                    const created = await createMissionMutation.mutateAsync(toCreateMissionBody(built));
-                    serverId = created.id;
-                    setMissions((prev) => [
-                      ...prev,
-                      { ...built, id: created.id, createdAt: created.created_at, updatedAt: created.updated_at },
-                    ]);
+                    await createMissionMutation.mutateAsync(toCreateMissionBody(built));
                   } catch (err) {
                     toast.error(apiErrorToMessage(err, MISSION_ERROR_OVERRIDES));
                     return;
                   }
-                  void serverId;
                   toast.success("Missão criada com sucesso!");
                   resetCreateForm();
                 }
