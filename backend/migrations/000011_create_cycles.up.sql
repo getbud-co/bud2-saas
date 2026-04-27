@@ -22,3 +22,6 @@ CREATE INDEX idx_cycles_status ON cycles (status);
 CREATE INDEX idx_cycles_type ON cycles (type);
 CREATE INDEX idx_cycles_deleted_at ON cycles (deleted_at) WHERE deleted_at IS NULL;
 CREATE UNIQUE INDEX idx_cycles_org_name_unique ON cycles (organization_id, LOWER(name)) WHERE deleted_at IS NULL;
+
+-- Anchor for composite FKs (organization_id, id) — see teams migration.
+ALTER TABLE cycles ADD CONSTRAINT cycles_org_id_key UNIQUE (organization_id, id);

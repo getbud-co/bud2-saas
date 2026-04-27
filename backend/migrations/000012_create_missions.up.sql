@@ -1,10 +1,10 @@
 CREATE TABLE missions (
     id              UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     organization_id UUID         NOT NULL REFERENCES organizations(id),
-    cycle_id        UUID         REFERENCES cycles(id),
-    parent_id       UUID         REFERENCES missions(id),
-    owner_id        UUID         NOT NULL REFERENCES users(id),
-    team_id         UUID         REFERENCES teams(id),
+    cycle_id        UUID,
+    parent_id       UUID,
+    owner_id        UUID         NOT NULL,
+    team_id         UUID,
     title           TEXT         NOT NULL,
     description     TEXT,
     status          TEXT         NOT NULL DEFAULT 'draft'
@@ -18,7 +18,25 @@ CREATE TABLE missions (
     completed_at    TIMESTAMPTZ,
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    deleted_at      TIMESTAMPTZ
+    deleted_at      TIMESTAMPTZ,
+
+    -- All cross-tenant references go through composite FKs anchored on
+    -- organization_id, so a mission cannot reference a cycle, parent
+    -- mission, team, or owner from a different org. Defense in depth:
+    -- the application use cases already validate org consistency; these
+    -- constraints close the door for any path that bypasses the use case
+    -- (admin scripts, batch imports, future maintenance jobs).
+    -- owner_id resolves against organization_memberships rather than
+    -- users(id) so the user must additionally be a current member.
+    UNIQUE (organization_id, id),
+    FOREIGN KEY (organization_id, cycle_id)
+        REFERENCES cycles (organization_id, id),
+    FOREIGN KEY (organization_id, parent_id)
+        REFERENCES missions (organization_id, id),
+    FOREIGN KEY (organization_id, team_id)
+        REFERENCES teams (organization_id, id),
+    FOREIGN KEY (organization_id, owner_id)
+        REFERENCES organization_memberships (organization_id, user_id)
 );
 
 CREATE INDEX idx_missions_organization_id ON missions (organization_id);

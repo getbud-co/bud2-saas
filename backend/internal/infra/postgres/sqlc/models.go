@@ -139,14 +139,15 @@ type Team struct {
 }
 
 type TeamMember struct {
-	ID         uuid.UUID
-	TeamID     uuid.UUID
-	UserID     uuid.UUID
-	RoleInTeam string
-	JoinedAt   time.Time
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	DeletedAt  pgtype.Timestamptz
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	TeamID         uuid.UUID
+	UserID         uuid.UUID
+	RoleInTeam     string
+	JoinedAt       time.Time
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	DeletedAt      pgtype.Timestamptz
 }
 
 type User struct {

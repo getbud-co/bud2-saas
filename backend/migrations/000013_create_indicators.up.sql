@@ -1,8 +1,8 @@
 CREATE TABLE indicators (
     id              UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     organization_id UUID         NOT NULL REFERENCES organizations(id),
-    mission_id      UUID         NOT NULL REFERENCES missions(id),
-    owner_id        UUID         NOT NULL REFERENCES users(id),
+    mission_id      UUID         NOT NULL,
+    owner_id        UUID         NOT NULL,
     title           TEXT         NOT NULL,
     description     TEXT,
     target_value    NUMERIC,
@@ -14,7 +14,15 @@ CREATE TABLE indicators (
     due_date        DATE,
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    deleted_at      TIMESTAMPTZ
+    deleted_at      TIMESTAMPTZ,
+
+    -- Composite FKs lock cross-tenant references at the schema level: an
+    -- indicator can only point at a mission of the same org and an owner
+    -- with an active membership in that org.
+    FOREIGN KEY (organization_id, mission_id)
+        REFERENCES missions (organization_id, id),
+    FOREIGN KEY (organization_id, owner_id)
+        REFERENCES organization_memberships (organization_id, user_id)
 );
 
 CREATE INDEX idx_indicators_organization_id ON indicators (organization_id);

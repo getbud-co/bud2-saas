@@ -67,8 +67,8 @@ WHERE id = $1
   AND deleted_at IS NULL;
 
 -- name: CreateTeamMember :one
-INSERT INTO team_members (team_id, user_id, role_in_team)
-VALUES ($1, $2, $3)
+INSERT INTO team_members (organization_id, team_id, user_id, role_in_team)
+VALUES ($1, $2, $3, $4)
 RETURNING id, team_id, user_id, role_in_team, joined_at, created_at, updated_at;
 
 -- name: ListTeamMembers :many

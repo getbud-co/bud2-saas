@@ -97,15 +97,16 @@ func (q *Queries) CreateTeam(ctx context.Context, arg CreateTeamParams) (CreateT
 }
 
 const createTeamMember = `-- name: CreateTeamMember :one
-INSERT INTO team_members (team_id, user_id, role_in_team)
-VALUES ($1, $2, $3)
+INSERT INTO team_members (organization_id, team_id, user_id, role_in_team)
+VALUES ($1, $2, $3, $4)
 RETURNING id, team_id, user_id, role_in_team, joined_at, created_at, updated_at
 `
 
 type CreateTeamMemberParams struct {
-	TeamID     uuid.UUID
-	UserID     uuid.UUID
-	RoleInTeam string
+	OrganizationID uuid.UUID
+	TeamID         uuid.UUID
+	UserID         uuid.UUID
+	RoleInTeam     string
 }
 
 type CreateTeamMemberRow struct {
@@ -119,7 +120,12 @@ type CreateTeamMemberRow struct {
 }
 
 func (q *Queries) CreateTeamMember(ctx context.Context, arg CreateTeamMemberParams) (CreateTeamMemberRow, error) {
-	row := q.db.QueryRow(ctx, createTeamMember, arg.TeamID, arg.UserID, arg.RoleInTeam)
+	row := q.db.QueryRow(ctx, createTeamMember,
+		arg.OrganizationID,
+		arg.TeamID,
+		arg.UserID,
+		arg.RoleInTeam,
+	)
 	var i CreateTeamMemberRow
 	err := row.Scan(
 		&i.ID,
