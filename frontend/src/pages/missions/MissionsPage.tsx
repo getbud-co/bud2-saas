@@ -90,6 +90,9 @@ import { usePeopleData } from "@/contexts/PeopleDataContext";
 import { useConfigData } from "@/contexts/ConfigDataContext";
 import { useSurveysData } from "@/contexts/SurveysDataContext";
 import { useCreateMission, useUpdateMission, useDeleteMission } from "@/hooks/use-missions";
+import { useCreateIndicator, useUpdateIndicator, useDeleteIndicator } from "@/hooks/use-indicators";
+import { useCreateTask, useUpdateTask, useDeleteTask } from "@/hooks/use-tasks";
+import { diffMission } from "@/lib/missions-diff";
 import { apiErrorToMessage } from "@/lib/api-error";
 import type { SavedView } from "@/contexts/SavedViewsContext";
 import type { Mission, KeyResult, MissionTask, MissionMember, KanbanStatus, ConfidenceLevel, ExternalContribution } from "@/types"; // MissionMember used in buildMissionFromForm
@@ -202,18 +205,88 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
   const { surveys } = useSurveysData();
   const { activeOrgId, tagOptions, cyclePresetOptions, createTag, getTagById, resolveTagId } = useConfigData();
 
-  // Phase 2 of the missions API migration: mission-level mutations (create,
-  // update, delete) flow through the API. The local snapshot still carries
-  // KRs/tasks/check-ins/etc., so each successful mutation is followed by a
-  // setMissions(...) that mirrors the change locally — that keeps the page
-  // consistent until phase 3 drops missions from localStorage entirely.
+  // Mission row + child resource mutations. Create flows go through the
+  // nested POST on the mission hook; edit flows diff the form against the
+  // persisted mission and dispatch per-resource ops (see runMissionEditOps
+  // below). Each mutation invalidates its own cache so the context recomposes
+  // the tree on the next render.
   const createMissionMutation = useCreateMission();
   const updateMissionMutation = useUpdateMission();
   const deleteMissionMutation = useDeleteMission();
+  const createIndicatorMutation = useCreateIndicator();
+  const updateIndicatorMutation = useUpdateIndicator();
+  const deleteIndicatorMutation = useDeleteIndicator();
+  const createTaskMutation = useCreateTask();
+  const updateTaskMutation = useUpdateTask();
+  const deleteTaskMutation = useDeleteTask();
   const MISSION_ERROR_OVERRIDES: Record<number, string> = {
     404: "Missão não encontrada",
     422: "Dados inválidos para a missão",
   };
+
+  // Orquestrador de diff usado pelo EDIT FLOW. Recebe (currentApi, formState)
+  // e dispara as opções na ordem PATCH → DELETE → UPDATE → CREATE para que a
+  // ordem das chamadas faça sentido em caso de reordenação parcial. Cada
+  // operação é independente; falhas viram entradas no array retornado e o
+  // próximo refetch reconcilia o que persistiu.
+  async function runMissionEditOps(currentMission: Mission, formMission: Mission): Promise<string[]> {
+    const diff = diffMission(currentMission, formMission);
+    const errors: string[] = [];
+
+    if (diff.missionPatch) {
+      try {
+        await updateMissionMutation.mutateAsync({ id: formMission.id, body: diff.missionPatch });
+      } catch (err) {
+        errors.push(`mission: ${apiErrorToMessage(err, MISSION_ERROR_OVERRIDES)}`);
+      }
+    }
+
+    for (const id of diff.indicatorOps.delete) {
+      try {
+        await deleteIndicatorMutation.mutateAsync(id);
+      } catch (err) {
+        errors.push(`indicador removido: ${apiErrorToMessage(err)}`);
+      }
+    }
+    for (const op of diff.indicatorOps.update) {
+      try {
+        await updateIndicatorMutation.mutateAsync({ id: op.id, patch: op.patch });
+      } catch (err) {
+        errors.push(`indicador editado: ${apiErrorToMessage(err)}`);
+      }
+    }
+    for (const input of diff.indicatorOps.create) {
+      try {
+        await createIndicatorMutation.mutateAsync(input);
+      } catch (err) {
+        errors.push(`indicador novo: ${apiErrorToMessage(err)}`);
+      }
+    }
+
+    for (const id of diff.taskOps.delete) {
+      try {
+        await deleteTaskMutation.mutateAsync(id);
+      } catch (err) {
+        errors.push(`tarefa removida: ${apiErrorToMessage(err)}`);
+      }
+    }
+    for (const op of diff.taskOps.update) {
+      try {
+        await updateTaskMutation.mutateAsync({ id: op.id, patch: op.patch });
+      } catch (err) {
+        errors.push(`tarefa editada: ${apiErrorToMessage(err)}`);
+      }
+    }
+    for (const input of diff.taskOps.create) {
+      try {
+        await createTaskMutation.mutateAsync(input);
+      } catch (err) {
+        errors.push(`tarefa nova: ${apiErrorToMessage(err)}`);
+      }
+    }
+
+    return errors;
+  }
 
   const teamFilterOptions = useMemo(
     () => [{ id: "all", label: "Todos os times" }, ...teamOptions],
@@ -1837,31 +1910,8 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
     return Number.isFinite(n) ? n : undefined;
   }
 
-  function toPatchMissionBody(m: Mission) {
-    const body: {
-      title?: string;
-      description?: string;
-      cycle_id?: string;
-      owner_id?: string;
-      team_id?: string;
-      status?: typeof m.status;
-      visibility?: typeof m.visibility;
-      kanban_status?: typeof m.kanbanStatus;
-      sort_order?: number;
-      due_date?: string;
-    } = {};
-    if (m.title) body.title = m.title;
-    if (m.description) body.description = m.description;
-    if (m.cycleId) body.cycle_id = m.cycleId;
-    if (m.ownerId) body.owner_id = m.ownerId;
-    if (m.teamId) body.team_id = m.teamId;
-    if (m.status) body.status = m.status;
-    if (m.visibility) body.visibility = m.visibility;
-    if (m.kanbanStatus) body.kanban_status = m.kanbanStatus;
-    if (typeof m.sortOrder === "number") body.sort_order = m.sortOrder;
-    if (m.dueDate) body.due_date = m.dueDate;
-    return body;
-  }
+  // toPatchMissionBody is no longer used: the EDIT FLOW now goes through
+  // diffMission/runMissionEditOps. Removed.
 
   function buildMissionFromForm(existing?: Mission): Mission {
     const now = new Date().toISOString();
@@ -4363,35 +4413,32 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
                   return;
                 }
                 if (editingMissionId) {
-                  // EDIT FLOW
-                  // The local form is always re-populated with the existing
-                  // mission, so we send the full editable surface. PATCH
-                  // ignores anything not in the schema (parent_id, etc).
+                  // EDIT FLOW — diff the form against the persisted mission
+                  // and dispatch the resulting per-resource ops. The mission
+                  // PATCH plus indicator/task create/update/delete mutations
+                  // each invalidate their cache key on success, so the
+                  // context recomposes with the new tree on the next render.
+                  // members/tags edits are not round-tripped (no API yet).
                   const existingMission = missions.find((m) => m.id === editingMissionId);
                   const built = { ...buildMissionFromForm(existingMission), status: "active" as const };
                   // Drafts saved locally have ids like "draft-..." or
                   // "mission-..." and are not on the server yet — promoting
-                  // them to "active" via PATCH would 404. Treat as create.
+                  // them to "active" via PATCH would 404. Treat as create
+                  // (nested POST handles indicators/tasks atomically).
                   const isLocalOnly = editingMissionId.startsWith("draft-") || editingMissionId.startsWith("mission-");
-                  try {
-                    if (isLocalOnly) {
-                      const created = await createMissionMutation.mutateAsync(toCreateMissionBody(built));
-                      // Reuse server id so subsequent saves resolve via API.
-                      setMissions((prev) => prev.map((m) => (m.id === editingMissionId
-                        ? { ...built, id: created.id, createdAt: created.created_at, updatedAt: created.updated_at }
-                        : m)));
-                    } else {
-                      const updated = await updateMissionMutation.mutateAsync({
-                        id: editingMissionId,
-                        body: toPatchMissionBody(built),
-                      });
-                      setMissions((prev) => prev.map((m) => (m.id === editingMissionId
-                        ? { ...built, updatedAt: updated.updated_at }
-                        : m)));
+                  if (isLocalOnly) {
+                    try {
+                      await createMissionMutation.mutateAsync(toCreateMissionBody(built));
+                    } catch (err) {
+                      toast.error(apiErrorToMessage(err, MISSION_ERROR_OVERRIDES));
+                      return;
                     }
-                  } catch (err) {
-                    toast.error(apiErrorToMessage(err, MISSION_ERROR_OVERRIDES));
-                    return;
+                  } else {
+                    const errors = await runMissionEditOps(existingMission ?? built, built);
+                    if (errors.length > 0) {
+                      toast.error(`Algumas alterações não foram salvas: ${errors.join("; ")}`);
+                      return;
+                    }
                   }
                   toast.success("Missão atualizada com sucesso!");
                   resetCreateForm();
