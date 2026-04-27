@@ -1,19 +1,23 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/getbud-co/bud2/backend/internal/api/httputil"
 	"github.com/getbud-co/bud2/backend/internal/domain"
 	"github.com/getbud-co/bud2/backend/internal/infra/postgres/sqlc"
 )
 
-func ActiveOrganizationMiddleware(pool *pgxpool.Pool) func(http.Handler) http.Handler {
-	queries := sqlc.New(pool)
+type ActiveOrganizationQuerier interface {
+	GetOrganizationByID(ctx context.Context, id uuid.UUID) (sqlc.GetOrganizationByIDRow, error)
+	GetActiveOrganizationMembership(ctx context.Context, arg sqlc.GetActiveOrganizationMembershipParams) (sqlc.GetActiveOrganizationMembershipRow, error)
+}
 
+func ActiveOrganizationMiddleware(queries ActiveOrganizationQuerier) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			tenantID, err := domain.TenantIDFromContext(r.Context())
