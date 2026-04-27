@@ -71,7 +71,7 @@ function baseKR(overrides: Partial<KeyResult> = {}): KeyResult {
 
 function baseTask(overrides: Partial<MissionTask> = {}): MissionTask {
   return {
-    id: "t-1",
+    id: "srv-task-1",
     missionId: "m-1",
     keyResultId: null,
     title: "Triage",
@@ -175,18 +175,37 @@ describe("diffMission - tasks", () => {
 
   it("updates a task when isDone changes", () => {
     const diff = diffMission(
-      baseMission({ tasks: [baseTask({ id: "t-1", isDone: false })] }),
-      baseMission({ tasks: [baseTask({ id: "t-1", isDone: true })] }),
+      baseMission({ tasks: [baseTask({ id: "srv-task-1", isDone: false })] }),
+      baseMission({ tasks: [baseTask({ id: "srv-task-1", isDone: true })] }),
     );
-    expect(diff.taskOps.update).toEqual([{ id: "t-1", patch: { isDone: true } }]);
+    expect(diff.taskOps.update).toEqual([{ id: "srv-task-1", patch: { isDone: true } }]);
+  });
+
+  it("never deletes a task whose id matches a client-draft prefix", () => {
+    // Regression: subtask ids minted by materializeMissionItems use the
+    // "t-" prefix. They must not appear in DELETE ops even if they end up
+    // in current.tasks but not in form.tasks.
+    const diff = diffMission(
+      baseMission({ tasks: [baseTask({ id: "t-12345-abc" })] }),
+      baseMission({ tasks: [] }),
+    );
+    expect(diff.taskOps.delete).toHaveLength(0);
+  });
+
+  it("never deletes a task whose id starts with task- (local-only)", () => {
+    const diff = diffMission(
+      baseMission({ tasks: [baseTask({ id: "task-12345" })] }),
+      baseMission({ tasks: [] }),
+    );
+    expect(diff.taskOps.delete).toHaveLength(0);
   });
 
   it("deletes a task removed from the form", () => {
     const diff = diffMission(
-      baseMission({ tasks: [baseTask({ id: "t-1" }), baseTask({ id: "t-2", title: "B" })] }),
-      baseMission({ tasks: [baseTask({ id: "t-1" })] }),
+      baseMission({ tasks: [baseTask({ id: "srv-task-1" }), baseTask({ id: "srv-task-2", title: "B" })] }),
+      baseMission({ tasks: [baseTask({ id: "srv-task-1" })] }),
     );
-    expect(diff.taskOps.delete).toEqual(["t-2"]);
+    expect(diff.taskOps.delete).toEqual(["srv-task-2"]);
   });
 });
 
@@ -194,7 +213,7 @@ describe("diffMission - mixed", () => {
   it("emits all three categories at once", () => {
     const current = baseMission({
       keyResults: [baseKR({ id: "ind-1", title: "old" }), baseKR({ id: "ind-2", title: "removed" })],
-      tasks: [baseTask({ id: "t-1", title: "old" })],
+      tasks: [baseTask({ id: "srv-task-1", title: "old" })],
     });
     const form = baseMission({
       title: "novo",
@@ -203,7 +222,7 @@ describe("diffMission - mixed", () => {
         baseKR({ id: "draft-add" }),
       ],
       tasks: [
-        baseTask({ id: "t-1", title: "novo" }),
+        baseTask({ id: "srv-task-1", title: "novo" }),
         baseTask({ id: "draft-task" }),
       ],
     });
@@ -213,6 +232,6 @@ describe("diffMission - mixed", () => {
     expect(diff.indicatorOps.update).toEqual([{ id: "ind-1", patch: { title: "new" } }]);
     expect(diff.indicatorOps.delete).toEqual(["ind-2"]);
     expect(diff.taskOps.create).toHaveLength(1);
-    expect(diff.taskOps.update).toEqual([{ id: "t-1", patch: { title: "novo" } }]);
+    expect(diff.taskOps.update).toEqual([{ id: "srv-task-1", patch: { title: "novo" } }]);
   });
 });

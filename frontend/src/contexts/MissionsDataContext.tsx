@@ -664,15 +664,22 @@ export function MissionsDataProvider({ children }: { children: ReactNode }) {
   );
 
   // composeMissionTree joins the three queries into the Mission[] shape the
-  // UI consumes. snapshot.missions is no longer the source — schema 8 keeps
-  // it empty. setMissions still writes to it as an in-memory mirror so the
-  // existing optimistic-UI sites in MissionsPage keep working until they
-  // are migrated to read directly from the React Query cache.
+  // UI consumes. snapshot.missions only carries client-only drafts (saved
+  // via "Salvar rascunho") whose ids are guaranteed not to collide with
+  // server ids — they use the `draft-`/`mission-` prefixes. The merge
+  // returns API-sourced missions first and then local drafts that the API
+  // does NOT know about, so any subsequent server data always overrides
+  // (avoids the "draft permanently masks API" bug from the previous merge).
   const composedMissions = useMemo(
     () => composeMissionTree(apiMissions, apiIndicators, apiTasks),
     [apiMissions, apiIndicators, apiTasks],
   );
-  const mergedMissions = snapshot.missions.length > 0 ? snapshot.missions : composedMissions;
+  const mergedMissions = useMemo(() => {
+    if (snapshot.missions.length === 0) return composedMissions;
+    const apiIds = new Set(composedMissions.map((m) => m.id));
+    const localOnly = snapshot.missions.filter((m) => !apiIds.has(m.id));
+    return localOnly.length === 0 ? composedMissions : [...composedMissions, ...localOnly];
+  }, [composedMissions, snapshot.missions]);
 
   const isLoadingMissions = isLoadingMissionsRaw && composedMissions.length === 0;
 

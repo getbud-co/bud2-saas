@@ -21,6 +21,7 @@ import type { components } from "@/lib/types";
 import type { Mission, KeyResult, MissionTask } from "@/types";
 import type { CreateIndicatorInput, UpdateIndicatorInput } from "@/hooks/use-indicators";
 import type { CreateTaskInput, UpdateTaskInput } from "@/hooks/use-tasks";
+import { isLocalIndicatorId, isLocalTaskId } from "@/lib/local-ids";
 
 type PatchMissionBody = components["schemas"]["PatchMissionRequest"];
 
@@ -190,13 +191,14 @@ function missionTaskToCreateInput(missionId: string, t: MissionTask): CreateTask
 
 // ── id heuristics ──────────────────────────────────────────────────────────
 
-// Drafts the page mints client-side use the "draft-" or "kr-"/"task-"
-// prefixes; anything else is assumed to be a server id. Matches the same
-// convention MissionsPage uses to decide whether DELETE should hit the API.
+// Persisted = "lives on the server" = target of PATCH/DELETE. Anything that
+// matches a local-draft prefix (defined in lib/local-ids) is the target of
+// POST instead. The prefix lists live in a single module so the form code,
+// the diff logic, and the submit logic cannot drift apart.
 function isPersistedIndicatorId(id: string): boolean {
-  return !id.startsWith("draft-") && !id.startsWith("kr-") && !id.startsWith("indicator-");
+  return !isLocalIndicatorId(id);
 }
 
 function isPersistedTaskId(id: string): boolean {
-  return !id.startsWith("draft-") && !id.startsWith("task-");
+  return !isLocalTaskId(id);
 }

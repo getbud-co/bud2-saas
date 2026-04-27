@@ -93,6 +93,7 @@ import { useCreateMission, useUpdateMission, useDeleteMission } from "@/hooks/us
 import { useCreateIndicator, useUpdateIndicator, useDeleteIndicator } from "@/hooks/use-indicators";
 import { useCreateTask, useUpdateTask, useDeleteTask } from "@/hooks/use-tasks";
 import { diffMission } from "@/lib/missions-diff";
+import { isLocalMissionId } from "@/lib/local-ids";
 import { apiErrorToMessage } from "@/lib/api-error";
 import type { SavedView } from "@/contexts/SavedViewsContext";
 import type { Mission, KeyResult, MissionTask, MissionMember, KanbanStatus, ConfidenceLevel, ExternalContribution } from "@/types"; // MissionMember used in buildMissionFromForm
@@ -2071,9 +2072,8 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
 
     // Drafts (created via "Salvar rascunho") never made it to the server, so
     // there is nothing to delete remotely — just clean up local state.
-    const isLocalOnly = mission.id.startsWith("draft-") || mission.id.startsWith("mission-");
     try {
-      if (!isLocalOnly) {
+      if (!isLocalMissionId(mission.id)) {
         await deleteMissionMutation.mutateAsync(mission.id);
       }
     } catch (err) {
@@ -4425,8 +4425,7 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
                   // "mission-..." and are not on the server yet — promoting
                   // them to "active" via PATCH would 404. Treat as create
                   // (nested POST handles indicators/tasks atomically).
-                  const isLocalOnly = editingMissionId.startsWith("draft-") || editingMissionId.startsWith("mission-");
-                  if (isLocalOnly) {
+                  if (isLocalMissionId(editingMissionId)) {
                     try {
                       await createMissionMutation.mutateAsync(toCreateMissionBody(built));
                     } catch (err) {
@@ -4434,7 +4433,16 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
                       return;
                     }
                   } else {
-                    const errors = await runMissionEditOps(existingMission ?? built, built);
+                    if (!existingMission) {
+                      // The persisted mission disappeared from the cached
+                      // tree (cache invalidation in flight, race with a
+                      // concurrent delete, etc.). Refuse to diff against
+                      // the form-built copy — that would produce a no-op
+                      // and falsely succeed. Force the user to refresh.
+                      toast.error("Missão não encontrada. Recarregue a página antes de tentar novamente.");
+                      return;
+                    }
+                    const errors = await runMissionEditOps(existingMission, built);
                     if (errors.length > 0) {
                       toast.error(`Algumas alterações não foram salvas: ${errors.join("; ")}`);
                       return;
