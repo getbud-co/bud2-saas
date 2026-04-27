@@ -33,15 +33,21 @@ type nopTxManager struct {
 	tasks      domaintask.Repository
 }
 
+// nopTxRepos returns the same mocks the use case already holds for the
+// resources actually used by CreateUseCase, and unconfigured mocks (NOT
+// nil) for the rest. An unconfigured mock surfaces a clear testify
+// assertion if someone later starts calling, say, repos.Users() inside
+// the transaction; nil pointers would manifest as bare panics with
+// nothing pointing at the cause.
 type nopTxRepos struct {
 	missions   domainmission.Repository
 	indicators domainindicator.Repository
 	tasks      domaintask.Repository
 }
 
-func (r nopTxRepos) Organizations() domainorg.Repository           { return nil }
-func (r nopTxRepos) Users() domainuser.Repository                  { return nil }
-func (r nopTxRepos) Teams() domainteam.Repository                  { return nil }
+func (r nopTxRepos) Organizations() domainorg.Repository           { return new(mocks.OrganizationRepository) }
+func (r nopTxRepos) Users() domainuser.Repository                  { return new(mocks.UserRepository) }
+func (r nopTxRepos) Teams() domainteam.Repository                  { return new(mocks.TeamRepository) }
 func (r nopTxRepos) Missions() domainmission.Repository            { return r.missions }
 func (r nopTxRepos) Indicators() domainindicator.Repository        { return r.indicators }
 func (r nopTxRepos) Tasks() domaintask.Repository                  { return r.tasks }

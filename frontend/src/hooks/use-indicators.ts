@@ -41,6 +41,16 @@ export function useIndicators(params?: UseIndicatorsParams) {
         params: { query: queryParams as never },
       });
       if (error) throw error;
+      // Truncation guard: until proper pagination lands, surface a console
+      // warning when the backend reports more rows than this single page
+      // can carry. The composer will silently produce incomplete trees
+      // otherwise.
+      if (data && data.total > (data.data?.length ?? 0)) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[useIndicators] truncated: ${data.data?.length ?? 0} of ${data.total} indicators returned. Pagination is not implemented yet.`,
+        );
+      }
       return data;
     },
     select: (data) => (data?.data ?? []).map(apiIndicatorToKeyResult),

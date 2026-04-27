@@ -37,6 +37,15 @@ export function useTasks(params?: UseTasksParams) {
         params: { query: queryParams as never },
       });
       if (error) throw error;
+      // Truncation guard, same rationale as use-indicators: until proper
+      // pagination lands, warn the developer when a single fetch cannot
+      // carry the full set.
+      if (data && data.total > (data.data?.length ?? 0)) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[useTasks] truncated: ${data.data?.length ?? 0} of ${data.total} tasks returned. Pagination is not implemented yet.`,
+        );
+      }
       return data;
     },
     select: (data) => (data?.data ?? []).map(apiTaskToMissionTask),

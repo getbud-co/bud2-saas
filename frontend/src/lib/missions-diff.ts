@@ -51,6 +51,13 @@ export function diffMission(current: Mission, form: Mission): MissionDiff {
 // ── mission row ────────────────────────────────────────────────────────────
 
 function diffMissionRow(current: Mission, form: Mission): PatchMissionBody | null {
+  // KNOWN LIMITATION: nullable fields (description, cycleId, teamId,
+  // dueDate) cannot be cleared via PATCH today. The backend's
+  // PatchMissionRequest uses single Go pointers, so the application
+  // layer cannot distinguish "field absent" from "field explicitly null".
+  // We mirror that here by only emitting the field when the new value is
+  // non-null; clearing is a no-op until the backend grows support for
+  // it (see the note on PatchMissionRequest in openapi.yml).
   const patch: PatchMissionBody = {};
   if (current.title !== form.title) patch.title = form.title;
   if ((current.description ?? null) !== (form.description ?? null)) {
