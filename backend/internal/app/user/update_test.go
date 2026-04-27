@@ -10,7 +10,10 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	apptx "github.com/getbud-co/bud2/backend/internal/app/tx"
+	domainindicator "github.com/getbud-co/bud2/backend/internal/domain/indicator"
+	domainmission "github.com/getbud-co/bud2/backend/internal/domain/mission"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
+	domaintask "github.com/getbud-co/bud2/backend/internal/domain/task"
 	"github.com/getbud-co/bud2/backend/internal/domain/team"
 	usr "github.com/getbud-co/bud2/backend/internal/domain/user"
 	"github.com/getbud-co/bud2/backend/internal/test/fixtures"
@@ -34,6 +37,9 @@ func (r updateTestTxRepos) Teams() team.Repository {
 	m.On("ListMembersByUser", mock.Anything, mock.Anything, mock.Anything).Return([]team.TeamMember{}, nil)
 	return m
 }
+func (r updateTestTxRepos) Missions() domainmission.Repository     { return nil }
+func (r updateTestTxRepos) Indicators() domainindicator.Repository { return nil }
+func (r updateTestTxRepos) Tasks() domaintask.Repository           { return nil }
 
 type updateTestTxManager struct {
 	repos     apptx.Repositories

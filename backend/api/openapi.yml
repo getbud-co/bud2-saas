@@ -1861,6 +1861,21 @@ components:
         completed_at: { type: string, format: date-time, nullable: true }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+        indicators:
+          description: |
+            Only populated on the response of POST /missions when the request
+            included nested indicators. GET /missions and GET /missions/{id}
+            do not return this field — fetch /indicators?mission_id=… instead.
+          type: array
+          items:
+            $ref: "#/components/schemas/Indicator"
+        tasks:
+          description: |
+            Same semantics as `indicators`: only present on the POST response
+            when the request was nested.
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
 
     MissionListResponse:
       type: object
@@ -1877,6 +1892,13 @@ components:
     CreateMissionRequest:
       type: object
       required: [title, owner_id]
+      description: |
+        POST /missions accepts inline `indicators` and `tasks` so the whole
+        mission can be created atomically (one request, one transaction). To
+        manage indicators/tasks AFTER creation use the `/indicators` and
+        `/tasks` endpoints — PATCH /missions/{id} does NOT accept these
+        fields. Owner_id of nested children defaults to the mission owner
+        when omitted.
       properties:
         title: { type: string, minLength: 1, maxLength: 200 }
         description: { type: string, maxLength: 5000, nullable: true }
@@ -1887,6 +1909,41 @@ components:
         status: { type: string, enum: [draft, active, paused, completed, cancelled] }
         visibility: { type: string, enum: [public, team_only, private] }
         kanban_status: { type: string, enum: [uncategorized, todo, doing, done] }
+        sort_order: { type: integer }
+        due_date: { type: string, format: date, nullable: true }
+        indicators:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateMissionIndicatorInline"
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateMissionTaskInline"
+
+    CreateMissionIndicatorInline:
+      type: object
+      required: [title]
+      description: Indicator created inline with its parent mission. mission_id is supplied by the parent.
+      properties:
+        owner_id: { type: string, format: uuid, nullable: true }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 5000, nullable: true }
+        target_value: { type: number, format: double, nullable: true }
+        current_value: { type: number, format: double, nullable: true }
+        unit: { type: string, maxLength: 32, nullable: true }
+        status: { type: string, enum: [draft, active, at_risk, done, archived] }
+        sort_order: { type: integer }
+        due_date: { type: string, format: date, nullable: true }
+
+    CreateMissionTaskInline:
+      type: object
+      required: [title]
+      description: Task created inline with its parent mission. mission_id is supplied by the parent.
+      properties:
+        assignee_id: { type: string, format: uuid, nullable: true }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 5000, nullable: true }
+        status: { type: string, enum: [todo, in_progress, done, cancelled] }
         sort_order: { type: integer }
         due_date: { type: string, format: date, nullable: true }
 

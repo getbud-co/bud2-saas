@@ -12,17 +12,45 @@ import (
 const dateLayout = "2006-01-02"
 
 type createRequest struct {
+	Title        string                  `json:"title" validate:"required,min=1,max=200"`
+	Description  *string                 `json:"description" validate:"omitempty,max=5000"`
+	CycleID      *uuid.UUID              `json:"cycle_id" validate:"omitempty"`
+	ParentID     *uuid.UUID              `json:"parent_id" validate:"omitempty"`
+	OwnerID      uuid.UUID               `json:"owner_id" validate:"required"`
+	TeamID       *uuid.UUID              `json:"team_id" validate:"omitempty"`
+	Status       string                  `json:"status" validate:"omitempty,oneof=draft active paused completed cancelled"`
+	Visibility   string                  `json:"visibility" validate:"omitempty,oneof=public team_only private"`
+	KanbanStatus string                  `json:"kanban_status" validate:"omitempty,oneof=uncategorized todo doing done"`
+	SortOrder    int                     `json:"sort_order"`
+	DueDate      *string                 `json:"due_date" validate:"omitempty,datetime=2006-01-02"`
+	Indicators   []createIndicatorInline `json:"indicators" validate:"omitempty,dive"`
+	Tasks        []createTaskInline      `json:"tasks" validate:"omitempty,dive"`
+}
+
+// createIndicatorInline mirrors CreateIndicatorRequest minus mission_id, which
+// is supplied by the parent mission. owner_id is optional and defaults to the
+// mission owner.
+type createIndicatorInline struct {
+	OwnerID      *uuid.UUID `json:"owner_id" validate:"omitempty"`
 	Title        string     `json:"title" validate:"required,min=1,max=200"`
 	Description  *string    `json:"description" validate:"omitempty,max=5000"`
-	CycleID      *uuid.UUID `json:"cycle_id" validate:"omitempty"`
-	ParentID     *uuid.UUID `json:"parent_id" validate:"omitempty"`
-	OwnerID      uuid.UUID  `json:"owner_id" validate:"required"`
-	TeamID       *uuid.UUID `json:"team_id" validate:"omitempty"`
-	Status       string     `json:"status" validate:"omitempty,oneof=draft active paused completed cancelled"`
-	Visibility   string     `json:"visibility" validate:"omitempty,oneof=public team_only private"`
-	KanbanStatus string     `json:"kanban_status" validate:"omitempty,oneof=uncategorized todo doing done"`
+	TargetValue  *float64   `json:"target_value"`
+	CurrentValue *float64   `json:"current_value"`
+	Unit         *string    `json:"unit" validate:"omitempty,max=32"`
+	Status       string     `json:"status" validate:"omitempty,oneof=draft active at_risk done archived"`
 	SortOrder    int        `json:"sort_order"`
 	DueDate      *string    `json:"due_date" validate:"omitempty,datetime=2006-01-02"`
+}
+
+// createTaskInline mirrors CreateTaskRequest minus mission_id. assignee_id is
+// optional and defaults to the mission owner.
+type createTaskInline struct {
+	AssigneeID  *uuid.UUID `json:"assignee_id" validate:"omitempty"`
+	Title       string     `json:"title" validate:"required,min=1,max=200"`
+	Description *string    `json:"description" validate:"omitempty,max=5000"`
+	Status      string     `json:"status" validate:"omitempty,oneof=todo in_progress done cancelled"`
+	SortOrder   int        `json:"sort_order"`
+	DueDate     *string    `json:"due_date" validate:"omitempty,datetime=2006-01-02"`
 }
 
 // updateRequest models JSON Merge Patch (RFC 7396) semantics: every field is
@@ -68,7 +96,7 @@ func parseOptionalDate(value *string) *time.Time {
 }
 
 func (r createRequest) toCommand(organizationID domain.TenantID) appmission.CreateCommand {
-	return appmission.CreateCommand{
+	cmd := appmission.CreateCommand{
 		OrganizationID: organizationID,
 		Title:          r.Title,
 		Description:    r.Description,
@@ -82,6 +110,36 @@ func (r createRequest) toCommand(organizationID domain.TenantID) appmission.Crea
 		SortOrder:      r.SortOrder,
 		DueDate:        parseOptionalDate(r.DueDate),
 	}
+	if len(r.Indicators) > 0 {
+		cmd.Indicators = make([]appmission.CreateIndicatorInput, len(r.Indicators))
+		for i, in := range r.Indicators {
+			cmd.Indicators[i] = appmission.CreateIndicatorInput{
+				OwnerID:      in.OwnerID,
+				Title:        in.Title,
+				Description:  in.Description,
+				TargetValue:  in.TargetValue,
+				CurrentValue: in.CurrentValue,
+				Unit:         in.Unit,
+				Status:       in.Status,
+				SortOrder:    in.SortOrder,
+				DueDate:      parseOptionalDate(in.DueDate),
+			}
+		}
+	}
+	if len(r.Tasks) > 0 {
+		cmd.Tasks = make([]appmission.CreateTaskInput, len(r.Tasks))
+		for i, tk := range r.Tasks {
+			cmd.Tasks[i] = appmission.CreateTaskInput{
+				AssigneeID:  tk.AssigneeID,
+				Title:       tk.Title,
+				Description: tk.Description,
+				Status:      tk.Status,
+				SortOrder:   tk.SortOrder,
+				DueDate:     parseOptionalDate(tk.DueDate),
+			}
+		}
+	}
+	return cmd
 }
 
 func (r updateRequest) toCommand(organizationID domain.TenantID, id uuid.UUID) appmission.UpdateCommand {

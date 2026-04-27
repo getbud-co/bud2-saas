@@ -5,26 +5,68 @@ import (
 
 	"github.com/google/uuid"
 
+	appmission "github.com/getbud-co/bud2/backend/internal/app/mission"
+	domainindicator "github.com/getbud-co/bud2/backend/internal/domain/indicator"
 	domainmission "github.com/getbud-co/bud2/backend/internal/domain/mission"
+	domaintask "github.com/getbud-co/bud2/backend/internal/domain/task"
 )
 
 type Response struct {
-	ID           string  `json:"id"`
-	OrgID        string  `json:"org_id"`
-	CycleID      *string `json:"cycle_id"`
-	ParentID     *string `json:"parent_id"`
-	OwnerID      string  `json:"owner_id"`
-	TeamID       *string `json:"team_id"`
-	Title        string  `json:"title"`
-	Description  *string `json:"description"`
-	Status       string  `json:"status"`
-	Visibility   string  `json:"visibility"`
-	KanbanStatus string  `json:"kanban_status"`
-	SortOrder    int     `json:"sort_order"`
-	DueDate      *string `json:"due_date"`
-	CompletedAt  *string `json:"completed_at"`
-	CreatedAt    string  `json:"created_at"`
-	UpdatedAt    string  `json:"updated_at"`
+	ID           string              `json:"id"`
+	OrgID        string              `json:"org_id"`
+	CycleID      *string             `json:"cycle_id"`
+	ParentID     *string             `json:"parent_id"`
+	OwnerID      string              `json:"owner_id"`
+	TeamID       *string             `json:"team_id"`
+	Title        string              `json:"title"`
+	Description  *string             `json:"description"`
+	Status       string              `json:"status"`
+	Visibility   string              `json:"visibility"`
+	KanbanStatus string              `json:"kanban_status"`
+	SortOrder    int                 `json:"sort_order"`
+	DueDate      *string             `json:"due_date"`
+	CompletedAt  *string             `json:"completed_at"`
+	CreatedAt    string              `json:"created_at"`
+	UpdatedAt    string              `json:"updated_at"`
+	Indicators   []indicatorResponse `json:"indicators,omitempty"`
+	Tasks        []taskResponse      `json:"tasks,omitempty"`
+}
+
+// indicatorResponse and taskResponse are inline projections used by the
+// nested-create response on POST /missions. They mirror the standalone
+// /indicators and /tasks payloads, but live inline so this package does not
+// import the api/{indicator,task} packages (which would create a cycle since
+// those packages already depend on app/* and domain/*).
+type indicatorResponse struct {
+	ID           string   `json:"id"`
+	OrgID        string   `json:"org_id"`
+	MissionID    string   `json:"mission_id"`
+	OwnerID      string   `json:"owner_id"`
+	Title        string   `json:"title"`
+	Description  *string  `json:"description"`
+	TargetValue  *float64 `json:"target_value"`
+	CurrentValue *float64 `json:"current_value"`
+	Unit         *string  `json:"unit"`
+	Status       string   `json:"status"`
+	SortOrder    int      `json:"sort_order"`
+	DueDate      *string  `json:"due_date"`
+	CreatedAt    string   `json:"created_at"`
+	UpdatedAt    string   `json:"updated_at"`
+}
+
+type taskResponse struct {
+	ID          string  `json:"id"`
+	OrgID       string  `json:"org_id"`
+	MissionID   string  `json:"mission_id"`
+	AssigneeID  string  `json:"assignee_id"`
+	Title       string  `json:"title"`
+	Description *string `json:"description"`
+	Status      string  `json:"status"`
+	SortOrder   int     `json:"sort_order"`
+	DueDate     *string `json:"due_date"`
+	CompletedAt *string `json:"completed_at"`
+	CreatedAt   string  `json:"created_at"`
+	UpdatedAt   string  `json:"updated_at"`
 }
 
 type ListResponse struct {
@@ -52,6 +94,59 @@ func toResponse(m *domainmission.Mission) Response {
 		CompletedAt:  formatOptionalTimestamp(m.CompletedAt),
 		CreatedAt:    m.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:    m.UpdatedAt.Format(time.RFC3339),
+	}
+}
+
+func toCreateResponse(res *appmission.CreateResult) Response {
+	resp := toResponse(res.Mission)
+	if len(res.Indicators) > 0 {
+		resp.Indicators = make([]indicatorResponse, len(res.Indicators))
+		for i := range res.Indicators {
+			resp.Indicators[i] = toIndicatorResponse(&res.Indicators[i])
+		}
+	}
+	if len(res.Tasks) > 0 {
+		resp.Tasks = make([]taskResponse, len(res.Tasks))
+		for i := range res.Tasks {
+			resp.Tasks[i] = toTaskResponse(&res.Tasks[i])
+		}
+	}
+	return resp
+}
+
+func toIndicatorResponse(ind *domainindicator.Indicator) indicatorResponse {
+	return indicatorResponse{
+		ID:           ind.ID.String(),
+		OrgID:        ind.OrganizationID.String(),
+		MissionID:    ind.MissionID.String(),
+		OwnerID:      ind.OwnerID.String(),
+		Title:        ind.Title,
+		Description:  ind.Description,
+		TargetValue:  ind.TargetValue,
+		CurrentValue: ind.CurrentValue,
+		Unit:         ind.Unit,
+		Status:       string(ind.Status),
+		SortOrder:    ind.SortOrder,
+		DueDate:      formatOptionalDate(ind.DueDate),
+		CreatedAt:    ind.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:    ind.UpdatedAt.Format(time.RFC3339),
+	}
+}
+
+func toTaskResponse(t *domaintask.Task) taskResponse {
+	return taskResponse{
+		ID:          t.ID.String(),
+		OrgID:       t.OrganizationID.String(),
+		MissionID:   t.MissionID.String(),
+		AssigneeID:  t.AssigneeID.String(),
+		Title:       t.Title,
+		Description: t.Description,
+		Status:      string(t.Status),
+		SortOrder:   t.SortOrder,
+		DueDate:     formatOptionalDate(t.DueDate),
+		CompletedAt: formatOptionalTimestamp(t.CompletedAt),
+		CreatedAt:   t.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:   t.UpdatedAt.Format(time.RFC3339),
 	}
 }
 

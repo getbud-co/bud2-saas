@@ -10,7 +10,10 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	apptx "github.com/getbud-co/bud2/backend/internal/app/tx"
+	domainindicator "github.com/getbud-co/bud2/backend/internal/domain/indicator"
+	domainmission "github.com/getbud-co/bud2/backend/internal/domain/mission"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
+	domaintask "github.com/getbud-co/bud2/backend/internal/domain/task"
 	"github.com/getbud-co/bud2/backend/internal/domain/team"
 	usr "github.com/getbud-co/bud2/backend/internal/domain/user"
 	"github.com/getbud-co/bud2/backend/internal/test/fixtures"
@@ -23,9 +26,12 @@ type deleteUserTestTxRepos struct {
 	teamRepo team.Repository
 }
 
-func (r deleteUserTestTxRepos) Organizations() organization.Repository { return nil }
-func (r deleteUserTestTxRepos) Users() usr.Repository                  { return r.userRepo }
-func (r deleteUserTestTxRepos) Teams() team.Repository                 { return r.teamRepo }
+func (r deleteUserTestTxRepos) Organizations() organization.Repository    { return nil }
+func (r deleteUserTestTxRepos) Users() usr.Repository                     { return r.userRepo }
+func (r deleteUserTestTxRepos) Teams() team.Repository                    { return r.teamRepo }
+func (r deleteUserTestTxRepos) Missions() domainmission.Repository        { return nil }
+func (r deleteUserTestTxRepos) Indicators() domainindicator.Repository    { return nil }
+func (r deleteUserTestTxRepos) Tasks() domaintask.Repository              { return nil }
 
 type deleteUserTeamRepo struct {
 	softDeleteMemberByUserCalled bool

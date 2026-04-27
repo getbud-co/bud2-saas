@@ -8,12 +8,49 @@ import (
 
 	"github.com/google/uuid"
 
+	apptx "github.com/getbud-co/bud2/backend/internal/app/tx"
 	"github.com/getbud-co/bud2/backend/internal/domain"
 	domaincycle "github.com/getbud-co/bud2/backend/internal/domain/cycle"
+	domainindicator "github.com/getbud-co/bud2/backend/internal/domain/indicator"
 	domainmission "github.com/getbud-co/bud2/backend/internal/domain/mission"
+	domaintask "github.com/getbud-co/bud2/backend/internal/domain/task"
 	domainteam "github.com/getbud-co/bud2/backend/internal/domain/team"
 	domainuser "github.com/getbud-co/bud2/backend/internal/domain/user"
 )
+
+// CreateIndicatorInput is the inline shape for indicators created together with
+// a mission. owner_id defaults to the mission owner when omitted.
+type CreateIndicatorInput struct {
+	OwnerID      *uuid.UUID
+	Title        string
+	Description  *string
+	TargetValue  *float64
+	CurrentValue *float64
+	Unit         *string
+	Status       string
+	SortOrder    int
+	DueDate      *time.Time
+}
+
+// CreateTaskInput is the inline shape for tasks created together with a
+// mission. assignee_id defaults to the mission owner when omitted.
+type CreateTaskInput struct {
+	AssigneeID  *uuid.UUID
+	Title       string
+	Description *string
+	Status      string
+	SortOrder   int
+	DueDate     *time.Time
+}
+
+// CreateResult is what the use case returns when the request includes nested
+// children. The mission is always populated; the slices reflect the order the
+// caller provided in the request, with server-generated ids attached.
+type CreateResult struct {
+	Mission    *domainmission.Mission
+	Indicators []domainindicator.Indicator
+	Tasks      []domaintask.Task
+}
 
 type CreateCommand struct {
 	OrganizationID domain.TenantID
@@ -28,6 +65,8 @@ type CreateCommand struct {
 	KanbanStatus   string
 	SortOrder      int
 	DueDate        *time.Time
+	Indicators     []CreateIndicatorInput
+	Tasks          []CreateTaskInput
 }
 
 type CreateUseCase struct {
@@ -35,6 +74,7 @@ type CreateUseCase struct {
 	cycles   domaincycle.Repository
 	teams    domainteam.Repository
 	users    domainuser.Repository
+	txm      apptx.Manager
 	logger   *slog.Logger
 }
 
@@ -43,15 +83,18 @@ func NewCreateUseCase(
 	cycles domaincycle.Repository,
 	teams domainteam.Repository,
 	users domainuser.Repository,
+	txm apptx.Manager,
 	logger *slog.Logger,
 ) *CreateUseCase {
-	return &CreateUseCase{missions: missions, cycles: cycles, teams: teams, users: users, logger: logger}
+	return &CreateUseCase{missions: missions, cycles: cycles, teams: teams, users: users, txm: txm, logger: logger}
 }
 
-func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*domainmission.Mission, error) {
-	uc.logger.DebugContext(ctx, "create mission", "org_id", cmd.OrganizationID, "title", cmd.Title)
+func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*CreateResult, error) {
+	uc.logger.DebugContext(ctx, "create mission", "org_id", cmd.OrganizationID, "title", cmd.Title, "indicators", len(cmd.Indicators), "tasks", len(cmd.Tasks))
 	orgID := cmd.OrganizationID.UUID()
 
+	// Cross-resource references are validated up front, outside the transaction.
+	// The transaction below only opens once we know the references resolve.
 	if cmd.ParentID != nil {
 		if _, err := uc.missions.GetByID(ctx, *cmd.ParentID, orgID); err != nil {
 			if errors.Is(err, domainmission.ErrNotFound) {
@@ -81,6 +124,42 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*domai
 			}
 			return nil, err
 		}
+	}
+
+	// Validate every indicator/task owner up front too, with the same mapping
+	// rule. Owners default to the mission owner, which we already validated.
+	seenOwners := map[uuid.UUID]struct{}{cmd.OwnerID: {}}
+	for _, in := range cmd.Indicators {
+		owner := cmd.OwnerID
+		if in.OwnerID != nil {
+			owner = *in.OwnerID
+		}
+		if _, ok := seenOwners[owner]; ok {
+			continue
+		}
+		if _, err := uc.users.GetActiveMemberByID(ctx, owner, orgID); err != nil {
+			if errors.Is(err, domainuser.ErrNotFound) {
+				return nil, domainindicator.ErrInvalidReference
+			}
+			return nil, err
+		}
+		seenOwners[owner] = struct{}{}
+	}
+	for _, tk := range cmd.Tasks {
+		assignee := cmd.OwnerID
+		if tk.AssigneeID != nil {
+			assignee = *tk.AssigneeID
+		}
+		if _, ok := seenOwners[assignee]; ok {
+			continue
+		}
+		if _, err := uc.users.GetActiveMemberByID(ctx, assignee, orgID); err != nil {
+			if errors.Is(err, domainuser.ErrNotFound) {
+				return nil, domaintask.ErrInvalidReference
+			}
+			return nil, err
+		}
+		seenOwners[assignee] = struct{}{}
 	}
 
 	status := domainmission.Status(cmd.Status)
@@ -115,11 +194,111 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*domai
 		return nil, err
 	}
 
-	created, err := uc.missions.Create(ctx, m)
+	// Pre-build child entities so Validate() runs before we open a transaction.
+	// Each child borrows the eventual mission_id on commit.
+	indicators := make([]*domainindicator.Indicator, 0, len(cmd.Indicators))
+	for _, in := range cmd.Indicators {
+		owner := cmd.OwnerID
+		if in.OwnerID != nil {
+			owner = *in.OwnerID
+		}
+		indStatus := domainindicator.Status(in.Status)
+		if indStatus == "" {
+			indStatus = domainindicator.StatusDraft
+		}
+		ind := &domainindicator.Indicator{
+			ID:             uuid.New(),
+			OrganizationID: orgID,
+			MissionID:      m.ID,
+			OwnerID:        owner,
+			Title:          in.Title,
+			Description:    in.Description,
+			TargetValue:    in.TargetValue,
+			CurrentValue:   in.CurrentValue,
+			Unit:           in.Unit,
+			Status:         indStatus,
+			SortOrder:      in.SortOrder,
+			DueDate:        in.DueDate,
+		}
+		if err := ind.Validate(); err != nil {
+			return nil, err
+		}
+		indicators = append(indicators, ind)
+	}
+
+	tasks := make([]*domaintask.Task, 0, len(cmd.Tasks))
+	for _, tk := range cmd.Tasks {
+		assignee := cmd.OwnerID
+		if tk.AssigneeID != nil {
+			assignee = *tk.AssigneeID
+		}
+		taskStatus := domaintask.Status(tk.Status)
+		if taskStatus == "" {
+			taskStatus = domaintask.StatusTodo
+		}
+		t := &domaintask.Task{
+			ID:             uuid.New(),
+			OrganizationID: orgID,
+			MissionID:      m.ID,
+			AssigneeID:     assignee,
+			Title:          tk.Title,
+			Description:    tk.Description,
+			Status:         taskStatus,
+			SortOrder:      tk.SortOrder,
+			DueDate:        tk.DueDate,
+		}
+		if err := t.Validate(); err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, t)
+	}
+
+	// Fast path: no children means no transaction. Keeps the simple create
+	// hot path identical to before this commit.
+	if len(indicators) == 0 && len(tasks) == 0 {
+		created, err := uc.missions.Create(ctx, m)
+		if err != nil {
+			uc.logger.WarnContext(ctx, "create mission failed", "error", err)
+			return nil, err
+		}
+		uc.logger.InfoContext(ctx, "mission created", "mission_id", created.ID)
+		return &CreateResult{Mission: created}, nil
+	}
+
+	result := &CreateResult{
+		Indicators: make([]domainindicator.Indicator, 0, len(indicators)),
+		Tasks:      make([]domaintask.Task, 0, len(tasks)),
+	}
+	err := uc.txm.WithTx(ctx, func(repos apptx.Repositories) error {
+		createdMission, err := repos.Missions().Create(ctx, m)
+		if err != nil {
+			return err
+		}
+		result.Mission = createdMission
+
+		indRepo := repos.Indicators()
+		for _, ind := range indicators {
+			created, err := indRepo.Create(ctx, ind)
+			if err != nil {
+				return err
+			}
+			result.Indicators = append(result.Indicators, *created)
+		}
+
+		taskRepo := repos.Tasks()
+		for _, t := range tasks {
+			created, err := taskRepo.Create(ctx, t)
+			if err != nil {
+				return err
+			}
+			result.Tasks = append(result.Tasks, *created)
+		}
+		return nil
+	})
 	if err != nil {
-		uc.logger.WarnContext(ctx, "create mission failed", "error", err)
+		uc.logger.WarnContext(ctx, "create mission with children failed", "error", err)
 		return nil, err
 	}
-	uc.logger.InfoContext(ctx, "mission created", "mission_id", created.ID)
-	return created, nil
+	uc.logger.InfoContext(ctx, "mission created with children", "mission_id", result.Mission.ID, "indicators", len(result.Indicators), "tasks", len(result.Tasks))
+	return result, nil
 }

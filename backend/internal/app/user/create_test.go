@@ -10,7 +10,10 @@ import (
 
 	apptx "github.com/getbud-co/bud2/backend/internal/app/tx"
 	"github.com/getbud-co/bud2/backend/internal/domain"
+	"github.com/getbud-co/bud2/backend/internal/domain/indicator"
+	"github.com/getbud-co/bud2/backend/internal/domain/mission"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
+	"github.com/getbud-co/bud2/backend/internal/domain/task"
 	"github.com/getbud-co/bud2/backend/internal/domain/team"
 	usr "github.com/getbud-co/bud2/backend/internal/domain/user"
 	"github.com/getbud-co/bud2/backend/internal/test/fixtures"
@@ -32,6 +35,9 @@ func (r testTxRepos) Teams() team.Repository {
 	}
 	return new(mocks.TeamRepository)
 }
+func (r testTxRepos) Missions() mission.Repository     { return nil }
+func (r testTxRepos) Indicators() indicator.Repository { return nil }
+func (r testTxRepos) Tasks() task.Repository           { return nil }
 
 type testTxManager struct {
 	repos     apptx.Repositories

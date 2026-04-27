@@ -7,14 +7,23 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	apptx "github.com/getbud-co/bud2/backend/internal/app/tx"
+	"github.com/getbud-co/bud2/backend/internal/domain/indicator"
+	"github.com/getbud-co/bud2/backend/internal/domain/mission"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
+	"github.com/getbud-co/bud2/backend/internal/domain/task"
 	"github.com/getbud-co/bud2/backend/internal/domain/team"
 	"github.com/getbud-co/bud2/backend/internal/domain/user"
 	"github.com/getbud-co/bud2/backend/internal/infra/postgres/sqlc"
 )
 
+// txRepositories carries both the sqlc-generated querier (for repos that only
+// need the querier interface) and the raw transaction handle (for repos that
+// run hand-rolled SQL via sqlc.DBTX, e.g. MissionRepository's recursive CTE).
+// Both refer to the same in-flight transaction, so any combination of repos
+// returned here observes the same atomic scope.
 type txRepositories struct {
 	queries *sqlc.Queries
+	tx      pgx.Tx
 }
 
 func (r txRepositories) Organizations() organization.Repository {
@@ -27,6 +36,18 @@ func (r txRepositories) Users() user.Repository {
 
 func (r txRepositories) Teams() team.Repository {
 	return NewTeamRepository(r.queries)
+}
+
+func (r txRepositories) Missions() mission.Repository {
+	return NewMissionRepository(r.queries, r.tx)
+}
+
+func (r txRepositories) Indicators() indicator.Repository {
+	return NewIndicatorRepository(r.queries)
+}
+
+func (r txRepositories) Tasks() task.Repository {
+	return NewTaskRepository(r.queries)
 }
 
 type TxManager struct {
@@ -46,7 +67,7 @@ func (tm *TxManager) WithTx(ctx context.Context, fn func(repos apptx.Repositorie
 		_ = tx.Rollback(ctx)
 	}()
 
-	if err := fn(txRepositories{queries: sqlc.New(tx)}); err != nil {
+	if err := fn(txRepositories{queries: sqlc.New(tx), tx: tx}); err != nil {
 		return err
 	}
 

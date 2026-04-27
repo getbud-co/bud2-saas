@@ -2728,6 +2728,17 @@ export interface components {
             created_at: string;
             /** Format: date-time */
             updated_at: string;
+            /**
+             * @description Only populated on the response of POST /missions when the request
+             *     included nested indicators. GET /missions and GET /missions/{id}
+             *     do not return this field — fetch /indicators?mission_id=… instead.
+             */
+            indicators?: components["schemas"]["Indicator"][];
+            /**
+             * @description Same semantics as `indicators`: only present on the POST response
+             *     when the request was nested.
+             */
+            tasks?: components["schemas"]["Task"][];
         };
         MissionListResponse: {
             data: components["schemas"]["Mission"][];
@@ -2735,6 +2746,14 @@ export interface components {
             page: number;
             size: number;
         };
+        /**
+         * @description POST /missions accepts inline `indicators` and `tasks` so the whole
+         *     mission can be created atomically (one request, one transaction). To
+         *     manage indicators/tasks AFTER creation use the `/indicators` and
+         *     `/tasks` endpoints — PATCH /missions/{id} does NOT accept these
+         *     fields. Owner_id of nested children defaults to the mission owner
+         *     when omitted.
+         */
         CreateMissionRequest: {
             title: string;
             description?: string | null;
@@ -2752,6 +2771,37 @@ export interface components {
             visibility?: "public" | "team_only" | "private";
             /** @enum {string} */
             kanban_status?: "uncategorized" | "todo" | "doing" | "done";
+            sort_order?: number;
+            /** Format: date */
+            due_date?: string | null;
+            indicators?: components["schemas"]["CreateMissionIndicatorInline"][];
+            tasks?: components["schemas"]["CreateMissionTaskInline"][];
+        };
+        /** @description Indicator created inline with its parent mission. mission_id is supplied by the parent. */
+        CreateMissionIndicatorInline: {
+            /** Format: uuid */
+            owner_id?: string | null;
+            title: string;
+            description?: string | null;
+            /** Format: double */
+            target_value?: number | null;
+            /** Format: double */
+            current_value?: number | null;
+            unit?: string | null;
+            /** @enum {string} */
+            status?: "draft" | "active" | "at_risk" | "done" | "archived";
+            sort_order?: number;
+            /** Format: date */
+            due_date?: string | null;
+        };
+        /** @description Task created inline with its parent mission. mission_id is supplied by the parent. */
+        CreateMissionTaskInline: {
+            /** Format: uuid */
+            assignee_id?: string | null;
+            title: string;
+            description?: string | null;
+            /** @enum {string} */
+            status?: "todo" | "in_progress" | "done" | "cancelled";
             sort_order?: number;
             /** Format: date */
             due_date?: string | null;

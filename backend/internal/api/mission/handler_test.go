@@ -25,12 +25,12 @@ import (
 
 type mockCreateUC struct{ mock.Mock }
 
-func (m *mockCreateUC) Execute(ctx context.Context, cmd appmission.CreateCommand) (*domainmission.Mission, error) {
+func (m *mockCreateUC) Execute(ctx context.Context, cmd appmission.CreateCommand) (*appmission.CreateResult, error) {
 	args := m.Called(ctx, cmd)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*domainmission.Mission), args.Error(1)
+	return args.Get(0).(*appmission.CreateResult), args.Error(1)
 }
 
 type mockUpdateUC struct{ mock.Mock }
@@ -96,7 +96,7 @@ func TestHandler_Create_Success(t *testing.T) {
 	handler := NewHandler(createUC, nil, nil, nil, nil)
 
 	expected := sampleMission(uuid.New(), tenantID.UUID())
-	createUC.On("Execute", mock.Anything, mock.Anything).Return(expected, nil)
+	createUC.On("Execute", mock.Anything, mock.Anything).Return(&appmission.CreateResult{Mission: expected}, nil)
 
 	ownerID := uuid.New()
 	body, _ := json.Marshal(map[string]any{
