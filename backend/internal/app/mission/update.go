@@ -2,48 +2,60 @@ package mission
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/getbud-co/bud2/backend/internal/domain"
+	domaincycle "github.com/getbud-co/bud2/backend/internal/domain/cycle"
 	domainmission "github.com/getbud-co/bud2/backend/internal/domain/mission"
+	domainteam "github.com/getbud-co/bud2/backend/internal/domain/team"
+	domainuser "github.com/getbud-co/bud2/backend/internal/domain/user"
 )
 
-// PatchCommand is the JSON Merge Patch projection of an update request.
-// All optional fields are pointers: only non-nil fields are applied to the
-// existing mission. parent_id is deliberately absent — reparent is not
-// exposed via PATCH (the UI does not surface it; when it does, it will be
-// a dedicated feature with structural cycle prevention).
-type PatchCommand struct {
+// UpdateCommand carries the partial-update intent: every optional field is
+// a pointer, and only non-nil fields are applied to the existing mission.
+// HTTP layer maps PATCH bodies to this command; the use case is unaware of
+// the verb. parent_id is deliberately absent — reparent is not exposed
+// via this update path (the UI does not surface it; when it does, it will
+// be a dedicated feature with structural cycle prevention).
+type UpdateCommand struct {
 	OrganizationID domain.TenantID
 	ID             uuid.UUID
-
-	Title        *string
-	Description  *string
-	CycleID      *uuid.UUID
-	OwnerID      *uuid.UUID
-	TeamID       *uuid.UUID
-	Status       *string
-	Visibility   *string
-	KanbanStatus *string
-	SortOrder    *int
-	DueDate      *time.Time
+	Title          *string
+	Description    *string
+	CycleID        *uuid.UUID
+	OwnerID        *uuid.UUID
+	TeamID         *uuid.UUID
+	Status         *string
+	Visibility     *string
+	KanbanStatus   *string
+	SortOrder      *int
+	DueDate        *time.Time
 }
 
-type PatchUseCase struct {
-	missions   domainmission.Repository
-	references ReferenceChecker
-	logger     *slog.Logger
+type UpdateUseCase struct {
+	missions domainmission.Repository
+	cycles   domaincycle.Repository
+	teams    domainteam.Repository
+	users    domainuser.Repository
+	logger   *slog.Logger
 }
 
-func NewPatchUseCase(missions domainmission.Repository, references ReferenceChecker, logger *slog.Logger) *PatchUseCase {
-	return &PatchUseCase{missions: missions, references: references, logger: logger}
+func NewUpdateUseCase(
+	missions domainmission.Repository,
+	cycles domaincycle.Repository,
+	teams domainteam.Repository,
+	users domainuser.Repository,
+	logger *slog.Logger,
+) *UpdateUseCase {
+	return &UpdateUseCase{missions: missions, cycles: cycles, teams: teams, users: users, logger: logger}
 }
 
-func (uc *PatchUseCase) Execute(ctx context.Context, cmd PatchCommand) (*domainmission.Mission, error) {
-	uc.logger.DebugContext(ctx, "patch mission", "mission_id", cmd.ID, "org_id", cmd.OrganizationID)
+func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*domainmission.Mission, error) {
+	uc.logger.DebugContext(ctx, "update mission", "mission_id", cmd.ID, "org_id", cmd.OrganizationID)
 	orgID := cmd.OrganizationID.UUID()
 
 	existing, err := uc.missions.GetByID(ctx, cmd.ID, orgID)
@@ -52,18 +64,29 @@ func (uc *PatchUseCase) Execute(ctx context.Context, cmd PatchCommand) (*domainm
 	}
 
 	// Cross-resource references: validate only when the field is being changed.
+	// Each repo's getter is already org-scoped — domain.ErrNotFound covers
+	// both "doesn't exist" and "exists in another tenant".
 	if cmd.OwnerID != nil && *cmd.OwnerID != existing.OwnerID {
-		if err := uc.references.CheckUserInOrg(ctx, *cmd.OwnerID, orgID); err != nil {
+		if _, err := uc.users.GetActiveMemberByID(ctx, *cmd.OwnerID, orgID); err != nil {
+			if errors.Is(err, domainuser.ErrNotFound) {
+				return nil, domainmission.ErrInvalidReference
+			}
 			return nil, err
 		}
 	}
 	if cmd.CycleID != nil && (existing.CycleID == nil || *cmd.CycleID != *existing.CycleID) {
-		if err := uc.references.CheckCycleInOrg(ctx, *cmd.CycleID, orgID); err != nil {
+		if _, err := uc.cycles.GetByID(ctx, *cmd.CycleID, orgID); err != nil {
+			if errors.Is(err, domaincycle.ErrNotFound) {
+				return nil, domainmission.ErrInvalidReference
+			}
 			return nil, err
 		}
 	}
 	if cmd.TeamID != nil && (existing.TeamID == nil || *cmd.TeamID != *existing.TeamID) {
-		if err := uc.references.CheckTeamInOrg(ctx, *cmd.TeamID, orgID); err != nil {
+		if _, err := uc.teams.GetByID(ctx, *cmd.TeamID, orgID); err != nil {
+			if errors.Is(err, domainteam.ErrNotFound) {
+				return nil, domainmission.ErrInvalidReference
+			}
 			return nil, err
 		}
 	}
@@ -117,9 +140,9 @@ func (uc *PatchUseCase) Execute(ctx context.Context, cmd PatchCommand) (*domainm
 
 	updated, err := uc.missions.Update(ctx, existing)
 	if err != nil {
-		uc.logger.WarnContext(ctx, "patch mission failed", "mission_id", cmd.ID, "error", err)
+		uc.logger.WarnContext(ctx, "update mission failed", "mission_id", cmd.ID, "error", err)
 		return nil, err
 	}
-	uc.logger.InfoContext(ctx, "mission patched", "mission_id", updated.ID)
+	uc.logger.InfoContext(ctx, "mission updated", "mission_id", updated.ID)
 	return updated, nil
 }

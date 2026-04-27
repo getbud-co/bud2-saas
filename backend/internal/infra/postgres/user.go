@@ -101,6 +101,29 @@ func (r *UserRepository) GetByIDForOrganization(ctx context.Context, id, organiz
 	return result, nil
 }
 
+// GetActiveMemberByID is the active-membership variant of
+// GetByIDForOrganization. It returns user.ErrNotFound for any state where
+// the user is not currently a member-in-good-standing of the org: missing
+// user, no membership, invited (not accepted), or inactive. Callers that
+// only care about presence (any membership status) should use
+// GetByIDForOrganization instead.
+func (r *UserRepository) GetActiveMemberByID(ctx context.Context, id, organizationID uuid.UUID) (*user.User, error) {
+	u, err := r.GetByIDForOrganization(ctx, id, organizationID)
+	if err != nil {
+		if errors.Is(err, organization.ErrMembershipNotFound) {
+			return nil, user.ErrNotFound
+		}
+		return nil, err
+	}
+	if _, err := u.ActiveMembershipForOrganization(organizationID); err != nil {
+		if errors.Is(err, organization.ErrMembershipNotFound) {
+			return nil, user.ErrNotFound
+		}
+		return nil, err
+	}
+	return u, nil
+}
+
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*user.User, error) {
 	row, err := r.q.GetUserByEmail(ctx, email)
 	if err != nil {

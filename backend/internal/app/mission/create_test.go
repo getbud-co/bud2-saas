@@ -11,33 +11,54 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/getbud-co/bud2/backend/internal/domain"
+	domaincycle "github.com/getbud-co/bud2/backend/internal/domain/cycle"
 	domainmission "github.com/getbud-co/bud2/backend/internal/domain/mission"
+	domainteam "github.com/getbud-co/bud2/backend/internal/domain/team"
+	domainuser "github.com/getbud-co/bud2/backend/internal/domain/user"
 	"github.com/getbud-co/bud2/backend/internal/test/fixtures"
 	"github.com/getbud-co/bud2/backend/internal/test/mocks"
 	"github.com/getbud-co/bud2/backend/internal/test/testutil"
 )
 
-// allowAllRefs returns a ReferenceChecker mock pre-wired to accept any
-// reference. Tests that exercise reference-validation gates set their own.
-func allowAllRefs() *mocks.MissionReferenceChecker {
-	refs := new(mocks.MissionReferenceChecker)
-	refs.On("CheckUserInOrg", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	refs.On("CheckCycleInOrg", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	refs.On("CheckTeamInOrg", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	return refs
+// missionDeps is a tiny holder for the four repos a mission Create/Update
+// use case needs. Each test wires only what it cares about.
+type missionDeps struct {
+	missions *mocks.MissionRepository
+	cycles   *mocks.CycleRepository
+	teams    *mocks.TeamRepository
+	users    *mocks.UserRepository
+}
+
+func newMissionDeps() missionDeps {
+	return missionDeps{
+		missions: new(mocks.MissionRepository),
+		cycles:   new(mocks.CycleRepository),
+		teams:    new(mocks.TeamRepository),
+		users:    new(mocks.UserRepository),
+	}
+}
+
+// allowOwner pre-wires GetActiveMemberByID to accept any user. Tests that
+// validate the gate set their own expectation.
+func (d missionDeps) allowOwner() missionDeps {
+	d.users.On("GetActiveMemberByID", mock.Anything, mock.Anything, mock.Anything).
+		Return(&domainuser.User{ID: uuid.New()}, nil)
+	return d
+}
+
+func (d missionDeps) newCreateUseCase() *CreateUseCase {
+	return NewCreateUseCase(d.missions, d.cycles, d.teams, d.users, testutil.NewDiscardLogger())
 }
 
 func TestCreateUseCase_Execute_Success_AppliesDefaults(t *testing.T) {
-	repo := new(mocks.MissionRepository)
-	uc := NewCreateUseCase(repo, allowAllRefs(), testutil.NewDiscardLogger())
-
-	repo.On("Create", mock.Anything, mock.MatchedBy(func(m *domainmission.Mission) bool {
+	d := newMissionDeps().allowOwner()
+	d.missions.On("Create", mock.Anything, mock.MatchedBy(func(m *domainmission.Mission) bool {
 		return m.Status == domainmission.StatusDraft &&
 			m.Visibility == domainmission.VisibilityPublic &&
 			m.KanbanStatus == domainmission.KanbanUncategorized
 	})).Return(&domainmission.Mission{ID: uuid.New(), Title: "Reduzir churn", Status: domainmission.StatusDraft, Visibility: domainmission.VisibilityPublic, KanbanStatus: domainmission.KanbanUncategorized}, nil)
 
-	m, err := uc.Execute(context.Background(), CreateCommand{
+	m, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
 		Title:          "Reduzir churn",
 		OwnerID:        uuid.New(),
@@ -45,31 +66,29 @@ func TestCreateUseCase_Execute_Success_AppliesDefaults(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.NotEqual(t, uuid.Nil, m.ID)
-	repo.AssertExpectations(t)
-	repo.AssertNotCalled(t, "GetByID")
+	d.missions.AssertExpectations(t)
+	d.missions.AssertNotCalled(t, "GetByID")
 }
 
 func TestCreateUseCase_Execute_EmptyTitle_ReturnsValidationError(t *testing.T) {
-	repo := new(mocks.MissionRepository)
-	uc := NewCreateUseCase(repo, allowAllRefs(), testutil.NewDiscardLogger())
+	d := newMissionDeps().allowOwner()
 
-	_, err := uc.Execute(context.Background(), CreateCommand{
+	_, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
 		OwnerID:        uuid.New(),
 	})
 
 	assert.ErrorIs(t, err, domain.ErrValidation)
-	repo.AssertNotCalled(t, "Create")
+	d.missions.AssertNotCalled(t, "Create")
 }
 
 func TestCreateUseCase_Execute_ParentInDifferentOrg_ReturnsInvalidParent(t *testing.T) {
 	parentID := uuid.New()
-	repo := new(mocks.MissionRepository)
-	uc := NewCreateUseCase(repo, allowAllRefs(), testutil.NewDiscardLogger())
+	d := newMissionDeps().allowOwner()
+	d.missions.On("GetByID", mock.Anything, parentID, mock.AnythingOfType("uuid.UUID")).
+		Return(nil, domainmission.ErrNotFound)
 
-	repo.On("GetByID", mock.Anything, parentID, mock.AnythingOfType("uuid.UUID")).Return(nil, domainmission.ErrNotFound)
-
-	_, err := uc.Execute(context.Background(), CreateCommand{
+	_, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
 		OwnerID:        uuid.New(),
 		Title:          "Child",
@@ -77,17 +96,16 @@ func TestCreateUseCase_Execute_ParentInDifferentOrg_ReturnsInvalidParent(t *test
 	})
 
 	assert.ErrorIs(t, err, domainmission.ErrInvalidParent)
-	repo.AssertNotCalled(t, "Create")
+	d.missions.AssertNotCalled(t, "Create")
 }
 
 func TestCreateUseCase_Execute_ParentGetByIDError_PropagatesNonDomainError(t *testing.T) {
 	parentID := uuid.New()
 	repoErr := errors.New("connection reset")
-	repo := new(mocks.MissionRepository)
-	repo.On("GetByID", mock.Anything, parentID, mock.Anything).Return(nil, repoErr)
+	d := newMissionDeps()
+	d.missions.On("GetByID", mock.Anything, parentID, mock.Anything).Return(nil, repoErr)
 
-	uc := NewCreateUseCase(repo, allowAllRefs(), testutil.NewDiscardLogger())
-	_, err := uc.Execute(context.Background(), CreateCommand{
+	_, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
 		OwnerID:        uuid.New(),
 		Title:          "x",
@@ -96,34 +114,47 @@ func TestCreateUseCase_Execute_ParentGetByIDError_PropagatesNonDomainError(t *te
 
 	assert.ErrorIs(t, err, repoErr)
 	assert.NotErrorIs(t, err, domainmission.ErrInvalidParent, "raw repo errors must not be remapped to InvalidParent")
-	repo.AssertNotCalled(t, "Create")
+	d.missions.AssertNotCalled(t, "Create")
 }
 
-func TestCreateUseCase_Execute_OwnerInDifferentOrg_ReturnsInvalidReference(t *testing.T) {
-	repo := new(mocks.MissionRepository)
-	refs := new(mocks.MissionReferenceChecker)
-	refs.On("CheckUserInOrg", mock.Anything, mock.Anything, mock.Anything).Return(domainmission.ErrInvalidReference)
+func TestCreateUseCase_Execute_OwnerNotActiveMember_ReturnsInvalidReference(t *testing.T) {
+	d := newMissionDeps()
+	d.users.On("GetActiveMemberByID", mock.Anything, mock.Anything, mock.Anything).
+		Return(nil, domainuser.ErrNotFound)
 
-	uc := NewCreateUseCase(repo, refs, testutil.NewDiscardLogger())
-	_, err := uc.Execute(context.Background(), CreateCommand{
+	_, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
 		OwnerID:        uuid.New(),
 		Title:          "x",
 	})
 
 	assert.ErrorIs(t, err, domainmission.ErrInvalidReference)
-	repo.AssertNotCalled(t, "Create")
+	d.missions.AssertNotCalled(t, "Create")
+}
+
+func TestCreateUseCase_Execute_OwnerLookupGenericError_Propagates(t *testing.T) {
+	dbErr := errors.New("conn refused")
+	d := newMissionDeps()
+	d.users.On("GetActiveMemberByID", mock.Anything, mock.Anything, mock.Anything).
+		Return(nil, dbErr)
+
+	_, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
+		OrganizationID: fixtures.NewTestTenantID(),
+		OwnerID:        uuid.New(),
+		Title:          "x",
+	})
+
+	assert.ErrorIs(t, err, dbErr)
+	assert.NotErrorIs(t, err, domainmission.ErrInvalidReference, "real DB errors must NOT be remapped")
 }
 
 func TestCreateUseCase_Execute_CycleInDifferentOrg_ReturnsInvalidReference(t *testing.T) {
 	cycleID := uuid.New()
-	repo := new(mocks.MissionRepository)
-	refs := new(mocks.MissionReferenceChecker)
-	refs.On("CheckUserInOrg", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	refs.On("CheckCycleInOrg", mock.Anything, cycleID, mock.Anything).Return(domainmission.ErrInvalidReference)
+	d := newMissionDeps().allowOwner()
+	d.cycles.On("GetByID", mock.Anything, cycleID, mock.Anything).
+		Return(nil, domaincycle.ErrNotFound)
 
-	uc := NewCreateUseCase(repo, refs, testutil.NewDiscardLogger())
-	_, err := uc.Execute(context.Background(), CreateCommand{
+	_, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
 		OwnerID:        uuid.New(),
 		Title:          "x",
@@ -131,18 +162,16 @@ func TestCreateUseCase_Execute_CycleInDifferentOrg_ReturnsInvalidReference(t *te
 	})
 
 	assert.ErrorIs(t, err, domainmission.ErrInvalidReference)
-	repo.AssertNotCalled(t, "Create")
+	d.missions.AssertNotCalled(t, "Create")
 }
 
 func TestCreateUseCase_Execute_TeamInDifferentOrg_ReturnsInvalidReference(t *testing.T) {
 	teamID := uuid.New()
-	repo := new(mocks.MissionRepository)
-	refs := new(mocks.MissionReferenceChecker)
-	refs.On("CheckUserInOrg", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	refs.On("CheckTeamInOrg", mock.Anything, teamID, mock.Anything).Return(domainmission.ErrInvalidReference)
+	d := newMissionDeps().allowOwner()
+	d.teams.On("GetByID", mock.Anything, teamID, mock.Anything).
+		Return(nil, domainteam.ErrNotFound)
 
-	uc := NewCreateUseCase(repo, refs, testutil.NewDiscardLogger())
-	_, err := uc.Execute(context.Background(), CreateCommand{
+	_, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
 		OwnerID:        uuid.New(),
 		Title:          "x",
@@ -150,17 +179,15 @@ func TestCreateUseCase_Execute_TeamInDifferentOrg_ReturnsInvalidReference(t *tes
 	})
 
 	assert.ErrorIs(t, err, domainmission.ErrInvalidReference)
-	repo.AssertNotCalled(t, "Create")
+	d.missions.AssertNotCalled(t, "Create")
 }
 
 func TestCreateUseCase_Execute_RepoError_PropagatesError(t *testing.T) {
 	repoErr := errors.New("db down")
-	repo := new(mocks.MissionRepository)
-	uc := NewCreateUseCase(repo, allowAllRefs(), testutil.NewDiscardLogger())
+	d := newMissionDeps().allowOwner()
+	d.missions.On("Create", mock.Anything, mock.Anything).Return(nil, repoErr)
 
-	repo.On("Create", mock.Anything, mock.Anything).Return(nil, repoErr)
-
-	_, err := uc.Execute(context.Background(), CreateCommand{
+	_, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
 		OwnerID:        uuid.New(),
 		Title:          "ok",

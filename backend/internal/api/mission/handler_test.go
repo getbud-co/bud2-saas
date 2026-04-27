@@ -13,7 +13,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 
+	apispec "github.com/getbud-co/bud2/backend/api"
 	appmission "github.com/getbud-co/bud2/backend/internal/app/mission"
 	"github.com/getbud-co/bud2/backend/internal/domain"
 	domainmission "github.com/getbud-co/bud2/backend/internal/domain/mission"
@@ -30,9 +33,9 @@ func (m *mockCreateUC) Execute(ctx context.Context, cmd appmission.CreateCommand
 	return args.Get(0).(*domainmission.Mission), args.Error(1)
 }
 
-type mockPatchUC struct{ mock.Mock }
+type mockUpdateUC struct{ mock.Mock }
 
-func (m *mockPatchUC) Execute(ctx context.Context, cmd appmission.PatchCommand) (*domainmission.Mission, error) {
+func (m *mockUpdateUC) Execute(ctx context.Context, cmd appmission.UpdateCommand) (*domainmission.Mission, error) {
 	args := m.Called(ctx, cmd)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -151,7 +154,7 @@ func TestHandler_Create_MissingTitle_ReturnsValidationError(t *testing.T) {
 
 func TestHandler_Patch_InvalidReference_Returns422(t *testing.T) {
 	tenantID := fixtures.NewTestTenantID()
-	patchUC := new(mockPatchUC)
+	patchUC := new(mockUpdateUC)
 	handler := NewHandler(nil, nil, nil, patchUC, nil)
 
 	id := uuid.New()
@@ -165,22 +168,22 @@ func TestHandler_Patch_InvalidReference_Returns422(t *testing.T) {
 	req = routeReq(req, tenantID, id.String())
 	rr := httptest.NewRecorder()
 
-	handler.Patch(rr, req)
+	handler.Update(rr, req)
 
 	assert.Equal(t, http.StatusUnprocessableEntity, rr.Code)
 }
 
 func TestHandler_Patch_OnlyTitle_PreservesOtherFieldsAtBoundary(t *testing.T) {
 	// Boundary-level test: handler routes a single-field PATCH to the use case
-	// with only Title set; all other PatchCommand pointers must be nil so the
+	// with only Title set; all other UpdateCommand pointers must be nil so the
 	// use case knows not to touch those fields.
 	tenantID := fixtures.NewTestTenantID()
-	patchUC := new(mockPatchUC)
+	patchUC := new(mockUpdateUC)
 	handler := NewHandler(nil, nil, nil, patchUC, nil)
 
 	id := uuid.New()
 	expected := sampleMission(id, tenantID.UUID())
-	patchUC.On("Execute", mock.Anything, mock.MatchedBy(func(cmd appmission.PatchCommand) bool {
+	patchUC.On("Execute", mock.Anything, mock.MatchedBy(func(cmd appmission.UpdateCommand) bool {
 		return cmd.Title != nil && *cmd.Title == "new title" &&
 			cmd.Description == nil &&
 			cmd.CycleID == nil &&
@@ -199,7 +202,7 @@ func TestHandler_Patch_OnlyTitle_PreservesOtherFieldsAtBoundary(t *testing.T) {
 	req = routeReq(req, tenantID, id.String())
 	rr := httptest.NewRecorder()
 
-	handler.Patch(rr, req)
+	handler.Update(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
 	patchUC.AssertExpectations(t)
@@ -207,7 +210,7 @@ func TestHandler_Patch_OnlyTitle_PreservesOtherFieldsAtBoundary(t *testing.T) {
 
 func TestHandler_Patch_EmptyBody_Returns400(t *testing.T) {
 	tenantID := fixtures.NewTestTenantID()
-	patchUC := new(mockPatchUC)
+	patchUC := new(mockUpdateUC)
 	handler := NewHandler(nil, nil, nil, patchUC, nil)
 
 	id := uuid.New()
@@ -217,7 +220,7 @@ func TestHandler_Patch_EmptyBody_Returns400(t *testing.T) {
 	req = routeReq(req, tenantID, id.String())
 	rr := httptest.NewRecorder()
 
-	handler.Patch(rr, req)
+	handler.Update(rr, req)
 
 	assert.Equal(t, http.StatusBadRequest, rr.Code)
 	patchUC.AssertNotCalled(t, "Execute")
@@ -229,7 +232,7 @@ func TestHandler_Patch_BodyWithParentID_IgnoredSilently(t *testing.T) {
 	// (json.Unmarshal silently drops unknown fields by default) but the use
 	// case never receives parent_id — there is no field for it.
 	tenantID := fixtures.NewTestTenantID()
-	patchUC := new(mockPatchUC)
+	patchUC := new(mockUpdateUC)
 	handler := NewHandler(nil, nil, nil, patchUC, nil)
 
 	id := uuid.New()
@@ -245,10 +248,10 @@ func TestHandler_Patch_BodyWithParentID_IgnoredSilently(t *testing.T) {
 	req = routeReq(req, tenantID, id.String())
 	rr := httptest.NewRecorder()
 
-	handler.Patch(rr, req)
+	handler.Update(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
-	// PatchCommand has no ParentID field; the request was processed normally
+	// UpdateCommand has no ParentID field; the request was processed normally
 	// using only Title. Reparent simply does not exist in this contract.
 }
 
@@ -455,4 +458,68 @@ func TestHandler_Delete_NotFound_IsIdempotent(t *testing.T) {
 	handler.Delete(rr, req)
 
 	assert.Equal(t, http.StatusNoContent, rr.Code)
+}
+
+// ── OpenAPI contract ──────────────────────────────────────────────────────
+
+// TestHandler_OpenAPIDocuments400 guards against handler ↔ contract drift:
+// the handler emits 400 on invalid UUIDs (path or query) and on the status
+// enum query filter. The OpenAPI spec must advertise that response on every
+// path that can produce it.
+func TestHandler_OpenAPIDocuments400(t *testing.T) {
+	type response struct {
+		Description string `yaml:"description"`
+	}
+	type op struct {
+		Responses map[string]response `yaml:"responses"`
+	}
+	type pathItem struct {
+		Get    *op `yaml:"get"`
+		Put    *op `yaml:"put"`
+		Patch  *op `yaml:"patch"`
+		Post   *op `yaml:"post"`
+		Delete *op `yaml:"delete"`
+	}
+	type spec struct {
+		Paths map[string]pathItem `yaml:"paths"`
+	}
+
+	var s spec
+	require.NoError(t, yaml.Unmarshal(apispec.Spec, &s))
+
+	mustHave400 := []struct {
+		path, method string
+	}{
+		{"/missions", "GET"},
+		{"/missions/{id}", "GET"},
+		{"/missions/{id}", "PUT"},
+		{"/missions/{id}", "PATCH"},
+		{"/missions/{id}", "DELETE"},
+	}
+
+	for _, entry := range mustHave400 {
+		item, ok := s.Paths[entry.path]
+		require.Truef(t, ok, "spec missing path %s", entry.path)
+
+		var operation *op
+		switch entry.method {
+		case "GET":
+			operation = item.Get
+		case "PUT":
+			operation = item.Put
+		case "PATCH":
+			operation = item.Patch
+		case "POST":
+			operation = item.Post
+		case "DELETE":
+			operation = item.Delete
+		}
+		// The mission update endpoint is currently bound to PATCH; PUT may
+		// not exist in the spec. Skip silently — the other variant covers it.
+		if operation == nil {
+			continue
+		}
+		_, has400 := operation.Responses["400"]
+		require.Truef(t, has400, "%s %s must document a 400 response", entry.method, entry.path)
+	}
 }

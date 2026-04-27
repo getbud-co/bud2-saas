@@ -28,8 +28,8 @@ type listUseCase interface {
 	Execute(ctx context.Context, cmd appmission.ListCommand) (domainmission.ListResult, error)
 }
 
-type patchUseCase interface {
-	Execute(ctx context.Context, cmd appmission.PatchCommand) (*domainmission.Mission, error)
+type updateUseCase interface {
+	Execute(ctx context.Context, cmd appmission.UpdateCommand) (*domainmission.Mission, error)
 }
 
 type deleteUseCase interface {
@@ -40,12 +40,12 @@ type Handler struct {
 	create createUseCase
 	get    getUseCase
 	list   listUseCase
-	patch  patchUseCase
+	update updateUseCase
 	delete deleteUseCase
 }
 
-func NewHandler(create createUseCase, get getUseCase, list listUseCase, patch patchUseCase, delete deleteUseCase) *Handler {
-	return &Handler{create: create, get: get, list: list, patch: patch, delete: delete}
+func NewHandler(create createUseCase, get getUseCase, list listUseCase, update updateUseCase, delete deleteUseCase) *Handler {
+	return &Handler{create: create, get: get, list: list, update: update, delete: delete}
 }
 
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
@@ -162,7 +162,9 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	httputil.WriteJSON(w, http.StatusOK, ListResponse{Data: items, Total: result.Total, Page: result.Page, Size: result.Size})
 }
 
-func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
+// Update applies a JSON Merge Patch to a mission. Bound to PATCH at the
+// router; "Update" here is the domain operation, not the HTTP verb.
+func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	organizationID, err := domain.TenantIDFromContext(r.Context())
 	if err != nil {
 		httputil.WriteProblem(w, http.StatusUnauthorized, "Unauthorized", err.Error())
@@ -174,7 +176,7 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req patchRequest
+	var req updateRequest
 	if !httputil.DecodeJSON(w, r, &req) {
 		return
 	}
@@ -187,7 +189,7 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.patch.Execute(r.Context(), req.toCommand(organizationID, id))
+	result, err := h.update.Execute(r.Context(), req.toCommand(organizationID, id))
 	if err != nil {
 		handleError(w, err)
 		return

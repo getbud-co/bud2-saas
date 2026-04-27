@@ -38,7 +38,6 @@ import (
 	appuser "github.com/getbud-co/bud2/backend/internal/app/user"
 	"github.com/getbud-co/bud2/backend/internal/config"
 	infraauth "github.com/getbud-co/bud2/backend/internal/infra/auth"
-	"github.com/getbud-co/bud2/backend/internal/infra/missionrefs"
 	"github.com/getbud-co/bud2/backend/internal/infra/otel"
 	"github.com/getbud-co/bud2/backend/internal/infra/postgres"
 	"github.com/getbud-co/bud2/backend/internal/infra/postgres/sqlc"
@@ -137,11 +136,10 @@ func main() {
 	updateCycle := appcycle.NewUpdateUseCase(cycleRepo, logger)
 	deleteCycle := appcycle.NewDeleteUseCase(cycleRepo, logger)
 
-	missionRefs := missionrefs.New(cycleRepo, teamRepo, userRepo)
-	createMission := appmission.NewCreateUseCase(missionRepo, missionRefs, logger)
+	createMission := appmission.NewCreateUseCase(missionRepo, cycleRepo, teamRepo, userRepo, logger)
 	getMission := appmission.NewGetUseCase(missionRepo, logger)
 	listMission := appmission.NewListUseCase(missionRepo, logger)
-	patchMission := appmission.NewPatchUseCase(missionRepo, missionRefs, logger)
+	updateMission := appmission.NewUpdateUseCase(missionRepo, cycleRepo, teamRepo, userRepo, logger)
 	deleteMission := appmission.NewDeleteUseCase(missionRepo, logger)
 
 	bootstrapUC := appbootstrap.NewUseCase(orgRepo, txManager, tokenIssuer, passwordHasher, logger)
@@ -159,7 +157,7 @@ func main() {
 	roleHandler := apirole.NewHandler(listRole)
 	permissionHandler := apiperm.NewHandler(listPermission)
 	cycleHandler := apicycle.NewHandler(createCycle, getCycle, listCycle, updateCycle, deleteCycle)
-	missionHandler := apimission.NewHandler(createMission, getMission, listMission, patchMission, deleteMission)
+	missionHandler := apimission.NewHandler(createMission, getMission, listMission, updateMission, deleteMission)
 	router := api.NewRouter(bootstrapHandler, authHandler, orgHandler, userHandler, teamHandler, roleHandler, permissionHandler, cycleHandler, missionHandler, api.RouterConfig{
 		Env:            cfg.Env,
 		AllowedOrigins: strings.Split(cfg.AllowedOrigins, ","),

@@ -9,7 +9,10 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/getbud-co/bud2/backend/internal/domain"
+	domaincycle "github.com/getbud-co/bud2/backend/internal/domain/cycle"
 	domainmission "github.com/getbud-co/bud2/backend/internal/domain/mission"
+	domainteam "github.com/getbud-co/bud2/backend/internal/domain/team"
+	domainuser "github.com/getbud-co/bud2/backend/internal/domain/user"
 )
 
 type CreateCommand struct {
@@ -28,18 +31,25 @@ type CreateCommand struct {
 }
 
 type CreateUseCase struct {
-	missions   domainmission.Repository
-	references ReferenceChecker
-	logger     *slog.Logger
+	missions domainmission.Repository
+	cycles   domaincycle.Repository
+	teams    domainteam.Repository
+	users    domainuser.Repository
+	logger   *slog.Logger
 }
 
-func NewCreateUseCase(missions domainmission.Repository, references ReferenceChecker, logger *slog.Logger) *CreateUseCase {
-	return &CreateUseCase{missions: missions, references: references, logger: logger}
+func NewCreateUseCase(
+	missions domainmission.Repository,
+	cycles domaincycle.Repository,
+	teams domainteam.Repository,
+	users domainuser.Repository,
+	logger *slog.Logger,
+) *CreateUseCase {
+	return &CreateUseCase{missions: missions, cycles: cycles, teams: teams, users: users, logger: logger}
 }
 
 func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*domainmission.Mission, error) {
 	uc.logger.DebugContext(ctx, "create mission", "org_id", cmd.OrganizationID, "title", cmd.Title)
-
 	orgID := cmd.OrganizationID.UUID()
 
 	if cmd.ParentID != nil {
@@ -50,16 +60,25 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*domai
 			return nil, err
 		}
 	}
-	if err := uc.references.CheckUserInOrg(ctx, cmd.OwnerID, orgID); err != nil {
+	if _, err := uc.users.GetActiveMemberByID(ctx, cmd.OwnerID, orgID); err != nil {
+		if errors.Is(err, domainuser.ErrNotFound) {
+			return nil, domainmission.ErrInvalidReference
+		}
 		return nil, err
 	}
 	if cmd.CycleID != nil {
-		if err := uc.references.CheckCycleInOrg(ctx, *cmd.CycleID, orgID); err != nil {
+		if _, err := uc.cycles.GetByID(ctx, *cmd.CycleID, orgID); err != nil {
+			if errors.Is(err, domaincycle.ErrNotFound) {
+				return nil, domainmission.ErrInvalidReference
+			}
 			return nil, err
 		}
 	}
 	if cmd.TeamID != nil {
-		if err := uc.references.CheckTeamInOrg(ctx, *cmd.TeamID, orgID); err != nil {
+		if _, err := uc.teams.GetByID(ctx, *cmd.TeamID, orgID); err != nil {
+			if errors.Is(err, domainteam.ErrNotFound) {
+				return nil, domainmission.ErrInvalidReference
+			}
 			return nil, err
 		}
 	}
