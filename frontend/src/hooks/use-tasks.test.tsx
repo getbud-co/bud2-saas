@@ -94,7 +94,7 @@ describe("useTasks", () => {
     const { Wrapper } = createWrapper(organization);
     const { result } = renderHook(() => useTasks({ missionId: "m-1" }), { wrapper: Wrapper });
     await waitFor(() => expect(result.current.data).toHaveLength(1));
-    const task = result.current.data[0];
+    const task = result.current.data[0]!;
     expect(task.id).toBe("t-1");
     expect(task.missionId).toBe("m-1");
     expect(task.ownerId).toBe("u-1");

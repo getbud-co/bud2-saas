@@ -97,7 +97,7 @@ describe("useIndicators", () => {
     const { result } = renderHook(() => useIndicators({ missionId: "m-1" }), { wrapper: Wrapper });
 
     await waitFor(() => expect(result.current.data).toHaveLength(1));
-    const kr = result.current.data[0];
+    const kr = result.current.data[0]!;
     expect(kr.id).toBe("ind-1");
     expect(kr.missionId).toBe("m-1");
     expect(kr.title).toBe("Churn");
