@@ -9,6 +9,8 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { render } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MockAuthProvider } from "../../../tests/setup/MockAuthProvider";
 import { ConversationsProvider } from "@/contexts/ConversationsContext";
 import { ConfigDataProvider } from "@/contexts/ConfigDataContext";
 import { PeopleDataProvider } from "@/contexts/PeopleDataContext";
@@ -21,7 +23,10 @@ import { SavedViewsProvider } from "@/contexts/SavedViewsContext";
 import { AssistantPage } from "./AssistantPage";
 
 function renderAtRoute(route: string) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
+    <MockAuthProvider>
+    <QueryClientProvider client={queryClient}>
     <ConfigDataProvider>
       <ActivityDataProvider>
         <PeopleDataProvider>
@@ -44,7 +49,9 @@ function renderAtRoute(route: string) {
           </MissionsDataProvider>
         </PeopleDataProvider>
       </ActivityDataProvider>
-    </ConfigDataProvider>,
+    </ConfigDataProvider>
+    </QueryClientProvider>
+    </MockAuthProvider>,
   );
 }
 

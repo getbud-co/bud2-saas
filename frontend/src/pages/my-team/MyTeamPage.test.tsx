@@ -3,6 +3,8 @@ import { screen } from "@testing-library/react";
 import { render } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import type { ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MockAuthProvider } from "../../../tests/setup/MockAuthProvider";
 import { ActivityDataProvider } from "@/contexts/ActivityDataContext";
 import { ConfigDataProvider } from "@/contexts/ConfigDataContext";
 import { PeopleDataProvider } from "@/contexts/PeopleDataContext";
@@ -19,22 +21,27 @@ import { MyTeamPage } from "./MyTeamPage";
  * AllProviders from test-utils includes its own MemoryRouter so we can't use it here.
  */
 function ProvidersWithoutRouter({ children }: { children: ReactNode }) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return (
-    <ConfigDataProvider>
-      <ActivityDataProvider>
-        <PeopleDataProvider>
-          <MissionsDataProvider>
-            <SurveysDataProvider>
-              <SettingsDataProvider>
-                <IntegrationsDataProvider>
-                  {children}
-                </IntegrationsDataProvider>
-              </SettingsDataProvider>
-            </SurveysDataProvider>
-          </MissionsDataProvider>
-        </PeopleDataProvider>
-      </ActivityDataProvider>
-    </ConfigDataProvider>
+    <MockAuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <ConfigDataProvider>
+          <ActivityDataProvider>
+            <PeopleDataProvider>
+              <MissionsDataProvider>
+                <SurveysDataProvider>
+                  <SettingsDataProvider>
+                    <IntegrationsDataProvider>
+                      {children}
+                    </IntegrationsDataProvider>
+                  </SettingsDataProvider>
+                </SurveysDataProvider>
+              </MissionsDataProvider>
+            </PeopleDataProvider>
+          </ActivityDataProvider>
+        </ConfigDataProvider>
+      </QueryClientProvider>
+    </MockAuthProvider>
   );
 }
 

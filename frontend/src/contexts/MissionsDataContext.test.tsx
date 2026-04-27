@@ -9,19 +9,31 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ActivityDataProvider } from "./ActivityDataContext";
 import { ConfigDataProvider } from "./ConfigDataContext";
 import { MissionsDataProvider, useMissionsData } from "./MissionsDataContext";
+import { MockAuthProvider } from "../../tests/setup/MockAuthProvider";
 
 // ─── Test Helpers ───
 
+// Phase 1 of the missions API migration introduced useMissions() inside
+// MissionsDataProvider. The hook reaches up to AuthContext + QueryClient,
+// so test wrappers must supply both — even though the missions data tested
+// here still comes from the local snapshot (no auth token configured =
+// query disabled, falls back to local).
 function wrapper({ children }: { children: ReactNode }) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return (
-    <ConfigDataProvider>
-      <ActivityDataProvider>
-        <MissionsDataProvider>{children}</MissionsDataProvider>
-      </ActivityDataProvider>
-    </ConfigDataProvider>
+    <MockAuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <ConfigDataProvider>
+          <ActivityDataProvider>
+            <MissionsDataProvider>{children}</MissionsDataProvider>
+          </ActivityDataProvider>
+        </ConfigDataProvider>
+      </QueryClientProvider>
+    </MockAuthProvider>
   );
 }
 

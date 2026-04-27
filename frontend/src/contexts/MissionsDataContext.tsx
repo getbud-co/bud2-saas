@@ -23,6 +23,7 @@ import {
 import { useConfigData } from "@/contexts/ConfigDataContext";
 import { useActivityData } from "@/contexts/ActivityDataContext";
 import { syncCheckInOutboxOperation } from "@/lib/checkin-sync";
+import { useMissions, type ApiMission } from "@/hooks/use-missions";
 
 type CheckInOperation = "create" | "update" | "delete";
 
@@ -54,6 +55,12 @@ interface CheckInSyncMeta {
 
 interface MissionsDataContextValue {
   missions: Mission[];
+  /**
+   * True while the initial /missions fetch from the API is in flight. Phase 1
+   * hydration: the page can show a skeleton when this is true AND there are
+   * no local missions yet. After data arrives the merged list takes over.
+   */
+  isLoadingMissions: boolean;
   setMissions: Dispatch<SetStateAction<Mission[]>>;
   checkInHistory: Record<string, CheckIn[]>;
   getCheckInsByKeyResult: (keyResultId: string) => CheckIn[];
@@ -67,6 +74,80 @@ interface MissionsDataContextValue {
 }
 
 const MissionsDataContext = createContext<MissionsDataContextValue | null>(null);
+
+/**
+ * mergeMissions takes the local snapshot (which carries the legacy mock data
+ * plus child arrays — keyResults, tasks, children, tags, members, ...) and
+ * the missions returned by the API (core fields only) and produces the list
+ * the UI consumes during phase 1 of the migration:
+ *
+ *   - For every server mission, take its core fields (id, title, status,
+ *     dueDate, etc.) and graft the local children if a local match exists
+ *     by id. Server is the source of truth for the mission row itself.
+ *   - For local-only missions (no server match), keep them as-is — they may
+ *     be optimistic creates from the page's still-local mutation flow, or
+ *     legacy mock seeds the user has not synced. Phase 2 will route create
+ *     through the API and these will start having matches.
+ *   - Stable order: server missions first (sort_order ascending), then
+ *     local-only ones in their existing order. The UI can re-sort as it
+ *     pleases without losing local-only entries.
+ */
+function mergeMissions(local: Mission[], api: ApiMission[]): Mission[] {
+  if (api.length === 0) return local;
+  const localById = new Map(local.map((m) => [m.id, m]));
+  const merged: Mission[] = api.map((apiMission) => {
+    const localMatch = localById.get(apiMission.id);
+    return apiMissionToLocal(apiMission, localMatch);
+  });
+  const apiIds = new Set(api.map((m) => m.id));
+  for (const localMission of local) {
+    if (!apiIds.has(localMission.id)) merged.push(localMission);
+  }
+  return merged;
+}
+
+/**
+ * apiMissionToLocal converts a server mission (snake_case, core fields only)
+ * to the page's Mission type (camelCase + child arrays). Local-only fields
+ * — keyResults, tasks, children, tags, members, owner/team join data,
+ * depth/path, derived progress — come from the matching local entry when
+ * one exists, else fall back to safe empty defaults.
+ */
+function apiMissionToLocal(api: ApiMission, local: Mission | undefined): Mission {
+  return {
+    id: api.id,
+    orgId: api.org_id,
+    cycleId: api.cycle_id ?? null,
+    parentId: api.parent_id ?? null,
+    depth: local?.depth ?? 0,
+    path: local?.path ?? [api.id],
+    title: api.title,
+    description: api.description ?? null,
+    ownerId: api.owner_id,
+    teamId: api.team_id ?? null,
+    status: api.status,
+    visibility: api.visibility,
+    progress: local?.progress ?? 0,
+    kanbanStatus: api.kanban_status,
+    sortOrder: api.sort_order,
+    dueDate: api.due_date ?? null,
+    completedAt: api.completed_at ?? null,
+    createdAt: api.created_at,
+    updatedAt: api.updated_at,
+    deletedAt: null,
+    owner: local?.owner,
+    team: local?.team,
+    keyResults: local?.keyResults ?? [],
+    tasks: local?.tasks ?? [],
+    children: local?.children ?? [],
+    tags: local?.tags ?? [],
+    members: local?.members,
+    outgoingLinks: local?.outgoingLinks,
+    incomingLinks: local?.incomingLinks,
+    externalContributions: local?.externalContributions,
+    restrictedSummary: local?.restrictedSummary,
+  };
+}
 
 function toPublicCheckIn(local: LocalCheckIn): CheckIn {
   return {
@@ -189,6 +270,14 @@ export function MissionsDataProvider({ children }: { children: ReactNode }) {
   const [snapshot, setSnapshot] = useState<MissionsStoreSnapshot>(() => loadMissionsSnapshot(activeOrgId));
   const snapshotRef = useRef(snapshot);
   const syncInFlightRef = useRef(false);
+
+  // Phase 1 of the API migration: read missions from the server alongside
+  // the local snapshot. Mutations still go through setMissions/saveSnapshot
+  // until phase 2 wires them into useCreateMission/useUpdateMission/...
+  // The hook is a no-op when auth is missing (returns empty data with
+  // enabled:false), so this stays backward-compatible with tests that don't
+  // wire MockAuthProvider's token.
+  const { data: apiMissions, isLoading: isLoadingMissionsRaw } = useMissions();
 
   useEffect(() => {
     setSnapshot(loadMissionsSnapshot(activeOrgId));
@@ -643,8 +732,20 @@ export function MissionsDataProvider({ children }: { children: ReactNode }) {
     [snapshot],
   );
 
+  const mergedMissions = useMemo(
+    () => mergeMissions(snapshot.missions, apiMissions ?? []),
+    [snapshot.missions, apiMissions],
+  );
+
+  // Treat isLoading as "loading" only when the page would otherwise show a
+  // blank screen — i.e., we have no local missions to fall back on. With a
+  // populated snapshot the merge produces useful content immediately and the
+  // skeleton would just flash.
+  const isLoadingMissions = isLoadingMissionsRaw && snapshot.missions.length === 0;
+
   const value = useMemo<MissionsDataContextValue>(() => ({
-    missions: snapshot.missions,
+    missions: mergedMissions,
+    isLoadingMissions,
     setMissions,
     checkInHistory,
     getCheckInsByKeyResult,
@@ -656,7 +757,8 @@ export function MissionsDataProvider({ children }: { children: ReactNode }) {
     resetToSeed,
     updatedAt: snapshot.updatedAt,
   }), [
-    snapshot.missions,
+    mergedMissions,
+    isLoadingMissions,
     snapshot.updatedAt,
     setMissions,
     checkInHistory,

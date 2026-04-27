@@ -10,6 +10,8 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { screen } from "@testing-library/react";
 import { render } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MockAuthProvider } from "../../../../tests/setup/MockAuthProvider";
 import { ConfigDataProvider } from "@/contexts/ConfigDataContext";
 import { ActivityDataProvider } from "@/contexts/ActivityDataContext";
 import { PeopleDataProvider } from "@/contexts/PeopleDataContext";
@@ -20,26 +22,31 @@ import { IntegrationsDataProvider } from "@/contexts/IntegrationsDataContext";
 import { SurveyPreviewPage } from "./SurveyPreviewPage";
 
 function setup(surveyId = "10") {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <ConfigDataProvider>
-      <ActivityDataProvider>
-        <PeopleDataProvider>
-          <MissionsDataProvider>
-            <SurveysDataProvider>
-              <SettingsDataProvider>
-                <IntegrationsDataProvider>
-                  <MemoryRouter initialEntries={[`/surveys/${surveyId}/preview`]}>
-                    <Routes>
-                      <Route path="/surveys/:surveyId/preview" element={<SurveyPreviewPage />} />
-                    </Routes>
-                  </MemoryRouter>
-                </IntegrationsDataProvider>
-              </SettingsDataProvider>
-            </SurveysDataProvider>
-          </MissionsDataProvider>
-        </PeopleDataProvider>
-      </ActivityDataProvider>
-    </ConfigDataProvider>,
+    <MockAuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <ConfigDataProvider>
+          <ActivityDataProvider>
+            <PeopleDataProvider>
+              <MissionsDataProvider>
+                <SurveysDataProvider>
+                  <SettingsDataProvider>
+                    <IntegrationsDataProvider>
+                      <MemoryRouter initialEntries={[`/surveys/${surveyId}/preview`]}>
+                        <Routes>
+                          <Route path="/surveys/:surveyId/preview" element={<SurveyPreviewPage />} />
+                        </Routes>
+                      </MemoryRouter>
+                    </IntegrationsDataProvider>
+                  </SettingsDataProvider>
+                </SurveysDataProvider>
+              </MissionsDataProvider>
+            </PeopleDataProvider>
+          </ActivityDataProvider>
+        </ConfigDataProvider>
+      </QueryClientProvider>
+    </MockAuthProvider>,
   );
 }
 

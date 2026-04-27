@@ -11,6 +11,8 @@ import { screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { render } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MockAuthProvider } from "../../../tests/setup/MockAuthProvider";
 import { ConfigDataProvider } from "@/contexts/ConfigDataContext";
 import { ActivityDataProvider } from "@/contexts/ActivityDataContext";
 import { PeopleDataProvider } from "@/contexts/PeopleDataContext";
@@ -25,26 +27,31 @@ import { SurveysPage } from "./SurveysPage";
 
 function setup() {
   const user = userEvent.setup();
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const result = render(
-    <ConfigDataProvider>
-      <ActivityDataProvider>
-        <PeopleDataProvider>
-          <MissionsDataProvider>
-            <SurveysDataProvider>
-              <SettingsDataProvider>
-                <IntegrationsDataProvider>
-                  <SavedViewsProvider>
-                    <MemoryRouter>
-                      <SurveysPage />
-                    </MemoryRouter>
-                  </SavedViewsProvider>
-                </IntegrationsDataProvider>
-              </SettingsDataProvider>
-            </SurveysDataProvider>
-          </MissionsDataProvider>
-        </PeopleDataProvider>
-      </ActivityDataProvider>
-    </ConfigDataProvider>,
+    <MockAuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <ConfigDataProvider>
+          <ActivityDataProvider>
+            <PeopleDataProvider>
+              <MissionsDataProvider>
+                <SurveysDataProvider>
+                  <SettingsDataProvider>
+                    <IntegrationsDataProvider>
+                      <SavedViewsProvider>
+                        <MemoryRouter>
+                          <SurveysPage />
+                        </MemoryRouter>
+                      </SavedViewsProvider>
+                    </IntegrationsDataProvider>
+                  </SettingsDataProvider>
+                </SurveysDataProvider>
+              </MissionsDataProvider>
+            </PeopleDataProvider>
+          </ActivityDataProvider>
+        </ConfigDataProvider>
+      </QueryClientProvider>
+    </MockAuthProvider>,
   );
   return { user, ...result };
 }
