@@ -1332,6 +1332,331 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/missions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List missions in active organization */
+        get: {
+            parameters: {
+                query?: {
+                    page?: number;
+                    size?: number;
+                    cycle_id?: string;
+                    /** @description Filter by parent. Use 'null' literal to fetch only root missions. */
+                    parent_id?: string;
+                    status?: "draft" | "active" | "paused" | "completed" | "cancelled";
+                    owner_id?: string;
+                    team_id?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MissionListResponse"];
+                    };
+                };
+                /** @description Bad request (invalid UUID, invalid status filter) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create mission in active organization */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateMissionRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        /** @description URL do recurso criado */
+                        Location?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Mission"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/missions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** Get mission from active organization */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Mission"];
+                    };
+                };
+                /** @description Bad request (invalid UUID in path) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Soft delete mission (and descendants) from active organization */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad request (invalid UUID in path) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Partially update mission in active organization
+         * @description JSON Merge Patch semantics (RFC 7396): only fields present in the body
+         *     are applied; absent fields preserve their current value. Note that
+         *     `parent_id` is intentionally NOT exposed: reparent is not supported via
+         *     this endpoint and will be a dedicated feature when needed.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PatchMissionRequest"];
+                };
+            };
+            responses: {
+                /** @description Updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Mission"];
+                    };
+                };
+                /** @description Bad request (invalid UUID in path or empty body) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/permissions": {
         parameters: {
             query?: never;
@@ -1728,6 +2053,92 @@ export interface components {
             okr_definition_deadline?: string | null;
             /** Format: date */
             mid_review_date?: string | null;
+        };
+        Mission: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            org_id: string;
+            /** Format: uuid */
+            cycle_id: string | null;
+            /** Format: uuid */
+            parent_id: string | null;
+            /** Format: uuid */
+            owner_id: string;
+            /** Format: uuid */
+            team_id: string | null;
+            title: string;
+            description: string | null;
+            /** @enum {string} */
+            status: "draft" | "active" | "paused" | "completed" | "cancelled";
+            /** @enum {string} */
+            visibility: "public" | "team_only" | "private";
+            /** @enum {string} */
+            kanban_status: "uncategorized" | "todo" | "doing" | "done";
+            sort_order: number;
+            /** Format: date */
+            due_date: string | null;
+            /** Format: date-time */
+            completed_at: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        MissionListResponse: {
+            data: components["schemas"]["Mission"][];
+            total: number;
+            page: number;
+            size: number;
+        };
+        CreateMissionRequest: {
+            title: string;
+            description?: string | null;
+            /** Format: uuid */
+            cycle_id?: string | null;
+            /** Format: uuid */
+            parent_id?: string | null;
+            /** Format: uuid */
+            owner_id: string;
+            /** Format: uuid */
+            team_id?: string | null;
+            /** @enum {string} */
+            status?: "draft" | "active" | "paused" | "completed" | "cancelled";
+            /** @enum {string} */
+            visibility?: "public" | "team_only" | "private";
+            /** @enum {string} */
+            kanban_status?: "uncategorized" | "todo" | "doing" | "done";
+            sort_order?: number;
+            /** Format: date */
+            due_date?: string | null;
+        };
+        /**
+         * @description JSON Merge Patch body. All fields are optional; only fields present in
+         *     the request are applied to the mission. Absent fields preserve their
+         *     existing values. `parent_id` is intentionally NOT exposed — reparent
+         *     is not supported via this endpoint.
+         *     Limitation: with simple pointers we cannot distinguish "field absent"
+         *     from "field explicitly null", so sending null on a nullable field
+         *     does NOT clear it in this iteration.
+         */
+        PatchMissionRequest: {
+            title?: string;
+            description?: string;
+            /** Format: uuid */
+            cycle_id?: string;
+            /** Format: uuid */
+            owner_id?: string;
+            /** Format: uuid */
+            team_id?: string;
+            /** @enum {string} */
+            status?: "draft" | "active" | "paused" | "completed" | "cancelled";
+            /** @enum {string} */
+            visibility?: "public" | "team_only" | "private";
+            /** @enum {string} */
+            kanban_status?: "uncategorized" | "todo" | "doing" | "done";
+            sort_order?: number;
+            /** Format: date */
+            due_date?: string;
         };
         Role: {
             /** Format: uuid */

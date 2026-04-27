@@ -34,7 +34,13 @@ export interface MissionsStoreSnapshot {
 
 const STORAGE_KEY_PREFIX = "bud.saas.missions-store";
 const LEGACY_STORAGE_KEY = "bud.saas.missions-store";
-const STORE_SCHEMA_VERSION = 6;
+// Schema 7 (phase 3 of the missions API migration): the persisted JSON no
+// longer carries the missions array. Mission rows come from the API; only
+// check-in state and the outbox are durable in localStorage. The runtime
+// snapshot still exposes a `missions` field built from the MOCK_MISSIONS
+// seed so the rest of the app (KR/task/check-in joins) keeps working until
+// those resources have their own APIs.
+const STORE_SCHEMA_VERSION = 7;
 const DEFAULT_ORG_ID = "org-1";
 
 function getStorageKey(orgId: string): string {
@@ -207,10 +213,11 @@ function migrateSnapshot(raw: Partial<MissionsStoreSnapshot> | null, orgId = DEF
     return seed;
   }
 
-  // On schema upgrade, reset missions to seed so new demo data is visible.
-  // User check-ins (stored separately) are preserved.
-  const isSchemaUpgrade = (raw.schemaVersion ?? 0) < STORE_SCHEMA_VERSION;
-  const missions = (!isSchemaUpgrade && Array.isArray(raw.missions)) ? (raw.missions as Mission[]) : seed.missions;
+  // Phase 3: missions are no longer persisted. Even if the legacy field is
+  // still present in localStorage (older schema), we discard it and reseed
+  // from MOCK_MISSIONS so the runtime shape stays valid for the local
+  // joins (keyResults, tasks, etc.).
+  const missions = seed.missions;
 
   const hasNormalized =
     raw.checkInsById &&
@@ -307,7 +314,18 @@ export function saveMissionsSnapshot(
   };
 
   if (typeof window !== "undefined") {
-    window.localStorage.setItem(getStorageKey(orgId), JSON.stringify(next));
+    // Phase 3: missions are intentionally NOT persisted — the API owns them.
+    // Persist only check-in state plus the outbox so background sync stays
+    // durable across reloads. The next load reseeds missions in memory from
+    // MOCK_MISSIONS.
+    const persisted = {
+      schemaVersion: next.schemaVersion,
+      updatedAt: next.updatedAt,
+      checkInsById: next.checkInsById,
+      checkInIdsByKr: next.checkInIdsByKr,
+      checkInOutbox: next.checkInOutbox,
+    };
+    window.localStorage.setItem(getStorageKey(orgId), JSON.stringify(persisted));
   }
 
   return next;
@@ -316,7 +334,17 @@ export function saveMissionsSnapshot(
 export function resetMissionsSnapshot(orgId = DEFAULT_ORG_ID): MissionsStoreSnapshot {
   const seed = getSeedSnapshot(orgId);
   if (typeof window !== "undefined") {
-    window.localStorage.setItem(getStorageKey(orgId), JSON.stringify(seed));
+    // Same persistence contract as saveMissionsSnapshot: missions stay in
+    // memory only. resetMissionsSnapshot is a debug/dev helper that wipes
+    // local check-in state back to the seed values.
+    const persisted = {
+      schemaVersion: seed.schemaVersion,
+      updatedAt: seed.updatedAt,
+      checkInsById: seed.checkInsById,
+      checkInIdsByKr: seed.checkInIdsByKr,
+      checkInOutbox: seed.checkInOutbox,
+    };
+    window.localStorage.setItem(getStorageKey(orgId), JSON.stringify(persisted));
   }
   return seed;
 }

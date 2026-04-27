@@ -99,3 +99,43 @@ func TestPolicy_EverySystemRoleCanReadSettings(t *testing.T) {
 		assert.Truef(t, allowed, "role %q must hold (settings, read)", role)
 	}
 }
+
+// Locks the policy.csv missions matrix to the contract documented in
+// internal/domain/role/role.go RolePermissions and mirrored on the frontend
+// in lib/config-store.ts. Drift between these three sources caused a
+// previous incident where colaborador could write missions despite the
+// domain only granting them view.
+func TestPolicy_MissionsMatrix_MatchesRolePermissions(t *testing.T) {
+	repoRoot, err := filepath.Abs(filepath.Join("..", "..", "..", ".."))
+	require.NoError(t, err)
+	modelPath := filepath.Join(repoRoot, "backend", "policies", "model.conf")
+	policyPath := filepath.Join(repoRoot, "backend", "policies", "policy.csv")
+
+	require.NoError(t, InitEnforcer(modelPath, policyPath))
+	t.Cleanup(func() { e = nil })
+
+	type matrix struct {
+		read, write, deletable bool
+	}
+	expected := map[string]matrix{
+		"super-admin":  {true, true, true},
+		"admin-rh":     {true, true, true},
+		"gestor":       {true, true, false},
+		"colaborador":  {true, false, false},
+		"visualizador": {true, false, false},
+	}
+
+	for role, want := range expected {
+		read, err := Enforcer().Enforce(role, "missions", "read")
+		require.NoError(t, err)
+		assert.Equalf(t, want.read, read, "role %q (missions, read)", role)
+
+		write, err := Enforcer().Enforce(role, "missions", "write")
+		require.NoError(t, err)
+		assert.Equalf(t, want.write, write, "role %q (missions, write)", role)
+
+		del, err := Enforcer().Enforce(role, "missions", "delete")
+		require.NoError(t, err)
+		assert.Equalf(t, want.deletable, del, "role %q (missions, delete)", role)
+	}
+}

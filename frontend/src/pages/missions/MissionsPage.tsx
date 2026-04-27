@@ -89,6 +89,8 @@ import { useMissionsData } from "@/contexts/MissionsDataContext";
 import { usePeopleData } from "@/contexts/PeopleDataContext";
 import { useConfigData } from "@/contexts/ConfigDataContext";
 import { useSurveysData } from "@/contexts/SurveysDataContext";
+import { useCreateMission, useUpdateMission, useDeleteMission } from "@/hooks/use-missions";
+import { apiErrorToMessage } from "@/lib/api-error";
 import type { SavedView } from "@/contexts/SavedViewsContext";
 import type { Mission, KeyResult, MissionTask, MissionMember, KanbanStatus, ConfidenceLevel, ExternalContribution } from "@/types"; // MissionMember used in buildMissionFromForm
 import {
@@ -199,6 +201,19 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
   } = usePeopleData();
   const { surveys } = useSurveysData();
   const { activeOrgId, tagOptions, cyclePresetOptions, createTag, getTagById, resolveTagId } = useConfigData();
+
+  // Phase 2 of the missions API migration: mission-level mutations (create,
+  // update, delete) flow through the API. The local snapshot still carries
+  // KRs/tasks/check-ins/etc., so each successful mutation is followed by a
+  // setMissions(...) that mirrors the change locally — that keeps the page
+  // consistent until phase 3 drops missions from localStorage entirely.
+  const createMissionMutation = useCreateMission();
+  const updateMissionMutation = useUpdateMission();
+  const deleteMissionMutation = useDeleteMission();
+  const MISSION_ERROR_OVERRIDES: Record<number, string> = {
+    404: "Missão não encontrada",
+    422: "Dados inválidos para a missão",
+  };
 
   const teamFilterOptions = useMemo(
     () => [{ id: "all", label: "Todos os times" }, ...teamOptions],
@@ -1738,6 +1753,64 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
     return { keyResults, children };
   }
 
+  // ── API body adapters ─────────────────────────────────────────────────
+  // Convert a fully-built local Mission (camelCase, with KR/task/etc.) to the
+  // wire shape the backend expects. KRs/tasks/tags/members and the local
+  // "progress" / "depth" / "path" stay client-side — the API only owns the
+  // mission row itself. parent_id is intentionally omitted in PATCH (reparent
+  // is not exposed via this endpoint per the missions API contract).
+  function toCreateMissionBody(m: Mission) {
+    const body: {
+      title: string;
+      owner_id: string;
+      description?: string;
+      cycle_id?: string;
+      parent_id?: string;
+      team_id?: string;
+      status?: typeof m.status;
+      visibility?: typeof m.visibility;
+      kanban_status?: typeof m.kanbanStatus;
+      sort_order?: number;
+      due_date?: string;
+    } = { title: m.title, owner_id: m.ownerId };
+    if (m.description) body.description = m.description;
+    if (m.cycleId) body.cycle_id = m.cycleId;
+    if (m.parentId) body.parent_id = m.parentId;
+    if (m.teamId) body.team_id = m.teamId;
+    if (m.status) body.status = m.status;
+    if (m.visibility) body.visibility = m.visibility;
+    if (m.kanbanStatus) body.kanban_status = m.kanbanStatus;
+    if (typeof m.sortOrder === "number") body.sort_order = m.sortOrder;
+    if (m.dueDate) body.due_date = m.dueDate;
+    return body;
+  }
+
+  function toPatchMissionBody(m: Mission) {
+    const body: {
+      title?: string;
+      description?: string;
+      cycle_id?: string;
+      owner_id?: string;
+      team_id?: string;
+      status?: typeof m.status;
+      visibility?: typeof m.visibility;
+      kanban_status?: typeof m.kanbanStatus;
+      sort_order?: number;
+      due_date?: string;
+    } = {};
+    if (m.title) body.title = m.title;
+    if (m.description) body.description = m.description;
+    if (m.cycleId) body.cycle_id = m.cycleId;
+    if (m.ownerId) body.owner_id = m.ownerId;
+    if (m.teamId) body.team_id = m.teamId;
+    if (m.status) body.status = m.status;
+    if (m.visibility) body.visibility = m.visibility;
+    if (m.kanbanStatus) body.kanban_status = m.kanbanStatus;
+    if (typeof m.sortOrder === "number") body.sort_order = m.sortOrder;
+    if (m.dueDate) body.due_date = m.dueDate;
+    return body;
+  }
+
   function buildMissionFromForm(existing?: Mission): Mission {
     const now = new Date().toISOString();
     const missionId = existing?.id ?? `mission-${Date.now()}`;
@@ -1890,9 +1963,21 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
     setDeleteMissionTarget(mission);
   }
 
-  function confirmDeleteMission() {
+  async function confirmDeleteMission() {
     if (!deleteMissionTarget) return;
     const mission = deleteMissionTarget;
+
+    // Drafts (created via "Salvar rascunho") never made it to the server, so
+    // there is nothing to delete remotely — just clean up local state.
+    const isLocalOnly = mission.id.startsWith("draft-") || mission.id.startsWith("mission-");
+    try {
+      if (!isLocalOnly) {
+        await deleteMissionMutation.mutateAsync(mission.id);
+      }
+    } catch (err) {
+      toast.error(apiErrorToMessage(err, MISSION_ERROR_OVERRIDES));
+      return;
+    }
 
     setMissions((prev) => {
       function removeFromTree(list: Mission[]): Mission[] {
@@ -4220,20 +4305,60 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
               size="md"
               rightIcon={createStep === 2 ? undefined : ArrowRight}
               disabled={createStep === 0 ? !selectedTemplate : false}
-              onClick={() => {
+              onClick={async () => {
                 if (createStep < 2) {
                   setCreateStep((s) => s + 1);
-                } else if (editingMissionId) {
-                  setMissions((prev) => prev.map((m) => (
-                    m.id === editingMissionId
-                      ? { ...buildMissionFromForm(m), status: "active" as const }
-                      : m
-                  )));
+                  return;
+                }
+                if (editingMissionId) {
+                  // EDIT FLOW
+                  // The local form is always re-populated with the existing
+                  // mission, so we send the full editable surface. PATCH
+                  // ignores anything not in the schema (parent_id, etc).
+                  const existingMission = missions.find((m) => m.id === editingMissionId);
+                  const built = { ...buildMissionFromForm(existingMission), status: "active" as const };
+                  // Drafts saved locally have ids like "draft-..." or
+                  // "mission-..." and are not on the server yet — promoting
+                  // them to "active" via PATCH would 404. Treat as create.
+                  const isLocalOnly = editingMissionId.startsWith("draft-") || editingMissionId.startsWith("mission-");
+                  try {
+                    if (isLocalOnly) {
+                      const created = await createMissionMutation.mutateAsync(toCreateMissionBody(built));
+                      // Reuse server id so subsequent saves resolve via API.
+                      setMissions((prev) => prev.map((m) => (m.id === editingMissionId
+                        ? { ...built, id: created.id, createdAt: created.created_at, updatedAt: created.updated_at }
+                        : m)));
+                    } else {
+                      const updated = await updateMissionMutation.mutateAsync({
+                        id: editingMissionId,
+                        body: toPatchMissionBody(built),
+                      });
+                      setMissions((prev) => prev.map((m) => (m.id === editingMissionId
+                        ? { ...built, updatedAt: updated.updated_at }
+                        : m)));
+                    }
+                  } catch (err) {
+                    toast.error(apiErrorToMessage(err, MISSION_ERROR_OVERRIDES));
+                    return;
+                  }
                   toast.success("Missão atualizada com sucesso!");
                   resetCreateForm();
                 } else {
-                  const newMission = { ...buildMissionFromForm(), status: "active" as const };
-                  setMissions((prev) => [...prev, newMission]);
+                  // CREATE FLOW
+                  const built = { ...buildMissionFromForm(), status: "active" as const };
+                  let serverId: string;
+                  try {
+                    const created = await createMissionMutation.mutateAsync(toCreateMissionBody(built));
+                    serverId = created.id;
+                    setMissions((prev) => [
+                      ...prev,
+                      { ...built, id: created.id, createdAt: created.created_at, updatedAt: created.updated_at },
+                    ]);
+                  } catch (err) {
+                    toast.error(apiErrorToMessage(err, MISSION_ERROR_OVERRIDES));
+                    return;
+                  }
+                  void serverId;
                   toast.success("Missão criada com sucesso!");
                   resetCreateForm();
                 }

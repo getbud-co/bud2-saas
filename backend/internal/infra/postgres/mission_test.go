@@ -1,0 +1,369 @@
+package postgres
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/getbud-co/bud2/backend/internal/domain/mission"
+	"github.com/getbud-co/bud2/backend/internal/infra/postgres/sqlc"
+)
+
+type fakeMissionQuerier struct {
+	createRow    sqlc.CreateMissionRow
+	createErr    error
+	createParams sqlc.CreateMissionParams
+	getRow       sqlc.GetMissionByIDRow
+	getErr       error
+	listRows     []sqlc.ListMissionsRow
+	listErr      error
+	listParams   sqlc.ListMissionsParams
+	countTotal   int64
+	countErr     error
+	countParams  sqlc.CountMissionsParams
+	updateRow    sqlc.UpdateMissionRow
+	updateErr    error
+	updateParams sqlc.UpdateMissionParams
+}
+
+func (f *fakeMissionQuerier) CreateMission(_ context.Context, arg sqlc.CreateMissionParams) (sqlc.CreateMissionRow, error) {
+	f.createParams = arg
+	return f.createRow, f.createErr
+}
+
+func (f *fakeMissionQuerier) GetMissionByID(_ context.Context, _ sqlc.GetMissionByIDParams) (sqlc.GetMissionByIDRow, error) {
+	return f.getRow, f.getErr
+}
+
+func (f *fakeMissionQuerier) ListMissions(_ context.Context, arg sqlc.ListMissionsParams) ([]sqlc.ListMissionsRow, error) {
+	f.listParams = arg
+	return f.listRows, f.listErr
+}
+
+func (f *fakeMissionQuerier) CountMissions(_ context.Context, arg sqlc.CountMissionsParams) (int64, error) {
+	f.countParams = arg
+	return f.countTotal, f.countErr
+}
+
+func (f *fakeMissionQuerier) UpdateMission(_ context.Context, arg sqlc.UpdateMissionParams) (sqlc.UpdateMissionRow, error) {
+	f.updateParams = arg
+	return f.updateRow, f.updateErr
+}
+
+func TestMissionRepository_Create_TranslatesNullableFieldsAndMapsRow(t *testing.T) {
+	now := time.Now().UTC()
+	id := uuid.New()
+	orgID := uuid.New()
+	ownerID := uuid.New()
+	cycleID := uuid.New()
+	parentID := uuid.New()
+	teamID := uuid.New()
+	due := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+	desc := "Reduzir churn em 20%"
+
+	q := &fakeMissionQuerier{
+		createRow: sqlc.CreateMissionRow{
+			ID: id, OrganizationID: orgID,
+			CycleID:      pgtype.UUID{Bytes: cycleID, Valid: true},
+			ParentID:     pgtype.UUID{Bytes: parentID, Valid: true},
+			OwnerID:      ownerID,
+			TeamID:       pgtype.UUID{Bytes: teamID, Valid: true},
+			Title:        "Reduzir churn",
+			Description:  pgtype.Text{String: desc, Valid: true},
+			Status:       string(mission.StatusActive),
+			Visibility:   string(mission.VisibilityPublic),
+			KanbanStatus: string(mission.KanbanTodo),
+			SortOrder:    3,
+			DueDate:      pgtype.Date{Time: due, Valid: true},
+			CompletedAt:  pgtype.Timestamptz{Valid: false},
+			CreatedAt:    now, UpdatedAt: now,
+		},
+	}
+	repo := NewMissionRepository(q, nil)
+
+	got, err := repo.Create(context.Background(), &mission.Mission{
+		ID: id, OrganizationID: orgID, CycleID: &cycleID, ParentID: &parentID,
+		OwnerID: ownerID, TeamID: &teamID, Title: "Reduzir churn",
+		Description: &desc, Status: mission.StatusActive,
+		Visibility: mission.VisibilityPublic, KanbanStatus: mission.KanbanTodo,
+		SortOrder: 3, DueDate: &due,
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, id, got.ID)
+	assert.Equal(t, "Reduzir churn", got.Title)
+	require.NotNil(t, got.CycleID)
+	assert.Equal(t, cycleID, *got.CycleID)
+	require.NotNil(t, got.ParentID)
+	assert.Equal(t, parentID, *got.ParentID)
+	require.NotNil(t, got.TeamID)
+	assert.Equal(t, teamID, *got.TeamID)
+	require.NotNil(t, got.Description)
+	assert.Equal(t, desc, *got.Description)
+	require.NotNil(t, got.DueDate)
+	assert.Equal(t, due, *got.DueDate)
+	assert.Nil(t, got.CompletedAt)
+
+	// Querier received the right pgtype-converted params
+	assert.True(t, q.createParams.CycleID.Valid)
+	assert.True(t, q.createParams.ParentID.Valid)
+	assert.True(t, q.createParams.TeamID.Valid)
+	assert.True(t, q.createParams.Description.Valid)
+	assert.False(t, q.createParams.CompletedAt.Valid)
+	assert.Equal(t, int32(3), q.createParams.SortOrder)
+}
+
+func TestMissionRepository_Create_NilOptionalFieldsBecomeInvalidPgtype(t *testing.T) {
+	q := &fakeMissionQuerier{
+		createRow: sqlc.CreateMissionRow{
+			ID: uuid.New(), Title: "x",
+			Status: string(mission.StatusDraft), Visibility: string(mission.VisibilityPublic),
+			KanbanStatus: string(mission.KanbanUncategorized),
+		},
+	}
+	repo := NewMissionRepository(q, nil)
+
+	_, err := repo.Create(context.Background(), &mission.Mission{
+		ID: uuid.New(), OrganizationID: uuid.New(), OwnerID: uuid.New(),
+		Title: "x", Status: mission.StatusDraft, Visibility: mission.VisibilityPublic, KanbanStatus: mission.KanbanUncategorized,
+	})
+
+	require.NoError(t, err)
+	assert.False(t, q.createParams.CycleID.Valid)
+	assert.False(t, q.createParams.ParentID.Valid)
+	assert.False(t, q.createParams.TeamID.Valid)
+	assert.False(t, q.createParams.Description.Valid)
+	assert.False(t, q.createParams.DueDate.Valid)
+	assert.False(t, q.createParams.CompletedAt.Valid)
+}
+
+func TestMissionRepository_Create_PropagatesQuerierError(t *testing.T) {
+	queryErr := errors.New("insert failed")
+	repo := NewMissionRepository(&fakeMissionQuerier{createErr: queryErr}, nil)
+
+	_, err := repo.Create(context.Background(), &mission.Mission{ID: uuid.New(), Title: "x"})
+
+	assert.ErrorIs(t, err, queryErr)
+}
+
+func TestMissionRepository_Create_FKViolation_MapsToInvalidReference(t *testing.T) {
+	fkErr := &pgconn.PgError{Code: "23503", Message: "foreign key violation"}
+	repo := NewMissionRepository(&fakeMissionQuerier{createErr: fkErr}, nil)
+
+	_, err := repo.Create(context.Background(), &mission.Mission{ID: uuid.New(), Title: "x"})
+
+	assert.ErrorIs(t, err, mission.ErrInvalidReference)
+}
+
+func TestMissionRepository_Update_FKViolation_MapsToInvalidReference(t *testing.T) {
+	fkErr := &pgconn.PgError{Code: "23503", Message: "foreign key violation"}
+	repo := NewMissionRepository(&fakeMissionQuerier{updateErr: fkErr}, nil)
+
+	_, err := repo.Update(context.Background(), &mission.Mission{ID: uuid.New(), Title: "x"})
+
+	assert.ErrorIs(t, err, mission.ErrInvalidReference)
+}
+
+func TestMissionRepository_GetByID_NotFound_MapsToDomainError(t *testing.T) {
+	repo := NewMissionRepository(&fakeMissionQuerier{getErr: pgx.ErrNoRows}, nil)
+
+	_, err := repo.GetByID(context.Background(), uuid.New(), uuid.New())
+
+	assert.ErrorIs(t, err, mission.ErrNotFound)
+}
+
+func TestMissionRepository_GetByID_PropagatesOtherErrors(t *testing.T) {
+	queryErr := errors.New("conn refused")
+	repo := NewMissionRepository(&fakeMissionQuerier{getErr: queryErr}, nil)
+
+	_, err := repo.GetByID(context.Background(), uuid.New(), uuid.New())
+
+	assert.ErrorIs(t, err, queryErr)
+}
+
+func TestMissionRepository_List_AppliesPaginationDefaultsAndFilters(t *testing.T) {
+	cycleID := uuid.New()
+	ownerID := uuid.New()
+	teamID := uuid.New()
+	parentID := uuid.New()
+	status := mission.StatusActive
+
+	q := &fakeMissionQuerier{
+		listRows:   []sqlc.ListMissionsRow{{ID: uuid.New(), Title: "a"}, {ID: uuid.New(), Title: "b"}},
+		countTotal: 7,
+	}
+	repo := NewMissionRepository(q, nil)
+
+	res, err := repo.List(context.Background(), mission.ListFilter{
+		OrganizationID: uuid.New(),
+		CycleID:        &cycleID,
+		OwnerID:        &ownerID,
+		TeamID:         &teamID,
+		Status:         &status,
+		ParentID:       &parentID,
+		FilterByParent: true,
+		Page:           0, // → 1
+		Size:           0, // → 20
+	})
+
+	require.NoError(t, err)
+	require.Len(t, res.Missions, 2)
+	assert.Equal(t, int64(7), res.Total)
+	assert.Equal(t, int32(20), q.listParams.Limit)
+	assert.Equal(t, int32(0), q.listParams.Offset)
+	assert.True(t, q.listParams.CycleID.Valid)
+	assert.True(t, q.listParams.OwnerID.Valid)
+	assert.True(t, q.listParams.TeamID.Valid)
+	assert.True(t, q.listParams.ParentID.Valid)
+	assert.True(t, q.listParams.FilterByParent)
+	require.True(t, q.listParams.Status.Valid)
+	assert.Equal(t, string(status), q.listParams.Status.String)
+	// Count was called with the same filters
+	assert.Equal(t, q.listParams.CycleID, q.countParams.CycleID)
+	assert.Equal(t, q.listParams.Status, q.countParams.Status)
+	assert.Equal(t, q.listParams.FilterByParent, q.countParams.FilterByParent)
+}
+
+func TestMissionRepository_List_PropagatesQueryError(t *testing.T) {
+	queryErr := errors.New("list failed")
+	repo := NewMissionRepository(&fakeMissionQuerier{listErr: queryErr}, nil)
+
+	_, err := repo.List(context.Background(), mission.ListFilter{OrganizationID: uuid.New()})
+
+	assert.ErrorIs(t, err, queryErr)
+}
+
+func TestMissionRepository_List_PropagatesCountError(t *testing.T) {
+	countErr := errors.New("count failed")
+	repo := NewMissionRepository(&fakeMissionQuerier{listRows: nil, countErr: countErr}, nil)
+
+	_, err := repo.List(context.Background(), mission.ListFilter{OrganizationID: uuid.New()})
+
+	assert.ErrorIs(t, err, countErr)
+}
+
+func TestMissionRepository_Update_NotFound_MapsToDomainError(t *testing.T) {
+	repo := NewMissionRepository(&fakeMissionQuerier{updateErr: pgx.ErrNoRows}, nil)
+
+	_, err := repo.Update(context.Background(), &mission.Mission{ID: uuid.New(), Title: "x"})
+
+	assert.ErrorIs(t, err, mission.ErrNotFound)
+}
+
+func TestMissionRepository_Update_PassesNullableParent(t *testing.T) {
+	parentID := uuid.New()
+	q := &fakeMissionQuerier{
+		updateRow: sqlc.UpdateMissionRow{
+			ID: uuid.New(), Title: "x",
+			Status: string(mission.StatusActive), Visibility: string(mission.VisibilityPublic), KanbanStatus: string(mission.KanbanTodo),
+		},
+	}
+	repo := NewMissionRepository(q, nil)
+
+	// to a parent
+	_, err := repo.Update(context.Background(), &mission.Mission{
+		ID: uuid.New(), Title: "x", ParentID: &parentID,
+		Status: mission.StatusActive, Visibility: mission.VisibilityPublic, KanbanStatus: mission.KanbanTodo,
+	})
+	require.NoError(t, err)
+	assert.True(t, q.updateParams.ParentID.Valid)
+
+	// to root (nil)
+	_, err = repo.Update(context.Background(), &mission.Mission{
+		ID: uuid.New(), Title: "x",
+		Status: mission.StatusActive, Visibility: mission.VisibilityPublic, KanbanStatus: mission.KanbanTodo,
+	})
+	require.NoError(t, err)
+	assert.False(t, q.updateParams.ParentID.Valid)
+}
+
+func TestMissionRowToDomain_MapsAllFields(t *testing.T) {
+	now := time.Now().UTC()
+	id := uuid.New()
+	orgID := uuid.New()
+	ownerID := uuid.New()
+	cycleID := uuid.New()
+	parentID := uuid.New()
+	teamID := uuid.New()
+	due := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+	completed := now.Add(-time.Hour)
+
+	got := missionRowToDomain(missionRowData{
+		ID: id, OrganizationID: orgID,
+		CycleID:      pgtype.UUID{Bytes: cycleID, Valid: true},
+		ParentID:     pgtype.UUID{Bytes: parentID, Valid: true},
+		OwnerID:      ownerID,
+		TeamID:       pgtype.UUID{Bytes: teamID, Valid: true},
+		Title:        "T",
+		Description:  pgtype.Text{String: "d", Valid: true},
+		Status:       string(mission.StatusCompleted),
+		Visibility:   string(mission.VisibilityTeamOnly),
+		KanbanStatus: string(mission.KanbanDone),
+		SortOrder:    9,
+		DueDate:      pgtype.Date{Time: due, Valid: true},
+		CompletedAt:  pgtype.Timestamptz{Time: completed, Valid: true},
+		CreatedAt:    now, UpdatedAt: now,
+	})
+
+	assert.Equal(t, id, got.ID)
+	assert.Equal(t, orgID, got.OrganizationID)
+	require.NotNil(t, got.CycleID)
+	assert.Equal(t, cycleID, *got.CycleID)
+	require.NotNil(t, got.ParentID)
+	assert.Equal(t, parentID, *got.ParentID)
+	assert.Equal(t, ownerID, got.OwnerID)
+	require.NotNil(t, got.TeamID)
+	assert.Equal(t, teamID, *got.TeamID)
+	require.NotNil(t, got.Description)
+	assert.Equal(t, "d", *got.Description)
+	assert.Equal(t, mission.StatusCompleted, got.Status)
+	assert.Equal(t, mission.VisibilityTeamOnly, got.Visibility)
+	assert.Equal(t, mission.KanbanDone, got.KanbanStatus)
+	assert.Equal(t, 9, got.SortOrder)
+	require.NotNil(t, got.DueDate)
+	assert.Equal(t, due, *got.DueDate)
+	require.NotNil(t, got.CompletedAt)
+	assert.Equal(t, completed, *got.CompletedAt)
+}
+
+func TestMissionRowToDomain_NullPgtypesMapToNil(t *testing.T) {
+	got := missionRowToDomain(missionRowData{
+		ID: uuid.New(), OrganizationID: uuid.New(), OwnerID: uuid.New(),
+		Title: "x", Status: string(mission.StatusDraft),
+		Visibility: string(mission.VisibilityPublic), KanbanStatus: string(mission.KanbanUncategorized),
+	})
+
+	assert.Nil(t, got.CycleID)
+	assert.Nil(t, got.ParentID)
+	assert.Nil(t, got.TeamID)
+	assert.Nil(t, got.Description)
+	assert.Nil(t, got.DueDate)
+	assert.Nil(t, got.CompletedAt)
+}
+
+func TestMissionPgtypeHelpers_RoundTrip(t *testing.T) {
+	id := uuid.New()
+	now := time.Now().UTC()
+
+	// uuid pointer ↔ pgtype.UUID
+	assert.False(t, uuidPtrToPgtype(nil).Valid)
+	assert.Equal(t, pgtype.UUID{Bytes: id, Valid: true}, uuidPtrToPgtype(&id))
+	assert.Nil(t, pgtypeToUUIDPtr(pgtype.UUID{Valid: false}))
+	require.NotNil(t, pgtypeToUUIDPtr(pgtype.UUID{Bytes: id, Valid: true}))
+	assert.Equal(t, id, *pgtypeToUUIDPtr(pgtype.UUID{Bytes: id, Valid: true}))
+
+	// time pointer ↔ pgtype.Timestamptz
+	assert.False(t, timeToPgtypeTimestamptz(nil).Valid)
+	assert.Equal(t, now, timeToPgtypeTimestamptz(&now).Time)
+	assert.Nil(t, pgtypeTimestamptzToTime(pgtype.Timestamptz{Valid: false}))
+	require.NotNil(t, pgtypeTimestamptzToTime(pgtype.Timestamptz{Time: now, Valid: true}))
+	assert.Equal(t, now, *pgtypeTimestamptzToTime(pgtype.Timestamptz{Time: now, Valid: true}))
+}

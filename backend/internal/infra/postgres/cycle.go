@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/getbud-co/bud2/backend/internal/domain/cycle"
@@ -152,11 +151,6 @@ func (r *CycleRepository) Update(ctx context.Context, c *cycle.Cycle) (*cycle.Cy
 
 func (r *CycleRepository) SoftDelete(ctx context.Context, id, organizationID uuid.UUID) error {
 	return r.q.SoftDeleteCycle(ctx, sqlc.SoftDeleteCycleParams{ID: id, OrganizationID: organizationID})
-}
-
-func isUniqueViolation(err error) bool {
-	var pgErr *pgconn.PgError
-	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
 
 type cycleRowData struct {

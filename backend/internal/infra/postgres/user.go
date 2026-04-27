@@ -101,6 +101,29 @@ func (r *UserRepository) GetByIDForOrganization(ctx context.Context, id, organiz
 	return result, nil
 }
 
+// GetActiveMemberByID is the active-membership variant of
+// GetByIDForOrganization. It returns user.ErrNotFound for any state where
+// the user is not currently a member-in-good-standing of the org: missing
+// user, no membership, invited (not accepted), or inactive. Callers that
+// only care about presence (any membership status) should use
+// GetByIDForOrganization instead.
+func (r *UserRepository) GetActiveMemberByID(ctx context.Context, id, organizationID uuid.UUID) (*user.User, error) {
+	u, err := r.GetByIDForOrganization(ctx, id, organizationID)
+	if err != nil {
+		if errors.Is(err, organization.ErrMembershipNotFound) {
+			return nil, user.ErrNotFound
+		}
+		return nil, err
+	}
+	if _, err := u.ActiveMembershipForOrganization(organizationID); err != nil {
+		if errors.Is(err, organization.ErrMembershipNotFound) {
+			return nil, user.ErrNotFound
+		}
+		return nil, err
+	}
+	return u, nil
+}
+
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*user.User, error) {
 	row, err := r.q.GetUserByEmail(ctx, email)
 	if err != nil {
@@ -289,37 +312,7 @@ func updateUserRowToDomain(row sqlc.UpdateUserRow) *user.User {
 		row.CreatedAt, row.UpdatedAt, nil)
 }
 
-// ── pgtype helpers ────────────────────────────────────────────────────────────
-
-func textToPgtype(s *string) pgtype.Text {
-	if s == nil {
-		return pgtype.Text{Valid: false}
-	}
-	return pgtype.Text{String: *s, Valid: true}
-}
-
-func pgtypeToText(t pgtype.Text) *string {
-	if !t.Valid {
-		return nil
-	}
-	s := t.String
-	return &s
-}
-
-func timeToPgtypeDate(t *time.Time) pgtype.Date {
-	if t == nil {
-		return pgtype.Date{Valid: false}
-	}
-	return pgtype.Date{Time: *t, Valid: true}
-}
-
-func pgtypeDateToTime(d pgtype.Date) *time.Time {
-	if !d.Valid {
-		return nil
-	}
-	t := d.Time
-	return &t
-}
+// pgtype helpers live in helpers.go (shared across repositories).
 
 // ── Membership helpers ────────────────────────────────────────────────────────
 

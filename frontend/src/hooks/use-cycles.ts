@@ -45,19 +45,23 @@ export function useCycles(params?: { status?: CycleStatus }) {
 export function useCreateCycle() {
   const client = useApiClient();
   const qc = useQueryClient();
+  const { activeOrganization } = useAuth();
+  const orgId = activeOrganization?.id;
   return useMutation({
     mutationFn: async (body: CreateCycleBody) => {
       const { data, error } = await client.POST("/cycles", { body });
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["cycles"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["cycles", orgId] }),
   });
 }
 
 export function useUpdateCycle() {
   const client = useApiClient();
   const qc = useQueryClient();
+  const { activeOrganization } = useAuth();
+  const orgId = activeOrganization?.id;
   return useMutation({
     mutationFn: async ({ id, body }: { id: string; body: UpdateCycleBody }) => {
       const { data, error } = await client.PUT("/cycles/{id}", {
@@ -67,13 +71,15 @@ export function useUpdateCycle() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["cycles"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["cycles", orgId] }),
   });
 }
 
 export function useDeleteCycle() {
   const client = useApiClient();
   const qc = useQueryClient();
+  const { activeOrganization } = useAuth();
+  const orgId = activeOrganization?.id;
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await client.DELETE("/cycles/{id}", {
@@ -81,6 +87,6 @@ export function useDeleteCycle() {
       });
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["cycles"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["cycles", orgId] }),
   });
 }

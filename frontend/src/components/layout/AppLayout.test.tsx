@@ -5,10 +5,12 @@
  * Provides SidebarContext and AssistantContext to children.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import type { ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MockAuthProvider } from "../../../tests/setup/MockAuthProvider";
 import { ConfigDataProvider } from "@/contexts/ConfigDataContext";
 import { ActivityDataProvider } from "@/contexts/ActivityDataContext";
 import { PeopleDataProvider } from "@/contexts/PeopleDataContext";
@@ -21,27 +23,32 @@ import { AppLayout } from "./AppLayout";
 // ─── Test Helpers ───
 
 function renderAppLayout(route = "/home", outlet?: ReactNode) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <MemoryRouter initialEntries={[route]}>
-      <ConfigDataProvider>
-        <ActivityDataProvider>
-          <PeopleDataProvider>
-            <MissionsDataProvider>
-              <SurveysDataProvider>
-                <SettingsDataProvider>
-                  <IntegrationsDataProvider>
-                    <Routes>
-                      <Route element={<AppLayout />}>
-                        <Route path="*" element={outlet ?? <div data-testid="outlet">Page Content</div>} />
-                      </Route>
-                    </Routes>
-                  </IntegrationsDataProvider>
-                </SettingsDataProvider>
-              </SurveysDataProvider>
-            </MissionsDataProvider>
-          </PeopleDataProvider>
-        </ActivityDataProvider>
-      </ConfigDataProvider>
+      <MockAuthProvider>
+        <QueryClientProvider client={queryClient}>
+          <ConfigDataProvider>
+            <ActivityDataProvider>
+              <PeopleDataProvider>
+                <MissionsDataProvider>
+                  <SurveysDataProvider>
+                    <SettingsDataProvider>
+                      <IntegrationsDataProvider>
+                        <Routes>
+                          <Route element={<AppLayout />}>
+                            <Route path="*" element={outlet ?? <div data-testid="outlet">Page Content</div>} />
+                          </Route>
+                        </Routes>
+                      </IntegrationsDataProvider>
+                    </SettingsDataProvider>
+                  </SurveysDataProvider>
+                </MissionsDataProvider>
+              </PeopleDataProvider>
+            </ActivityDataProvider>
+          </ConfigDataProvider>
+        </QueryClientProvider>
+      </MockAuthProvider>
     </MemoryRouter>,
   );
 }
