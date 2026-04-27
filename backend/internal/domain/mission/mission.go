@@ -129,12 +129,6 @@ type Repository interface {
 	Create(ctx context.Context, mission *Mission) (*Mission, error)
 	GetByID(ctx context.Context, id, organizationID uuid.UUID) (*Mission, error)
 	List(ctx context.Context, filter ListFilter) (ListResult, error)
-	// IsDescendant reports whether candidateID is in the subtree rooted at
-	// ancestorID within the organization. Used by tree-mutation use cases
-	// that need cycle prevention before changing parent_id. Currently unused
-	// at the app layer; kept because the recursive CTE backing it is
-	// integration-tested and will be needed when a reparent use case lands.
-	IsDescendant(ctx context.Context, organizationID, ancestorID, candidateID uuid.UUID) (bool, error)
 	Update(ctx context.Context, mission *Mission) (*Mission, error)
 	SoftDeleteSubtree(ctx context.Context, id, organizationID uuid.UUID) error
 }

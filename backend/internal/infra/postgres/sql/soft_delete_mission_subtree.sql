@@ -5,7 +5,7 @@
 -- recursive CTEs. Loaded into the repository via //go:embed.
 --
 -- Cycle protection: the recursive arm tracks the visited path and stops at any
--- node already in it. See is_mission_descendant.sql for the rationale.
+-- node already in it.
 WITH RECURSIVE subtree AS (
     SELECT m.id, ARRAY[m.id] AS path FROM missions m
     WHERE m.id = $1 AND m.organization_id = $2 AND m.deleted_at IS NULL

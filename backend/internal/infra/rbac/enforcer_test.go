@@ -139,3 +139,45 @@ func TestPolicy_MissionsMatrix_MatchesRolePermissions(t *testing.T) {
 		assert.Equalf(t, want.deletable, del, "role %q (missions, delete)", role)
 	}
 }
+
+// Indicators and tasks are sub-resources of missions. They share the same
+// access matrix because anyone who can manage a mission must also manage its
+// indicators and tasks; viewers see them through the mission they're attached
+// to. Drift here would let a colaborador create indicators while being unable
+// to edit the parent mission, which the UI does not expect.
+func TestPolicy_IndicatorsAndTasksMatrix_MatchesMissions(t *testing.T) {
+	repoRoot, err := filepath.Abs(filepath.Join("..", "..", "..", ".."))
+	require.NoError(t, err)
+	modelPath := filepath.Join(repoRoot, "backend", "policies", "model.conf")
+	policyPath := filepath.Join(repoRoot, "backend", "policies", "policy.csv")
+
+	require.NoError(t, InitEnforcer(modelPath, policyPath))
+	t.Cleanup(func() { e = nil })
+
+	type matrix struct {
+		read, write, deletable bool
+	}
+	expected := map[string]matrix{
+		"super-admin":  {true, true, true},
+		"admin-rh":     {true, true, true},
+		"gestor":       {true, true, false},
+		"colaborador":  {true, false, false},
+		"visualizador": {true, false, false},
+	}
+
+	for _, resource := range []string{"indicators", "tasks"} {
+		for role, want := range expected {
+			read, err := Enforcer().Enforce(role, resource, "read")
+			require.NoError(t, err)
+			assert.Equalf(t, want.read, read, "role %q (%s, read)", role, resource)
+
+			write, err := Enforcer().Enforce(role, resource, "write")
+			require.NoError(t, err)
+			assert.Equalf(t, want.write, write, "role %q (%s, write)", role, resource)
+
+			del, err := Enforcer().Enforce(role, resource, "delete")
+			require.NoError(t, err)
+			assert.Equalf(t, want.deletable, del, "role %q (%s, delete)", role, resource)
+		}
+	}
+}

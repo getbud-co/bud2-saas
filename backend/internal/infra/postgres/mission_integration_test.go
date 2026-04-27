@@ -107,69 +107,6 @@ func TestMissionRepository_SoftDeleteSubtree_CascadesDescendants(t *testing.T) {
 	}
 }
 
-func TestMissionRepository_IsDescendant(t *testing.T) {
-	ctx, repo, orgAID, _, ownerID := setupMissionEnv(t)
-
-	root, err := repo.Create(ctx, &mission.Mission{
-		ID: uuid.New(), OrganizationID: orgAID, OwnerID: ownerID,
-		Title: "root", Status: mission.StatusActive, Visibility: mission.VisibilityPublic, KanbanStatus: mission.KanbanTodo,
-	})
-	require.NoError(t, err)
-	child, err := repo.Create(ctx, &mission.Mission{
-		ID: uuid.New(), OrganizationID: orgAID, OwnerID: ownerID, ParentID: &root.ID,
-		Title: "child", Status: mission.StatusActive, Visibility: mission.VisibilityPublic, KanbanStatus: mission.KanbanTodo,
-	})
-	require.NoError(t, err)
-	grand, err := repo.Create(ctx, &mission.Mission{
-		ID: uuid.New(), OrganizationID: orgAID, OwnerID: ownerID, ParentID: &child.ID,
-		Title: "grand", Status: mission.StatusActive, Visibility: mission.VisibilityPublic, KanbanStatus: mission.KanbanTodo,
-	})
-	require.NoError(t, err)
-	other, err := repo.Create(ctx, &mission.Mission{
-		ID: uuid.New(), OrganizationID: orgAID, OwnerID: ownerID,
-		Title: "other", Status: mission.StatusActive, Visibility: mission.VisibilityPublic, KanbanStatus: mission.KanbanTodo,
-	})
-	require.NoError(t, err)
-
-	is, err := repo.IsDescendant(ctx, orgAID, root.ID, grand.ID)
-	require.NoError(t, err)
-	assert.True(t, is)
-
-	is, err = repo.IsDescendant(ctx, orgAID, child.ID, grand.ID)
-	require.NoError(t, err)
-	assert.True(t, is)
-
-	is, err = repo.IsDescendant(ctx, orgAID, root.ID, other.ID)
-	require.NoError(t, err)
-	assert.False(t, is)
-
-	// The CTE anchor is `WHERE id = ancestor`, so the ancestor itself is in
-	// the subtree result. The use case (UpdateUseCase.validateParentChange)
-	// short-circuits the self-parent case before calling IsDescendant, so this
-	// behavior is never exercised in production paths but is asserted here to
-	// document the SQL contract.
-	is, err = repo.IsDescendant(ctx, orgAID, root.ID, root.ID)
-	require.NoError(t, err)
-	assert.True(t, is)
-}
-
-func TestMissionRepository_IsDescendant_CrossTenant_ReturnsFalse(t *testing.T) {
-	ctx, repo, orgAID, orgBID, ownerID := setupMissionEnv(t)
-
-	// orgA: a mission
-	a, err := repo.Create(ctx, &mission.Mission{
-		ID: uuid.New(), OrganizationID: orgAID, OwnerID: ownerID,
-		Title: "a-orgA", Status: mission.StatusActive, Visibility: mission.VisibilityPublic, KanbanStatus: mission.KanbanTodo,
-	})
-	require.NoError(t, err)
-
-	// Querying within orgB asking if A is a descendant of A: must return false because
-	// A does not belong to orgB. Tenant filter must short-circuit the CTE anchor.
-	is, err := repo.IsDescendant(ctx, orgBID, a.ID, a.ID)
-	require.NoError(t, err)
-	assert.False(t, is, "missions from another tenant must not appear in the subtree")
-}
-
 func TestMissionRepository_SoftDeleteSubtree_CrossTenant_IsNoOp(t *testing.T) {
 	ctx, repo, orgAID, orgBID, ownerID := setupMissionEnv(t)
 

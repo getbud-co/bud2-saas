@@ -14,9 +14,6 @@ import (
 	"github.com/getbud-co/bud2/backend/internal/infra/postgres/sqlc"
 )
 
-//go:embed sql/is_mission_descendant.sql
-var isMissionDescendantSQL string
-
 //go:embed sql/soft_delete_mission_subtree.sql
 var softDeleteMissionSubtreeSQL string
 
@@ -154,15 +151,6 @@ func (r *MissionRepository) Update(ctx context.Context, m *mission.Mission) (*mi
 		return nil, err
 	}
 	return missionRowToDomain(missionRowData(row)), nil
-}
-
-func (r *MissionRepository) IsDescendant(ctx context.Context, organizationID, ancestorID, candidateID uuid.UUID) (bool, error) {
-	var exists bool
-	err := r.db.QueryRow(ctx, isMissionDescendantSQL, organizationID, ancestorID, candidateID).Scan(&exists)
-	if err != nil {
-		return false, err
-	}
-	return exists, nil
 }
 
 func (r *MissionRepository) SoftDeleteSubtree(ctx context.Context, id, organizationID uuid.UUID) error {

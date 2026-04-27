@@ -41,3 +41,25 @@ p, gestor, missions, write
 p, gestor, missions, read
 p, colaborador, missions, read
 p, visualizador, missions, read
+
+p, super-admin, indicators, write
+p, super-admin, indicators, read
+p, super-admin, indicators, delete
+p, admin-rh, indicators, write
+p, admin-rh, indicators, read
+p, admin-rh, indicators, delete
+p, gestor, indicators, write
+p, gestor, indicators, read
+p, colaborador, indicators, read
+p, visualizador, indicators, read
+
+p, super-admin, tasks, write
+p, super-admin, tasks, read
+p, super-admin, tasks, delete
+p, admin-rh, tasks, write
+p, admin-rh, tasks, read
+p, admin-rh, tasks, delete
+p, gestor, tasks, write
+p, gestor, tasks, read
+p, colaborador, tasks, read
+p, visualizador, tasks, read
