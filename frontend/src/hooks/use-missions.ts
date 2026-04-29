@@ -154,8 +154,8 @@ export function useSetMissionMembers() {
   const orgId = activeOrganization?.id;
   return useMutation({
     mutationFn: async ({ missionId, members }: SetMissionMembersInput) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (client.PUT as any)("/missions/{id}/members", {
+      // @ts-expect-error — endpoint not yet in OpenAPI spec
+      const { data, error } = await client.PUT("/missions/{id}/members", {
         params: { path: { id: missionId } },
         body: {
           members: members.map((m) => ({ user_id: m.userId, role: m.role })),
