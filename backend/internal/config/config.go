@@ -18,11 +18,11 @@ type Config struct {
 	OTelServiceName string
 	OTelEnvironment string
 	LogLevel        string
-	MaxBodySize      int64
-	RequestTimeout   time.Duration
-	ShutdownTimeout  time.Duration
-	TokenTTL         time.Duration
-	RefreshTokenTTL  time.Duration
+	MaxBodySize     int64
+	RequestTimeout  time.Duration
+	ShutdownTimeout time.Duration
+	TokenTTL        time.Duration
+	RefreshTokenTTL time.Duration
 }
 
 func Load() *Config {

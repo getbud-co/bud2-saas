@@ -3,8 +3,6 @@ package task
 import (
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/getbud-co/bud2/backend/internal/api/httputil"
 	domaintask "github.com/getbud-co/bud2/backend/internal/domain/task"
 )
@@ -76,11 +74,3 @@ func toResponse(t *domaintask.Task) Response {
 var formatOptionalDate = httputil.FormatOptionalDate
 var formatOptionalTimestamp = httputil.FormatOptionalTimestamp
 
-// uuidSliceToStrings is exposed for use in inline task response mapping.
-func uuidSliceToStrings(ids []uuid.UUID) []string {
-	out := make([]string, len(ids))
-	for i, id := range ids {
-		out[i] = id.String()
-	}
-	return out
-}

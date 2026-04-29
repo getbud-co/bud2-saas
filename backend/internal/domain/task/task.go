@@ -40,17 +40,17 @@ type Task struct {
 	// ParentTaskID links a subtask to its parent. Depth is capped at 1:
 	// a task whose ParentTaskID is set must not itself be the parent of
 	// another task. Self-referencing is also rejected.
-	ParentTaskID             *uuid.UUID
-	TeamID                   *uuid.UUID
-	ContributesToMissionIDs  []uuid.UUID
-	AssigneeID  uuid.UUID
-	Title       string
-	Description *string
-	Status  Status
-	DueDate *time.Time
-	CompletedAt *time.Time
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ParentTaskID            *uuid.UUID
+	TeamID                  *uuid.UUID
+	ContributesToMissionIDs []uuid.UUID
+	AssigneeID              uuid.UUID
+	Title                   string
+	Description             *string
+	Status                  Status
+	DueDate                 *time.Time
+	CompletedAt             *time.Time
+	CreatedAt               time.Time
+	UpdatedAt               time.Time
 }
 
 func (t *Task) Validate() error {

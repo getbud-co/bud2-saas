@@ -90,12 +90,6 @@ func newMissionDeps() missionDeps {
 	}
 }
 
-// allowAnyTag pre-wires GetByID to accept any tag ID for tests that don't focus on tag validation.
-func (d missionDeps) allowAnyTag() missionDeps {
-	d.tags.On("GetByID", mock.Anything, mock.Anything, mock.Anything).
-		Return(&domaintag.Tag{ID: uuid.New()}, nil)
-	return d
-}
 
 // allowOwner pre-wires GetActiveMemberByID to accept any user. Tests that
 // validate the gate set their own expectation.
