@@ -1,17 +1,17 @@
 -- name: CreateIndicator :one
-INSERT INTO indicators (id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-RETURNING id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date, created_at, updated_at;
+INSERT INTO indicators (id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date, measurement_mode, goal_type, low_threshold, high_threshold, period_start, period_end, team_id, linked_survey_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+RETURNING id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date, measurement_mode, goal_type, low_threshold, high_threshold, period_start, period_end, team_id, linked_survey_id, created_at, updated_at;
 
 -- name: GetIndicatorByID :one
-SELECT id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date, created_at, updated_at
+SELECT id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date, measurement_mode, goal_type, low_threshold, high_threshold, period_start, period_end, team_id, linked_survey_id, created_at, updated_at
 FROM indicators
 WHERE id = $1
   AND organization_id = $2
   AND deleted_at IS NULL;
 
 -- name: ListIndicators :many
-SELECT id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date, created_at, updated_at
+SELECT id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date, measurement_mode, goal_type, low_threshold, high_threshold, period_start, period_end, team_id, linked_survey_id, created_at, updated_at
 FROM indicators
 WHERE organization_id = $1
   AND deleted_at IS NULL
@@ -32,19 +32,27 @@ WHERE organization_id = $1
 
 -- name: UpdateIndicator :one
 UPDATE indicators
-SET title         = $3,
-    description   = $4,
-    owner_id      = $5,
-    target_value  = $6,
-    current_value = $7,
-    unit          = $8,
-    status        = $9,
-    due_date      = $10,
-    updated_at    = NOW()
+SET title            = $3,
+    description      = $4,
+    owner_id         = $5,
+    target_value     = $6,
+    current_value    = $7,
+    unit             = $8,
+    status           = $9,
+    due_date         = $10,
+    measurement_mode = $11,
+    goal_type        = $12,
+    low_threshold    = $13,
+    high_threshold   = $14,
+    period_start     = $15,
+    period_end       = $16,
+    team_id          = $17,
+    linked_survey_id = $18,
+    updated_at       = NOW()
 WHERE id = $1
   AND organization_id = $2
   AND deleted_at IS NULL
-RETURNING id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date, created_at, updated_at;
+RETURNING id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date, measurement_mode, goal_type, low_threshold, high_threshold, period_start, period_end, team_id, linked_survey_id, created_at, updated_at;
 
 -- name: SoftDeleteIndicator :execrows
 UPDATE indicators

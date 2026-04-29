@@ -11,6 +11,21 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Checkin struct {
+	ID            uuid.UUID
+	OrgID         uuid.UUID
+	IndicatorID   uuid.UUID
+	AuthorID      uuid.UUID
+	Value         string
+	PreviousValue pgtype.Text
+	Confidence    string
+	Note          pgtype.Text
+	Mentions      []string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	DeletedAt     pgtype.Timestamptz
+}
+
 type Cycle struct {
 	ID                    uuid.UUID
 	OrganizationID        uuid.UUID
@@ -27,20 +42,28 @@ type Cycle struct {
 }
 
 type Indicator struct {
-	ID             uuid.UUID
-	OrganizationID uuid.UUID
-	MissionID      uuid.UUID
-	OwnerID        uuid.UUID
-	Title          string
-	Description    pgtype.Text
-	TargetValue    pgtype.Numeric
-	CurrentValue   pgtype.Numeric
-	Unit           pgtype.Text
-	Status         string
-	DueDate        pgtype.Date
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	DeletedAt      pgtype.Timestamptz
+	ID              uuid.UUID
+	OrganizationID  uuid.UUID
+	MissionID       uuid.UUID
+	OwnerID         uuid.UUID
+	Title           string
+	Description     pgtype.Text
+	TargetValue     pgtype.Numeric
+	CurrentValue    pgtype.Numeric
+	Unit            pgtype.Text
+	Status          string
+	DueDate         pgtype.Date
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	DeletedAt       pgtype.Timestamptz
+	MeasurementMode string
+	GoalType        string
+	LowThreshold    pgtype.Numeric
+	HighThreshold   pgtype.Numeric
+	PeriodStart     pgtype.Date
+	PeriodEnd       pgtype.Date
+	TeamID          pgtype.UUID
+	LinkedSurveyID  pgtype.UUID
 }
 
 type Mission struct {
@@ -60,6 +83,21 @@ type Mission struct {
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	DeletedAt      pgtype.Timestamptz
+}
+
+type MissionMember struct {
+	OrgID     uuid.UUID
+	MissionID uuid.UUID
+	UserID    uuid.UUID
+	Role      string
+	JoinedAt  time.Time
+}
+
+type MissionTag struct {
+	OrgID     uuid.UUID
+	MissionID uuid.UUID
+	TagID     uuid.UUID
+	CreatedAt time.Time
 }
 
 type Organization struct {
@@ -108,20 +146,33 @@ type Role struct {
 	UpdatedAt   time.Time
 }
 
-type Task struct {
+type Tag struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID
-	MissionID      uuid.UUID
-	IndicatorID    pgtype.UUID
-	AssigneeID     uuid.UUID
-	Title          string
-	Description    pgtype.Text
-	Status         string
-	DueDate        pgtype.Date
-	CompletedAt    pgtype.Timestamptz
+	Name           string
+	Color          string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	DeletedAt      pgtype.Timestamptz
+}
+
+type Task struct {
+	ID                      uuid.UUID
+	OrganizationID          uuid.UUID
+	MissionID               uuid.UUID
+	IndicatorID             pgtype.UUID
+	AssigneeID              uuid.UUID
+	Title                   string
+	Description             pgtype.Text
+	Status                  string
+	DueDate                 pgtype.Date
+	CompletedAt             pgtype.Timestamptz
+	CreatedAt               time.Time
+	UpdatedAt               time.Time
+	DeletedAt               pgtype.Timestamptz
+	ParentTaskID            pgtype.UUID
+	TeamID                  pgtype.UUID
+	ContributesToMissionIds []uuid.UUID
 }
 
 type Team struct {

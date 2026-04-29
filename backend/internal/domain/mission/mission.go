@@ -11,6 +11,40 @@ import (
 	"github.com/getbud-co/bud2/backend/internal/domain"
 )
 
+type MemberRole string
+
+const (
+	MemberRoleOwner     MemberRole = "owner"
+	MemberRoleSupporter MemberRole = "supporter"
+	MemberRoleObserver  MemberRole = "observer"
+)
+
+func (r MemberRole) IsValid() bool {
+	switch r {
+	case MemberRoleOwner, MemberRoleSupporter, MemberRoleObserver:
+		return true
+	}
+	return false
+}
+
+type Member struct {
+	OrganizationID uuid.UUID
+	MissionID      uuid.UUID
+	UserID         uuid.UUID
+	Role           MemberRole
+	JoinedAt       time.Time
+}
+
+func (m *Member) Validate() error {
+	if m.UserID == uuid.Nil {
+		return fmt.Errorf("%w: member user_id is required", domain.ErrValidation)
+	}
+	if !m.Role.IsValid() {
+		return fmt.Errorf("%w: member role must be one of: owner, supporter, observer", domain.ErrValidation)
+	}
+	return nil
+}
+
 type Status string
 
 const (
@@ -76,6 +110,8 @@ type Mission struct {
 	StartDate      time.Time
 	EndDate        time.Time
 	CompletedAt    *time.Time
+	Members        []Member
+	TagIDs         []uuid.UUID
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }
@@ -110,6 +146,11 @@ func (m *Mission) Validate() error {
 	}
 	if m.CompletedAt != nil && m.Status != StatusCompleted {
 		return fmt.Errorf("%w: completed_at is only allowed when status is 'completed'", domain.ErrValidation)
+	}
+	for i := range m.Members {
+		if err := m.Members[i].Validate(); err != nil {
+			return err
+		}
 	}
 	return nil
 }

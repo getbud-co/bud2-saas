@@ -41,7 +41,7 @@ func existingMission(id, orgID uuid.UUID) *domainmission.Mission {
 }
 
 func (d missionDeps) newUpdateUseCase() *UpdateUseCase {
-	return NewUpdateUseCase(d.missions, d.teams, d.users, testutil.NewDiscardLogger())
+	return NewUpdateUseCase(d.missions, d.tags, d.teams, d.users, testutil.NewDiscardLogger())
 }
 
 func TestPatch_OnlyTitle_PreservesAllOtherFields(t *testing.T) {

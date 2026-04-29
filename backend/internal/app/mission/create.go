@@ -12,10 +12,17 @@ import (
 	"github.com/getbud-co/bud2/backend/internal/domain"
 	domainindicator "github.com/getbud-co/bud2/backend/internal/domain/indicator"
 	domainmission "github.com/getbud-co/bud2/backend/internal/domain/mission"
+	domaintag "github.com/getbud-co/bud2/backend/internal/domain/tag"
 	domaintask "github.com/getbud-co/bud2/backend/internal/domain/task"
 	domainteam "github.com/getbud-co/bud2/backend/internal/domain/team"
 	domainuser "github.com/getbud-co/bud2/backend/internal/domain/user"
 )
+
+// MemberInput is the minimal representation of a member provided by callers.
+type MemberInput struct {
+	UserID uuid.UUID
+	Role   string
+}
 
 // CreateIndicatorInput is the inline shape for indicators created together with
 // a mission. owner_id defaults to the mission owner when omitted.
@@ -67,12 +74,15 @@ type CreateCommand struct {
 	KanbanStatus   string
 	StartDate      time.Time
 	EndDate        time.Time
+	Members        []MemberInput
+	TagIDs         []uuid.UUID
 	Indicators     []CreateIndicatorInput
 	Tasks          []CreateTaskInput
 }
 
 type CreateUseCase struct {
 	missions domainmission.Repository
+	tags     domaintag.Repository
 	teams    domainteam.Repository
 	users    domainuser.Repository
 	txm      apptx.Manager
@@ -81,12 +91,13 @@ type CreateUseCase struct {
 
 func NewCreateUseCase(
 	missions domainmission.Repository,
+	tags domaintag.Repository,
 	teams domainteam.Repository,
 	users domainuser.Repository,
 	txm apptx.Manager,
 	logger *slog.Logger,
 ) *CreateUseCase {
-	return &CreateUseCase{missions: missions, teams: teams, users: users, txm: txm, logger: logger}
+	return &CreateUseCase{missions: missions, tags: tags, teams: teams, users: users, txm: txm, logger: logger}
 }
 
 func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*CreateResult, error) {
@@ -118,6 +129,49 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*Creat
 		}
 	}
 
+	// Validate tag IDs: each must exist within the same org. Dedup silently.
+	tagIDs := deduplicateUUIDs(cmd.TagIDs)
+	for _, tagID := range tagIDs {
+		if _, err := uc.tags.GetByID(ctx, tagID, orgID); err != nil {
+			if errors.Is(err, domaintag.ErrNotFound) {
+				return nil, domainmission.ErrInvalidReference
+			}
+			return nil, err
+		}
+	}
+
+	// Validate and build members up front.
+	// seenOwners is pre-populated with the mission owner to avoid redundant
+	// user lookups when the same user appears as owner and member.
+	seenOwners := map[uuid.UUID]struct{}{cmd.OwnerID: {}}
+	seenMembers := map[uuid.UUID]struct{}{}
+	members := make([]domainmission.Member, 0, len(cmd.Members))
+	for _, in := range cmd.Members {
+		if _, dup := seenMembers[in.UserID]; dup {
+			continue
+		}
+		seenMembers[in.UserID] = struct{}{}
+		role := domainmission.MemberRole(in.Role)
+		if !role.IsValid() {
+			role = domainmission.MemberRoleSupporter
+		}
+		if _, ok := seenOwners[in.UserID]; !ok {
+			if _, err := uc.users.GetActiveMemberByID(ctx, in.UserID, orgID); err != nil {
+				if errors.Is(err, domainuser.ErrNotFound) {
+					return nil, domainmission.ErrInvalidReference
+				}
+				return nil, err
+			}
+			seenOwners[in.UserID] = struct{}{}
+		}
+		members = append(members, domainmission.Member{
+			OrganizationID: orgID,
+			MissionID:      uuid.Nil, // filled after mission.ID is assigned below
+			UserID:         in.UserID,
+			Role:           role,
+		})
+	}
+
 	// Validate every indicator/task owner up front too, with the same mapping
 	// rule. Owners default to the mission owner, which we already validated.
 	//
@@ -125,7 +179,6 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*Creat
 	// mission-owner block above has already called users.GetActiveMemberByID
 	// for it. If a future refactor moves that block, this dedup must move
 	// with it — otherwise a stale or invalid owner would skip validation.
-	seenOwners := map[uuid.UUID]struct{}{cmd.OwnerID: {}}
 	for _, in := range cmd.Indicators {
 		owner := cmd.OwnerID
 		if in.OwnerID != nil {
@@ -172,8 +225,12 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*Creat
 		kanban = domainmission.KanbanUncategorized
 	}
 
+	mID := uuid.New()
+	for i := range members {
+		members[i].MissionID = mID
+	}
 	m := &domainmission.Mission{
-		ID:             uuid.New(),
+		ID:             mID,
 		OrganizationID: orgID,
 		ParentID:       cmd.ParentID,
 		OwnerID:        cmd.OwnerID,
@@ -185,6 +242,8 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*Creat
 		KanbanStatus:   kanban,
 		StartDate:      cmd.StartDate,
 		EndDate:        cmd.EndDate,
+		Members:        members,
+		TagIDs:         tagIDs,
 	}
 	if err := m.Validate(); err != nil {
 		return nil, err

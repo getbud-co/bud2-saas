@@ -10,9 +10,23 @@ import (
 
 	"github.com/getbud-co/bud2/backend/internal/domain"
 	domainmission "github.com/getbud-co/bud2/backend/internal/domain/mission"
+	domaintag "github.com/getbud-co/bud2/backend/internal/domain/tag"
 	domainteam "github.com/getbud-co/bud2/backend/internal/domain/team"
 	domainuser "github.com/getbud-co/bud2/backend/internal/domain/user"
 )
+
+func deduplicateUUIDs(ids []uuid.UUID) []uuid.UUID {
+	seen := make(map[uuid.UUID]struct{}, len(ids))
+	out := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if _, dup := seen[id]; dup {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	return out
+}
 
 // UpdateCommand carries the partial-update intent: every optional field is
 // a pointer, and only non-nil fields are applied to the existing mission.
@@ -32,10 +46,13 @@ type UpdateCommand struct {
 	KanbanStatus   *string
 	StartDate      *time.Time
 	EndDate        *time.Time
+	Members        *[]MemberInput // nil = don't touch; &[]MemberInput{} = clear all
+	TagIDs         *[]uuid.UUID   // nil = don't touch; &[]uuid.UUID{} = clear all
 }
 
 type UpdateUseCase struct {
 	missions domainmission.Repository
+	tags     domaintag.Repository
 	teams    domainteam.Repository
 	users    domainuser.Repository
 	logger   *slog.Logger
@@ -43,11 +60,12 @@ type UpdateUseCase struct {
 
 func NewUpdateUseCase(
 	missions domainmission.Repository,
+	tags domaintag.Repository,
 	teams domainteam.Repository,
 	users domainuser.Repository,
 	logger *slog.Logger,
 ) *UpdateUseCase {
-	return &UpdateUseCase{missions: missions, teams: teams, users: users, logger: logger}
+	return &UpdateUseCase{missions: missions, tags: tags, teams: teams, users: users, logger: logger}
 }
 
 func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*domainmission.Mission, error) {
@@ -77,6 +95,49 @@ func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*domai
 			}
 			return nil, err
 		}
+	}
+
+	// Replace tags when provided; nil means "don't touch".
+	if cmd.TagIDs != nil {
+		tagIDs := deduplicateUUIDs(*cmd.TagIDs)
+		for _, tagID := range tagIDs {
+			if _, err := uc.tags.GetByID(ctx, tagID, orgID); err != nil {
+				if errors.Is(err, domaintag.ErrNotFound) {
+					return nil, domainmission.ErrInvalidReference
+				}
+				return nil, err
+			}
+		}
+		existing.TagIDs = tagIDs
+	}
+
+	// Replace members when provided; nil means "don't touch".
+	if cmd.Members != nil {
+		seenMembers := map[uuid.UUID]struct{}{}
+		newMembers := make([]domainmission.Member, 0, len(*cmd.Members))
+		for _, in := range *cmd.Members {
+			if _, dup := seenMembers[in.UserID]; dup {
+				continue
+			}
+			seenMembers[in.UserID] = struct{}{}
+			role := domainmission.MemberRole(in.Role)
+			if !role.IsValid() {
+				role = domainmission.MemberRoleSupporter
+			}
+			if _, err := uc.users.GetActiveMemberByID(ctx, in.UserID, orgID); err != nil {
+				if errors.Is(err, domainuser.ErrNotFound) {
+					return nil, domainmission.ErrInvalidReference
+				}
+				return nil, err
+			}
+			newMembers = append(newMembers, domainmission.Member{
+				OrganizationID: orgID,
+				MissionID:      cmd.ID,
+				UserID:         in.UserID,
+				Role:           role,
+			})
+		}
+		existing.Members = newMembers
 	}
 
 	// Apply only fields that were sent.

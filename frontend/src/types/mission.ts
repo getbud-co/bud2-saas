@@ -7,7 +7,7 @@ export type MissionStatus =
 
 export type MissionVisibility = "public" | "team_only" | "private";
 
-export type KanbanStatus = "uncategorized" | "todo" | "doing" | "done";
+export type KanbanStatus = "todo" | "doing" | "done";
 
 export type MissionMemberRole = "owner" | "supporter" | "observer";
 
@@ -83,7 +83,6 @@ export interface Mission {
   status: MissionStatus;
   visibility: MissionVisibility;
   progress: number;
-  kanbanStatus: KanbanStatus;
   startDate: string;
   endDate: string;
   completedAt: string | null;
@@ -108,6 +107,7 @@ export interface Mission {
   tasks?: import("./mission-task").MissionTask[];
   children?: Mission[];
   tags?: import("./tag").Tag[];
+  tagIds?: string[];
   
   // ─── Future features (not yet implemented) ───
   

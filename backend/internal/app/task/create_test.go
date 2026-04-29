@@ -23,6 +23,7 @@ type taskDeps struct {
 	tasks      *mocks.TaskRepository
 	missions   *mocks.MissionRepository
 	indicators *mocks.IndicatorRepository
+	teams      *mocks.TeamRepository
 	users      *mocks.UserRepository
 }
 
@@ -31,6 +32,7 @@ func newTaskDeps() taskDeps {
 		tasks:      new(mocks.TaskRepository),
 		missions:   new(mocks.MissionRepository),
 		indicators: new(mocks.IndicatorRepository),
+		teams:      new(mocks.TeamRepository),
 		users:      new(mocks.UserRepository),
 	}
 }
@@ -48,7 +50,7 @@ func (d taskDeps) allowAssignee() taskDeps {
 }
 
 func (d taskDeps) newCreateUseCase() *CreateUseCase {
-	return NewCreateUseCase(d.tasks, d.missions, d.indicators, d.users, testutil.NewDiscardLogger())
+	return NewCreateUseCase(d.tasks, d.missions, d.indicators, d.teams, d.users, testutil.NewDiscardLogger())
 }
 
 func validCmd() CreateCommand {
@@ -107,4 +109,56 @@ func TestCreateUseCase_Execute_RepoError_PropagatesError(t *testing.T) {
 
 	_, err := d.newCreateUseCase().Execute(context.Background(), validCmd())
 	assert.ErrorIs(t, err, repoErr)
+}
+
+func TestCreateUseCase_Execute_ParentTaskNotFound_ReturnsInvalidReference(t *testing.T) {
+	d := newTaskDeps().allowMission().allowAssignee()
+	d.tasks.On("GetByID", mock.Anything, mock.Anything, mock.Anything).Return(nil, domaintask.ErrNotFound)
+
+	parentID := uuid.New()
+	cmd := validCmd()
+	cmd.ParentTaskID = &parentID
+	_, err := d.newCreateUseCase().Execute(context.Background(), cmd)
+	assert.ErrorIs(t, err, domaintask.ErrInvalidReference)
+	d.tasks.AssertNotCalled(t, "Create")
+}
+
+func TestCreateUseCase_Execute_ParentTaskIsSubtask_ReturnsInvalidReference(t *testing.T) {
+	missionID := uuid.New()
+	grandparentID := uuid.New()
+	d := newTaskDeps().allowAssignee()
+	d.missions.On("GetByID", mock.Anything, missionID, mock.Anything).Return(&domainmission.Mission{ID: missionID}, nil)
+	// The parent task itself has a parent — depth would exceed 1.
+	d.tasks.On("GetByID", mock.Anything, mock.Anything, mock.Anything).Return(&domaintask.Task{
+		ID:           uuid.New(),
+		MissionID:    missionID,
+		ParentTaskID: &grandparentID,
+	}, nil)
+
+	parentID := uuid.New()
+	cmd := validCmd()
+	cmd.MissionID = missionID
+	cmd.ParentTaskID = &parentID
+	_, err := d.newCreateUseCase().Execute(context.Background(), cmd)
+	assert.ErrorIs(t, err, domaintask.ErrInvalidReference)
+	d.tasks.AssertNotCalled(t, "Create")
+}
+
+func TestCreateUseCase_Execute_ParentTaskDifferentMission_ReturnsInvalidReference(t *testing.T) {
+	missionID := uuid.New()
+	d := newTaskDeps().allowAssignee()
+	d.missions.On("GetByID", mock.Anything, missionID, mock.Anything).Return(&domainmission.Mission{ID: missionID}, nil)
+	// Parent task belongs to a different mission.
+	d.tasks.On("GetByID", mock.Anything, mock.Anything, mock.Anything).Return(&domaintask.Task{
+		ID:        uuid.New(),
+		MissionID: uuid.New(),
+	}, nil)
+
+	parentID := uuid.New()
+	cmd := validCmd()
+	cmd.MissionID = missionID
+	cmd.ParentTaskID = &parentID
+	_, err := d.newCreateUseCase().Execute(context.Background(), cmd)
+	assert.ErrorIs(t, err, domaintask.ErrInvalidReference)
+	d.tasks.AssertNotCalled(t, "Create")
 }

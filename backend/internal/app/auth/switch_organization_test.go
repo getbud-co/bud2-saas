@@ -33,6 +33,7 @@ func newSwitchOrgUC(
 		rtRepo,
 		tokenHasher,
 		testutil.NewDiscardLogger(),
+		8*time.Hour, 7*24*time.Hour,
 	)
 }
 
@@ -61,7 +62,7 @@ func TestSwitchOrganizationUseCase_Execute_SwitchesAccessibleOrganization(t *tes
 	organizations.On("GetByID", mock.Anything, orgB.ID).Return(orgB, nil)
 	issuer.On("IssueToken", mock.MatchedBy(func(claims domain.UserClaims) bool {
 		return claims.HasActiveOrganization && claims.ActiveOrganizationID.UUID() == orgB.ID && claims.MembershipRole == "manager"
-	}), 15*time.Minute).Return("new-access-token", nil)
+	}), 8*time.Hour).Return("new-access-token", nil)
 	tokenHasher.On("Hash", mock.AnythingOfType("string")).Return("hashed-token")
 	rtRepo.On("Create", mock.Anything, mock.MatchedBy(func(token *domainauth.RefreshToken) bool {
 		return token.UserID == u.ID && token.ActiveOrganizationID != nil && *token.ActiveOrganizationID == orgB.ID
@@ -117,7 +118,7 @@ func TestSwitchOrganizationUseCase_Execute_SystemAdminCanSwitchToAnyOrganization
 	organizations.On("GetByID", mock.Anything, orgB.ID).Return(orgB, nil)
 	issuer.On("IssueToken", mock.MatchedBy(func(claims domain.UserClaims) bool {
 		return claims.IsSystemAdmin && claims.HasActiveOrganization && claims.ActiveOrganizationID.UUID() == orgB.ID
-	}), 15*time.Minute).Return("new-access-token", nil)
+	}), 8*time.Hour).Return("new-access-token", nil)
 	tokenHasher.On("Hash", mock.AnythingOfType("string")).Return("hashed-token")
 	rtRepo.On("Create", mock.Anything, mock.MatchedBy(func(token *domainauth.RefreshToken) bool {
 		return token.ActiveOrganizationID != nil && *token.ActiveOrganizationID == orgB.ID

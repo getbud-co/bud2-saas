@@ -1,4 +1,4 @@
-import { Fragment, useState, useRef, useEffect, useMemo, type ComponentType, type RefObject } from "react";
+import { Fragment, useState, useRef, useEffect, useMemo, type RefObject } from "react";
 import { useSearchParams, useNavigate, useLocation, useParams } from "react-router-dom";
 import {
   FilterBar,
@@ -32,7 +32,6 @@ import {
   toast,
 } from "@getbud-co/buds";
 import type { CalendarDate } from "@getbud-co/buds";
-import type { IconProps } from "@phosphor-icons/react";
 import {
   Users,
   CalendarBlank,
@@ -84,16 +83,19 @@ import {
 import { buildCheckInChartData, sortCheckInsDesc } from "./utils/checkinReadModels";
 import { addChildToParent, removeChildFromTree, replaceItemInTree, calendarDateToIso, unitFromValue, getGoalSummary, countAllItems } from "./utils/missionItemTree";
 import { filterMissions } from "./utils/filterMissions";
+import { getKanbanStatus, taskColToApiStatus, missionColToApiStatus } from "./utils/kanbanUtils";
+import type { KanbanItem, KanbanChildItem } from "./utils/kanbanUtils";
 import { useSavedViews } from "@/contexts/SavedViewsContext";
 import { useMissionsData } from "@/contexts/MissionsDataContext";
 import { usePeopleData } from "@/contexts/PeopleDataContext";
 import { useConfigData } from "@/contexts/ConfigDataContext";
 import { useSurveysData } from "@/contexts/SurveysDataContext";
-import { useCreateMission, useUpdateMission, useDeleteMission } from "@/hooks/use-missions";
+import { useCreateMission, useUpdateMission, useDeleteMission, useSetMissionMembers, useGetMission } from "@/hooks/use-missions";
+import { useTags, useCreateTag as useCreateTagMutation } from "@/hooks/use-tags";
 import { useCreateIndicator, useUpdateIndicator, useDeleteIndicator } from "@/hooks/use-indicators";
 import { useCreateTask, useUpdateTask, useDeleteTask } from "@/hooks/use-tasks";
+import { useCheckIns, useCreateCheckIn, useUpdateCheckIn, useDeleteCheckIn } from "@/hooks/use-checkins";
 import { diffMission } from "@/lib/missions-diff";
-import { isLocalMissionId } from "@/lib/local-ids";
 import { parseNumberOrUndefined } from "@/lib/parse-utils";
 import { apiErrorToMessage } from "@/lib/api-error";
 import type { SavedView } from "@/contexts/SavedViewsContext";
@@ -133,7 +135,6 @@ import {
 import { MissionItem } from "./components/MissionItem";
 import { ModalMissionContent } from "./components/ModalMissionContent";
 import { collectMissionIds } from "./utils/missionItemTree";
-import { DRAWER_TASKS_BY_INDICATOR } from "@/lib/missions";
 import { MissionFilterDropdowns } from "./components/MissionFilterDropdowns";
 import styles from "./MissionsPage.module.css";
 
@@ -187,13 +188,6 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
 }) {
   const {
     missions,
-    setMissions,
-    getCheckInsByKeyResult,
-    getCheckInSyncMeta,
-    createCheckIn,
-    updateCheckIn,
-    deleteCheckIn,
-    retryCheckInSync,
   } = useMissionsData();
   const {
     teamOptions,
@@ -205,7 +199,11 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
     resolveTeamId,
   } = usePeopleData();
   const { surveys } = useSurveysData();
-  const { activeOrgId, tagOptions, cyclePresetOptions, createTag, getTagById, resolveTagId } = useConfigData();
+  const { activeOrgId, cyclePresetOptions } = useConfigData();
+
+  // Declared early so useGetMission can depend on it (hooks must not be
+  // called after conditional state declarations).
+  const [editingMissionId, setEditingMissionId] = useState<string | null>(null);
 
   // Mission row + child resource mutations. Create flows go through the
   // nested POST on the mission hook; edit flows diff the form against the
@@ -215,12 +213,16 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
   const createMissionMutation = useCreateMission();
   const updateMissionMutation = useUpdateMission();
   const deleteMissionMutation = useDeleteMission();
+  const setMissionMembersMutation = useSetMissionMembers();
+  const { data: editingMissionDetail } = useGetMission(editingMissionId ?? undefined);
   const createIndicatorMutation = useCreateIndicator();
   const updateIndicatorMutation = useUpdateIndicator();
   const deleteIndicatorMutation = useDeleteIndicator();
   const createTaskMutation = useCreateTask();
   const updateTaskMutation = useUpdateTask();
   const deleteTaskMutation = useDeleteTask();
+  const { data: tagsData = [] } = useTags();
+  const createTagApiMutation = useCreateTagMutation();
   const MISSION_ERROR_OVERRIDES: Record<number, string> = {
     404: "Missão não encontrada",
     422: "Dados inválidos para a missão",
@@ -317,8 +319,8 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
     [surveys],
   );
   const missionTagOptions = useMemo(
-    () => tagOptions.map((tag) => ({ id: tag.id, label: tag.label })),
-    [tagOptions],
+    () => tagsData.map((tag) => ({ id: tag.id, label: tag.name })),
+    [tagsData],
   );
   const presetPeriods = useMemo(
     () => cyclePresetOptions.map((cycle) => ({
@@ -383,7 +385,6 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
   const viewModeBtnRef = useRef<HTMLButtonElement>(null);
 
   /* ——— Kanban statuses (per indicator/sub-mission) ——— */
-  const [kanbanStatuses, setKanbanStatuses] = useState<Record<string, KanbanStatus>>({});
   const [kanbanMoveOpen, setKanbanMoveOpen] = useState<string | null>(null);
   const [kanbanExpanded, setKanbanExpanded] = useState<Set<string>>(new Set());
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
@@ -444,42 +445,28 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
         highThreshold: String(Number(editingItem.goalValueMax) || numVal(drawerIndicator.highThreshold)),
       };
       setDrawerIndicator(updated);
-      setMissions((prev) => {
-        function updateInList(list: Mission[]): Mission[] {
-          return list.map((m) => ({
-            ...m,
-            keyResults: (m.keyResults ?? []).map((kr) =>
-              kr.id === updated.id ? updated : {
-                ...kr,
-                children: kr.children?.map((s) => s.id === updated.id ? updated : s),
-              }
-            ),
-            children: m.children ? updateInList(m.children) : undefined,
-          }));
-        }
-        return updateInList(prev);
+      updateIndicatorMutation.mutateAsync({
+        id: updated.id,
+        patch: {
+          title: updated.title,
+          targetValue: updated.targetValue,
+          lowThreshold: updated.lowThreshold,
+          highThreshold: updated.highThreshold,
+        },
+      }).catch((err: unknown) => {
+        toast.error("Erro ao salvar indicador.");
+        console.error(err);
       });
       toast.success("Indicador atualizado");
     } else if (drawerMode === "task" && drawerTask) {
       const updated = { ...drawerTask, title: editingItem.name, description: editingItem.description };
       setDrawerTask(updated);
-      setMissions((prev) => {
-        function updateTasks(list: Mission[]): Mission[] {
-          return list.map((m) => ({
-            ...m,
-            tasks: m.tasks?.map((t) => t.id === updated.id ? { ...t, title: updated.title, description: updated.description } : t),
-            keyResults: (m.keyResults ?? []).map((kr) => ({
-              ...kr,
-              tasks: kr.tasks?.map((t) => t.id === updated.id ? { ...t, title: updated.title, description: updated.description } : t),
-              children: kr.children?.map((s) => ({
-                ...s,
-                tasks: s.tasks?.map((t) => t.id === updated.id ? { ...t, title: updated.title, description: updated.description } : t),
-              })),
-            })),
-            children: m.children ? updateTasks(m.children) : undefined,
-          }));
-        }
-        return updateTasks(prev);
+      updateTaskMutation.mutateAsync({
+        id: updated.id,
+        patch: { title: updated.title, description: updated.description ?? null },
+      }).catch((err: unknown) => {
+        toast.error("Erro ao salvar tarefa.");
+        console.error(err);
       });
       toast.success("Tarefa atualizada");
     }
@@ -498,43 +485,15 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState<"indicator" | "task">("indicator");
   const [drawerIndicator, setDrawerIndicator] = useState<KeyResult | null>(null);
+
+  // Check-in API hooks — scoped to the indicator currently open in the drawer.
+  const { data: drawerCheckInsData = [] } = useCheckIns({ indicatorId: drawerIndicator?.id });
+  const createCheckInMutation = useCreateCheckIn();
+  const updateCheckInMutation = useUpdateCheckIn();
+  const deleteCheckInMutation = useDeleteCheckIn();
   const [drawerTask, setDrawerTaskRaw] = useState<MissionTask | null>(null);
 
-  // Sync drawer task subtasks with the missions tree
-  const setDrawerTask: typeof setDrawerTaskRaw = (updater) => {
-    setDrawerTaskRaw((prev) => {
-      const next = typeof updater === "function" ? updater(prev) : updater;
-      if (next && next.id) {
-        syncTaskToMissions(next);
-      }
-      return next;
-    });
-  };
-
-  function syncTaskToMissions(task: MissionTask) {
-    setMissions((prev) => {
-      function updateTask(t: MissionTask): MissionTask {
-        if (t.id !== task.id) return t;
-        return { ...t, subtasks: task.subtasks, isDone: task.isDone, title: task.title, description: task.description };
-      }
-      function updateKR(kr: KeyResult): KeyResult {
-        return {
-          ...kr,
-          tasks: kr.tasks?.map(updateTask),
-          children: kr.children?.map(updateKR),
-        };
-      }
-      function updateMission(m: Mission): Mission {
-        return {
-          ...m,
-          tasks: m.tasks?.map(updateTask),
-          keyResults: m.keyResults?.map(updateKR),
-          children: m.children?.map(updateMission),
-        };
-      }
-      return prev.map(updateMission);
-    });
-  }
+  const setDrawerTask: typeof setDrawerTaskRaw = setDrawerTaskRaw;
   const [drawerMissionTitle, setDrawerMissionTitle] = useState("");
   const [drawerValue, setDrawerValue] = useState("");
   const [drawerNote, setDrawerNote] = useState("");
@@ -567,67 +526,10 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
     title: string;
     isDone: boolean;
   }
-  const [drawerTasks, setDrawerTasksRaw] = useState<DrawerTask[]>([]);
+  const [drawerTasks, setDrawerTasks] = useState<DrawerTask[]>([]);
   const [newTaskLabel, setNewTaskLabel] = useState("");
   const drawerIndicatorRef = useRef<KeyResult | null>(null);
   drawerIndicatorRef.current = drawerIndicator;
-
-  // Sync drawer tasks with the missions tree
-  const setDrawerTasks: typeof setDrawerTasksRaw = (updater) => {
-    setDrawerTasksRaw((prev) => {
-      const next = typeof updater === "function" ? updater(prev) : updater;
-      const krId = drawerIndicatorRef.current?.id;
-      if (krId) {
-        syncDrawerTasksToMissions(krId, next);
-      }
-      return next;
-    });
-  };
-
-  function syncDrawerTasksToMissions(krId: string, tasks: DrawerTask[]) {
-    setMissions((prev) => {
-      function updateKR(kr: KeyResult): KeyResult {
-        if (kr.id !== krId) {
-          return kr.children
-            ? { ...kr, children: kr.children.map(updateKR) }
-            : kr;
-        }
-        // Merge drawer tasks into KR tasks
-        const existingTasks = kr.tasks ?? [];
-        const merged: MissionTask[] = tasks.map((dt) => {
-          const existing = existingTasks.find((t) => t.id === dt.id);
-          if (existing) {
-            return { ...existing, isDone: dt.isDone, title: dt.title };
-          }
-          // New task from drawer
-          return {
-            id: dt.id,
-            missionId: null,
-            keyResultId: krId,
-            title: dt.title,
-            description: null,
-            ownerId: null,
-            teamId: kr.teamId ?? null,
-            dueDate: null,
-            isDone: dt.isDone,
-            sortOrder: 0,
-            completedAt: dt.isDone ? new Date().toISOString() : null,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-        });
-        return { ...kr, tasks: merged };
-      }
-      function updateMission(m: Mission): Mission {
-        return {
-          ...m,
-          keyResults: m.keyResults?.map(updateKR),
-          children: m.children?.map(updateMission),
-        };
-      }
-      return prev.map(updateMission);
-    });
-  }
   const kanbanDragRef = useRef<{ itemId: string; value: number } | null>(null);
 
   useEffect(() => {
@@ -669,8 +571,7 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
     handleRemoveContribution,
     handleAddContribution,
   } = useMissionContributions({
-    setMissions,
-    setDrawerContributesTo,
+    missions,
     setOpenRowMenu,
     setOpenContributeFor,
     setContributePickerSearch,
@@ -729,25 +630,18 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusMissionId]);
 
-  const drawerCheckIns = useMemo(() => {
-    if (!drawerIndicator) return [];
-    return sortCheckInsDesc(getCheckInsByKeyResult(drawerIndicator.id));
-  }, [drawerIndicator, getCheckInsByKeyResult]);
+  const drawerCheckIns = useMemo(
+    () => sortCheckInsDesc(drawerCheckInsData),
+    [drawerCheckInsData],
+  );
 
   const drawerCheckInChartData = useMemo(
     () => buildCheckInChartData(drawerCheckIns),
     [drawerCheckIns],
   );
 
-  const drawerCheckInSyncStateById = useMemo(() => {
-    const stateById: Record<string, { syncStatus: "pending" | "synced" | "failed"; error: string | null; nextRetryAt: string | null }> = {};
-    for (const checkIn of drawerCheckIns) {
-      const meta = getCheckInSyncMeta(checkIn.id);
-      if (!meta) continue;
-      stateById[checkIn.id] = meta;
-    }
-    return stateById;
-  }, [drawerCheckIns, getCheckInSyncMeta]);
+  // Sync status badges no longer needed — check-ins round-trip via the API.
+  const drawerCheckInSyncStateById: Record<string, never> = {};
 
   function handleOpenCheckin(payload: CheckinPayload) {
     setDrawerOverlayKey(claimNextOverlayKey());
@@ -760,29 +654,17 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
     setDrawerNote("");
     setDrawerConfidence(null);
     setNewlyCreatedCheckInId(null);
-    // Pre-populate support team from check-in history participants
-    const history = getCheckInsByKeyResult(payload.keyResult.id);
-    const team: string[] = [];
-    const ownerInitials = getOwnerInitials(payload.keyResult.owner);
-    const seen = new Set([ownerInitials]);
-    for (const entry of history) {
-      const entryInitials = getOwnerInitials(entry.author);
-      if (!seen.has(entryInitials)) {
-        seen.add(entryInitials);
-        team.push(entryInitials);
-      }
-    }
-    setSupportTeam(team);
+    // Support team pre-population from check-in history is done reactively
+    // in a useEffect that runs when drawerCheckInsData loads from the API.
+    setSupportTeam([]);
     setDrawerContributesTo(payload.keyResult.contributesTo ?? []);
     setDrawerItemId(payload.keyResult.id);
     const srcM = findMissionOfItem(payload.keyResult.id, missions);
     setDrawerSourceMissionId(srcM?.id ?? null);
     setDrawerSourceMissionTitle(srcM?.title ?? "");
     // Load tasks from the KR in the missions tree, fallback to hardcoded
-    const krTasks = payload.keyResult.tasks?.map((t) => ({ id: t.id, title: t.title, isDone: t.isDone }))
-      ?? DRAWER_TASKS_BY_INDICATOR[payload.keyResult.id]
-      ?? [];
-    setDrawerTasksRaw(krTasks);
+    const krTasks = payload.keyResult.tasks?.map((t) => ({ id: t.id, title: t.title, isDone: t.isDone })) ?? [];
+    setDrawerTasks(krTasks);
     setNewTaskLabel("");
     setDrawerOpen(true);
   }
@@ -831,62 +713,23 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
   }
 
   function handleToggleTask(taskId: string) {
-    setMissions((prev) => {
-      function toggleKRTasks(krs: KeyResult[]): KeyResult[] {
-        return krs.map((kr) => ({
-          ...kr,
-          tasks: kr.tasks?.map((t) => (t.id === taskId ? { ...t, isDone: !t.isDone } : t)),
-          children: kr.children ? toggleKRTasks(kr.children) : undefined,
-        }));
-      }
-      function toggleInList(list: Mission[]): Mission[] {
-        return list.map((m) => ({
-          ...m,
-          tasks: m.tasks?.map((t) => (t.id === taskId ? { ...t, isDone: !t.isDone } : t)),
-          keyResults: toggleKRTasks(m.keyResults ?? []),
-          children: m.children ? toggleInList(m.children) : undefined,
-        }));
-      }
-      return toggleInList(prev);
-    });
-    // Move task to appropriate kanban column
-    setKanbanStatuses((prev) => {
-      const next = { ...prev };
-      const task = findTaskInMissions(taskId, missions);
-      if (task) {
-        next[taskId] = task.isDone ? "todo" : "done";
-      }
-      return next;
+    const task = findTaskInMissions(taskId, missions);
+    if (!task) return;
+    const newIsDone = !task.isDone;
+    updateTaskMutation.mutateAsync({ id: taskId, patch: { isDone: newIsDone } }).catch((err: unknown) => {
+      toast.error("Erro ao atualizar tarefa.");
+      console.error(err);
     });
   }
 
   function handleToggleSubtask(taskId: string, subtaskId: string) {
-    setMissions((prev) => {
-      function toggleSub(t: MissionTask): MissionTask {
-        if (t.id !== taskId) return t;
-        return {
-          ...t,
-          subtasks: t.subtasks?.map((s) =>
-            s.id === subtaskId ? { ...s, isDone: !s.isDone } : s
-          ),
-        };
-      }
-      function updateKRs(krs: KeyResult[]): KeyResult[] {
-        return krs.map((kr) => ({
-          ...kr,
-          tasks: kr.tasks?.map(toggleSub),
-          children: kr.children ? updateKRs(kr.children) : undefined,
-        }));
-      }
-      function updateMissions(list: Mission[]): Mission[] {
-        return list.map((m) => ({
-          ...m,
-          tasks: m.tasks?.map(toggleSub),
-          keyResults: updateKRs(m.keyResults ?? []),
-          children: m.children ? updateMissions(m.children) : undefined,
-        }));
-      }
-      return updateMissions(prev);
+    // Subtasks are now real tasks with parent_task_id; toggle via same endpoint.
+    const parentTask = findTaskInMissions(taskId, missions);
+    const sub = parentTask?.subtasks?.find((s) => s.id === subtaskId);
+    const newIsDone = sub ? !sub.isDone : true;
+    updateTaskMutation.mutateAsync({ id: subtaskId, patch: { isDone: newIsDone } }).catch((err: unknown) => {
+      toast.error("Erro ao atualizar subtarefa.");
+      console.error(err);
     });
   }
 
@@ -909,7 +752,6 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
     if (!drawerIndicator) return;
     const currentIndicator = drawerIndicator;
     const checkInAuthor = currentUserOption ?? { id: "local-user", label: "Usuário local", initials: "UL" };
-    const checkInAuthorName = splitFullName(checkInAuthor.label);
     const numValue = Number(drawerValue) || 0;
     const previousValue = String(currentIndicator.currentValue);
     const nowIso = new Date().toISOString();
@@ -921,63 +763,30 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
       return "off_track";
     }
 
-    setMissions((prev) => {
-      function updateKeyResults(krs: KeyResult[]): KeyResult[] {
-        return krs.map((kr) => {
-          const nextChildren = kr.children ? updateKeyResults(kr.children) : undefined;
-          if (kr.id !== currentIndicator.id) {
-            return nextChildren ? { ...kr, children: nextChildren } : kr;
-          }
-
-          return {
-            ...kr,
-            progress: numValue,
-            currentValue: String(numValue),
-            status: deriveKrStatus(numValue),
-            updatedAt: nowIso,
-            children: nextChildren,
-          };
-        });
-      }
-
-      function recalcMission(mission: Mission): Mission {
-        const nextChildren = mission.children?.map(recalcMission);
-        const nextKeyResults = updateKeyResults(mission.keyResults ?? []);
-        const progressSources = [
-          ...nextKeyResults.map((kr) => kr.progress),
-          ...(nextChildren ?? []).map((child) => child.progress),
-        ];
-        const nextProgress = progressSources.length > 0
-          ? Math.round(progressSources.reduce((acc, value) => acc + value, 0) / progressSources.length)
-          : mission.progress;
-
-        return {
-          ...mission,
-          keyResults: nextKeyResults,
-          children: nextChildren,
-          progress: nextProgress,
-          updatedAt: nowIso,
-        };
-      }
-
-      return prev.map(recalcMission);
+    updateIndicatorMutation.mutateAsync({
+      id: currentIndicator.id,
+      patch: {
+        currentValue: String(numValue),
+        status: deriveKrStatus(numValue),
+      },
+    }).catch((err: unknown) => {
+      toast.error("Erro ao atualizar indicador.");
+      console.error(err);
     });
 
-    const createdCheckIn = createCheckIn({
-      keyResultId: currentIndicator.id,
+    createCheckInMutation.mutateAsync({
+      indicatorId: currentIndicator.id,
       authorId: checkInAuthor.id,
       value: String(numValue),
       previousValue,
-      confidence: drawerConfidence,
+      confidence: drawerConfidence ?? "medium",
       note: drawerNote.trim() || null,
       mentions: supportTeam.length > 0 ? supportTeam : null,
-      createdAt: nowIso,
-      author: {
-        id: checkInAuthor.id,
-        firstName: checkInAuthorName.firstName,
-        lastName: checkInAuthorName.lastName,
-        initials: checkInAuthor.initials,
-      },
+    }).then((created) => {
+      setNewlyCreatedCheckInId(created?.id ?? null);
+    }).catch((err: unknown) => {
+      toast.error("Erro ao registrar check-in.");
+      console.error(err);
     });
 
     setDrawerIndicator((prev) => {
@@ -994,38 +803,50 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
     setDrawerConfidence(null);
     setDrawerNote("");
     setMentionQuery(null);
-    setNewlyCreatedCheckInId(createdCheckIn.id);
 
     toast.success("Check-in registrado com sucesso!");
   }
 
   function handleUpdateDrawerCheckIn(checkInId: string, patch: { note?: string | null; confidence?: ConfidenceLevel | null }) {
-    const updated = updateCheckIn(checkInId, patch);
-    if (!updated) {
-      toast.error("Nao foi possivel atualizar o check-in.");
-      return;
-    }
-    toast.success("Check-in atualizado.");
+    if (!drawerIndicator) return;
+    const existing = drawerCheckIns.find((c) => c.id === checkInId);
+    if (!existing) return;
+    updateCheckInMutation.mutate({
+      id: checkInId,
+      indicatorId: drawerIndicator.id,
+      value: existing.value,
+      confidence: patch.confidence ?? existing.confidence ?? "medium",
+      note: patch.note !== undefined ? patch.note : existing.note,
+      mentions: existing.mentions,
+    }, {
+      onSuccess: () => toast.success("Check-in atualizado."),
+      onError: () => toast.error("Não foi possível atualizar o check-in."),
+    });
   }
 
   function handleDeleteDrawerCheckIn(checkInId: string) {
-    deleteCheckIn(checkInId);
-    setNewlyCreatedCheckInId((current) => (current === checkInId ? null : current));
-    toast.success("Check-in excluido.");
+    if (!drawerIndicator) return;
+    deleteCheckInMutation.mutate({ id: checkInId, indicatorId: drawerIndicator.id }, {
+      onSuccess: () => {
+        setNewlyCreatedCheckInId((current) => (current === checkInId ? null : current));
+        toast.success("Check-in excluído.");
+      },
+      onError: () => toast.error("Não foi possível excluir o check-in."),
+    });
   }
 
 
-  function getKanbanStatus(itemId: string): KanbanStatus {
-    if (kanbanStatuses[itemId]) return kanbanStatuses[itemId];
-    // Auto-assign tasks based on done status
-    const taskItem = kanbanItems.find((ki) => ki.id === itemId && ki.type === "task");
-    if (taskItem) return taskItem.done ? "done" : "todo";
-    return "uncategorized";
-  }
-
-  function moveToKanban(itemId: string, status: KanbanStatus) {
-    setKanbanStatuses((prev) => ({ ...prev, [itemId]: status }));
+  function moveToKanban(itemId: string, col: KanbanStatus) {
     setKanbanMoveOpen(null);
+    const item = kanbanItems.find((ki) => ki.id === itemId);
+    if (!item) return;
+    if (item.type === "task") {
+      updateTaskMutation.mutateAsync({ id: itemId, patch: { status: taskColToApiStatus(col) } })
+        .catch(() => toast.error("Erro ao mover tarefa."));
+    } else if (item.type === "mission") {
+      updateMissionMutation.mutateAsync({ id: itemId, body: { status: missionColToApiStatus(col) } })
+        .catch(() => toast.error("Erro ao mover missão."));
+    }
   }
 
   function toggleKanbanExpand(itemId: string) {
@@ -1034,6 +855,24 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
       if (next.has(itemId)) next.delete(itemId);
       else next.add(itemId);
       return next;
+    });
+  }
+
+  function handleItemCreateTag(name: string) {
+    const tempId = `temp-${Date.now()}`;
+    setItemCustomTags((prev) => [...prev, { id: tempId, label: name }]);
+    setItemTags((prev) => [...prev, tempId]);
+    setItemNewTagName("");
+    createTagApiMutation.mutate({ name, color: "neutral" }, {
+      onSuccess: (created) => {
+        setItemCustomTags((prev) => prev.map((t) => t.id === tempId ? { id: created.id, label: created.name } : t));
+        setItemTags((prev) => prev.map((id) => id === tempId ? created.id : id));
+      },
+      onError: () => {
+        setItemCustomTags((prev) => prev.filter((t) => t.id !== tempId));
+        setItemTags((prev) => prev.filter((id) => id !== tempId));
+        toast.error("Erro ao criar tag.");
+      },
     });
   }
 
@@ -1119,7 +958,6 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
   const [viewName, setViewName] = useState("");
 
   /* ——— Create / Edit mission ——— */
-  const [editingMissionId, setEditingMissionId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [createStep, setCreateStep] = useState(0);
   const [selectedTemplate, setSelectedTemplate] = useState<string | undefined>(undefined);
@@ -1220,6 +1058,17 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
       window.history.replaceState({}, "");
     }
   }, [isNewViewMode, mine, currentUserDefaultId]);
+
+  // Populate selectedSupportTeam from the detail response when editing. The
+  // list endpoint omits members (N+1 concern), so we rely on useGetMission.
+  useEffect(() => {
+    if (!editingMissionId || !editingMissionDetail?.members) return;
+    setSelectedSupportTeam(
+      editingMissionDetail.members
+        .filter((m) => m.role === "supporter" || m.role === "owner" || m.role === "observer")
+        .map((m) => m.user_id),
+    );
+  }, [editingMissionId, editingMissionDetail?.members]);
 
   /* ——— Filter dropdown open state ——— */
   const [openFilter, setOpenFilter] = useState<string | null>(null);
@@ -1355,82 +1204,16 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
     });
   }, [displayedMissions, isMultiTeam, activeTeamIds, userTeamsMap, resolveUserId, teamFilterOptions]);
 
-  /* Flatten all indicators and sub-missions into kanban items */
-  interface KanbanChildItem {
-    id: string;
-    label: string;
-    value: number;
-    target: number;
-    goalLabel: string;
-    ownerInitials: string;
-    period: string;
-    icon?: ComponentType<IconProps>;
-  }
-
-  interface KanbanItem {
-    id: string;
-    label: string;
-    missionTitle: string;
-    missionId: string;
-    value: number;
-    target: number;
-    goalLabel: string;
-    ownerInitials: string;
-    ownerName: string;
-    period: string;
-    type: "indicator" | "mission" | "task";
-    icon?: ComponentType<IconProps>;
-    children?: KanbanChildItem[];
-    done?: boolean;
-    teamName?: string;
-    teamColor?: string;
-  }
-
-  const kanbanItems: KanbanItem[] = [];
-  function collectKanbanItems(missionList: Mission[]) {
-    for (const m of missionList) {
+  /* Flatten tasks and child missions into kanban items */
+  const kanbanItems = useMemo<KanbanItem[]>(() => {
+    const items: KanbanItem[] = [];
+    for (const m of displayedMissions) {
       for (const kr of (m.keyResults ?? [])) {
-        kanbanItems.push({
-          id: kr.id,
-          label: kr.title,
-          missionTitle: m.title,
-          missionId: m.id,
-          value: kr.progress,
-          target: numVal(kr.targetValue),
-          goalLabel: getGoalLabel(kr),
-          ownerInitials: getOwnerInitials(kr.owner),
-          ownerName: getOwnerName(kr.owner),
-          period: kr.periodLabel ?? "",
-          type: "indicator",
-          icon: getIndicatorIcon(kr),
-          teamName: m.team?.name,
-          teamColor: m.team?.color,
-        });
-        // Collect sub-KRs
-        if (kr.children) {
-          for (const sub of kr.children) {
-            kanbanItems.push({
-              id: sub.id,
-              label: sub.title,
-              missionTitle: `${m.title} › ${kr.title}`,
-              missionId: m.id,
-              value: sub.progress,
-              target: numVal(sub.targetValue),
-              goalLabel: getGoalLabel(sub),
-              ownerInitials: getOwnerInitials(sub.owner),
-              ownerName: getOwnerName(sub.owner),
-              period: sub.periodLabel ?? "",
-              type: "indicator",
-              icon: getIndicatorIcon(sub),
-              teamName: m.team?.name,
-              teamColor: m.team?.color,
-            });
-          }
-        }
-        // Collect KR tasks
+        // Collect KR tasks (skip cancelled); indicators themselves are not shown on the kanban board
         if (kr.tasks) {
           for (const task of kr.tasks) {
-            kanbanItems.push({
+            if (task.status === "cancelled") continue;
+            items.push({
               id: task.id,
               label: task.title,
               missionTitle: `${m.title} › ${kr.title}`,
@@ -1443,6 +1226,8 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
               period: "",
               type: "task",
               done: task.isDone,
+              status: task.status,
+              isDraggable: true,
               teamName: m.team?.name,
               teamColor: m.team?.color,
             });
@@ -1451,7 +1236,8 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
       }
       if (m.tasks) {
         for (const task of m.tasks) {
-          kanbanItems.push({
+          if (task.status === "cancelled") continue;
+          items.push({
             id: task.id,
             label: task.title,
             missionTitle: m.title,
@@ -1464,6 +1250,8 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
             period: "",
             type: "task",
             done: task.isDone,
+            status: task.status,
+            isDraggable: true,
             teamName: m.team?.name,
             teamColor: m.team?.color,
           });
@@ -1472,8 +1260,9 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
       if (m.children) {
         const childKRs = (child: Mission) => child.keyResults ?? [];
         for (const child of m.children) {
+          if (child.status === "paused" || child.status === "cancelled") continue;
           const cKRs = childKRs(child);
-          kanbanItems.push({
+          items.push({
             id: child.id,
             label: child.title,
             missionTitle: m.title,
@@ -1485,6 +1274,8 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
             ownerName: cKRs[0] ? getOwnerName(cKRs[0].owner) : "",
             period: cKRs[0]?.periodLabel ?? "",
             type: "mission",
+            status: child.status,
+            isDraggable: true,
             teamName: m.team?.name,
             teamColor: m.team?.color,
             children: cKRs.map((ci) => ({
@@ -1501,8 +1292,8 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
         }
       }
     }
-  }
-  collectKanbanItems(displayedMissions);
+    return items;
+  }, [displayedMissions]);
 
   const totalValue = displayedMissions.length > 0
     ? Math.round(displayedMissions.reduce((acc, m) => acc + m.progress, 0) / displayedMissions.length)
@@ -1751,7 +1542,6 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
           status: "active",
           visibility: "public",
           progress: childProgress,
-          kanbanStatus: "doing",
           startDate: calendarDateToIso(item.period[0]) ?? calendarDateToIso(missionPeriod[0]) ?? "",
           endDate: calendarDateToIso(item.period[1]) ?? calendarDateToIso(missionPeriod[1]) ?? "",
           completedAt: null,
@@ -1782,6 +1572,7 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
           teamId: child.teamId ?? item.teamId ?? selectedMissionTeam,
           dueDate: calendarDateToIso(child.period[1]) ?? calendarDateToIso(item.period[1]) ?? calendarDateToIso(missionPeriod[1]),
           isDone: false,
+          status: "todo" as const,
           sortOrder: idx,
           completedAt: null,
           createdAt: now,
@@ -1830,9 +1621,8 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
   // POST /missions accepts inline indicators[] and tasks[] so the whole tree
   // is created atomically. The page builds a local Mission with KRs/tasks/
   // members/tags from the form; we project only the API-aware subset here.
-  // members and tags do not have APIs yet — they are dropped and will not
-  // round-trip after the next refetch (will land when those resources
-  // exist). depth/path/progress stay client-side as well.
+  // Tags do not have APIs yet and stay client-side.
+  // depth/path/progress stay client-side as well.
   function toCreateMissionBody(m: Mission) {
     const body: {
       title: string;
@@ -1844,7 +1634,6 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
       team_id?: string;
       status?: typeof m.status;
       visibility?: typeof m.visibility;
-      kanban_status?: typeof m.kanbanStatus;
       indicators?: Array<{
         owner_id?: string;
         title: string;
@@ -1862,13 +1651,15 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
         status?: "todo" | "in_progress" | "done" | "cancelled";
         due_date?: string;
       }>;
+      tag_ids?: string[];
     } = { title: m.title, owner_id: m.ownerId, start_date: m.startDate, end_date: m.endDate };
     if (m.description) body.description = m.description;
     if (m.parentId) body.parent_id = m.parentId;
     if (m.teamId) body.team_id = m.teamId;
     if (m.status) body.status = m.status;
     if (m.visibility) body.visibility = m.visibility;
-    if (m.kanbanStatus) body.kanban_status = m.kanbanStatus;
+    const persistedTagIds = (m.tagIds ?? []).filter((id) => !id.startsWith("temp-"));
+    if (persistedTagIds.length > 0) body.tag_ids = persistedTagIds;
 
     if (m.keyResults && m.keyResults.length > 0) {
       body.indicators = m.keyResults.map((kr) => {
@@ -1916,21 +1707,6 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
     const missionId = existing?.id ?? `mission-${Date.now()}`;
     const owner = ownerFromSelection();
     const tree = materializeMissionItems(missionId, newMissionItems, owner.id);
-    const selectedMissionTags = selectedTags.map((tagId) => {
-      const resolvedTagId = resolveTagId(tagId);
-      const canonical = getTagById(resolvedTagId);
-      if (canonical) return canonical;
-
-      return {
-        id: resolvedTagId,
-        orgId: existing?.orgId ?? activeOrgId,
-        name: missionTagOptions.find((option) => option.id === tagId)?.label ?? resolvedTagId,
-        color: "neutral",
-        createdAt: now,
-        updatedAt: now,
-        deletedAt: null,
-      };
-    });
     const progress = tree.keyResults.length > 0
       ? Math.round(tree.keyResults.reduce((acc, kr) => acc + kr.progress, 0) / tree.keyResults.length)
       : 0;
@@ -1948,7 +1724,6 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
       status: existing?.status ?? "active",
       visibility: selectedVisibility === "private" ? "private" : "public",
       progress,
-      kanbanStatus: existing?.kanbanStatus ?? "doing",
       startDate: calendarDateToIso(missionPeriod[0]) ?? "",
       endDate: calendarDateToIso(missionPeriod[1]) ?? "",
       completedAt: existing?.completedAt ?? null,
@@ -1962,7 +1737,7 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
       keyResults: tree.keyResults,
       children: tree.children,
       tasks: existing?.tasks ?? [],
-      tags: selectedMissionTags,
+      tagIds: selectedTags,
       members: selectedSupportTeam.map((userId): MissionMember => {
         const opt = missionOwnerOptions.find((o) => o.id === userId);
         const nameParts = opt ? splitFullName(opt.label) : { firstName: userId, lastName: "" };
@@ -2045,7 +1820,7 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
         .filter((m) => m.role === "supporter")
         .map((m) => m.userId),
     );
-    setSelectedTags((mission.tags ?? []).map((tag) => tag.id));
+    setSelectedTags(mission.tagIds ?? []);
     setSelectedVisibility("public");
     setExpandedSubMissions(new Set(
       missionToItems(mission)
@@ -2066,28 +1841,12 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
     if (!deleteMissionTarget) return;
     const mission = deleteMissionTarget;
 
-    // Drafts (created via "Salvar rascunho") never made it to the server, so
-    // there is nothing to delete remotely — just clean up local state.
     try {
-      if (!isLocalMissionId(mission.id)) {
-        await deleteMissionMutation.mutateAsync(mission.id);
-      }
+      await deleteMissionMutation.mutateAsync(mission.id);
     } catch (err) {
       toast.error(apiErrorToMessage(err, MISSION_ERROR_OVERRIDES));
       return;
     }
-
-    setMissions((prev) => {
-      function removeFromTree(list: Mission[]): Mission[] {
-        return list
-          .filter((item) => item.id !== mission.id)
-          .map((item) => ({
-            ...item,
-            children: item.children ? removeFromTree(item.children) : undefined,
-          }));
-      }
-      return removeFromTree(prev);
-    });
 
     setExpandedMissions((prev) => {
       const next = new Set(prev);
@@ -2716,10 +2475,7 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setItemNewTagName(e.target.value)}
                 onKeyDown={(e: React.KeyboardEvent) => {
                   if (e.key === "Enter" && itemNewTagName.trim()) {
-                    const created = createTag({ name: itemNewTagName.trim() });
-                    setItemCustomTags((prev) => [...prev, { id: created.id, label: created.name }]);
-                    setItemTags((prev) => [...prev, created.id]);
-                    setItemNewTagName("");
+                    handleItemCreateTag(itemNewTagName.trim());
                   }
                 }}
               />
@@ -2730,12 +2486,7 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
                 aria-label="Criar tag"
                 disabled={!itemNewTagName.trim()}
                 onClick={() => {
-                  if (itemNewTagName.trim()) {
-                    const created = createTag({ name: itemNewTagName.trim() });
-                    setItemCustomTags((prev) => [...prev, { id: created.id, label: created.name }]);
-                    setItemTags((prev) => [...prev, created.id]);
-                    setItemNewTagName("");
-                  }
+                  if (itemNewTagName.trim()) handleItemCreateTag(itemNewTagName.trim());
                 }}
               />
             </div>
@@ -3438,7 +3189,7 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
           <CardBody>
             <div className={styles.kanbanBoard}>
               {KANBAN_COLUMNS.map((col) => {
-                const colItems = kanbanItems.filter((item) => getKanbanStatus(item.id) === col.id);
+                const colItems = kanbanItems.filter((item) => getKanbanStatus(item) === col.id);
                 const isDropTarget = dragOverColumn === col.id && draggedItemId !== null;
 
                 return (
@@ -3478,8 +3229,9 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
                         return (
                           <div
                             key={item.id}
-                            draggable
+                            draggable={item.isDraggable}
                             onDragStart={(e) => {
+                              if (!item.isDraggable) return;
                               e.dataTransfer.setData("text/plain", item.id);
                               e.dataTransfer.effectAllowed = "move";
                               setDraggedItemId(item.id);
@@ -3498,8 +3250,7 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
                                   const task = findTaskById(item.id, missions);
                                   if (task) handleOpenTaskDrawer(task.task, task.parentLabel);
                                 } else {
-                                  const ind = findIndicatorById(item.id, missions);
-                                  if (ind) handleOpenCheckin({ keyResult: ind, currentValue: ind.progress, newValue: ind.progress });
+                                  navigate(`/missions/${item.id}`);
                                 }
                               }}
                             >
@@ -3541,7 +3292,6 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
                                   </div>
                                 ) : (
                                   <>
-                                    { }
                                     <div className={styles.kanbanCardProgress} onClick={(e) => e.stopPropagation()}>
                                       <GoalProgressBar
                                         label=""
@@ -3564,16 +3314,18 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
                                     />
                                     {item.period && <span className={styles.kanbanCardPeriod}>{item.period}</span>}
                                   </div>
-                                  { }
                                   <div className={styles.cardGridActions} onClick={(e) => e.stopPropagation()}>
-                                    <Button
-                                      ref={(el: HTMLButtonElement | null) => { kanbanMoveBtnRefs.current[item.id] = el; }}
-                                      variant="tertiary"
-                                      size="sm"
-                                      leftIcon={ArrowRight}
-                                      aria-label="Mover"
-                                      onClick={() => setKanbanMoveOpen((prev) => prev === item.id ? null : item.id)}
-                                    />
+                                    {item.isDraggable && (
+                                      <Button
+                                        ref={(el: HTMLButtonElement | null) => { kanbanMoveBtnRefs.current[item.id] = el; }}
+                                        variant="tertiary"
+                                        size="sm"
+                                        leftIcon={ArrowRight}
+                                        aria-label="Mover"
+                                        onClick={() => setKanbanMoveOpen((prev) => prev === item.id ? null : item.id)}
+                                      />
+                                    )}
+                                    {item.isDraggable && (
                                     <FilterDropdown
                                       open={kanbanMoveOpen === item.id}
                                       onClose={() => setKanbanMoveOpen(null)}
@@ -3595,17 +3347,6 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
                                         ))}
                                       </div>
                                     </FilterDropdown>
-                                    {item.type !== "task" && (
-                                      <Button
-                                        variant="tertiary"
-                                        size="sm"
-                                        leftIcon={PencilSimple}
-                                        aria-label="Editar indicador"
-                                        onClick={() => {
-                                          const ind = findIndicatorById(item.id, missions);
-                                          if (ind) handleOpenCheckin({ keyResult: ind, currentValue: ind.progress, newValue: ind.progress });
-                                        }}
-                                      />
                                     )}
                                   </div>
                                 </div>
@@ -3843,7 +3584,6 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
         checkInHistoryForIndicator={drawerCheckIns}
         checkInChartDataForIndicator={drawerCheckInChartData}
         checkInSyncStateById={drawerCheckInSyncStateById}
-        retryCheckInSync={retryCheckInSync}
         onUpdateCheckIn={handleUpdateDrawerCheckIn}
         onDeleteCheckIn={handleDeleteDrawerCheckIn}
         newlyCreatedCheckInId={newlyCreatedCheckInId}
@@ -4221,9 +3961,23 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
                 creatable
                 createPlaceholder="Criar nova tag..."
                 onCreateOption={(label) => {
-                  const created = createTag({ name: label });
-                  const newTag = { id: created.id, label: created.name };
+                  const tempId = `temp-${Date.now()}`;
+                  const newTag = { id: tempId, label };
                   setCustomTags((prev) => [...prev, newTag]);
+                  createTagApiMutation.mutate(
+                    { name: label, color: "neutral" },
+                    {
+                      onSuccess: (created) => {
+                        setSelectedTags((prev) => prev.map((id) => id === tempId ? created.id : id));
+                        setCustomTags((prev) => prev.map((t) => t.id === tempId ? { id: created.id, label: created.name } : t));
+                      },
+                      onError: () => {
+                        setSelectedTags((prev) => prev.filter((id) => id !== tempId));
+                        setCustomTags((prev) => prev.filter((t) => t.id !== tempId));
+                        toast.error("Erro ao criar tag.");
+                      },
+                    },
+                  );
                   return newTag;
                 }}
               />
@@ -4384,13 +4138,14 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
                 variant="secondary"
                 size="md"
                 leftIcon={FloppyDisk}
-                onClick={() => {
-                  const draftMission = {
-                    ...buildMissionFromForm(),
-                    id: `draft-${Date.now()}`,
-                    status: "draft" as const,
-                  };
-                  setMissions((prev) => [...prev, draftMission]);
+                onClick={async () => {
+                  const built = { ...buildMissionFromForm(), status: "draft" as const };
+                  try {
+                    await createMissionMutation.mutateAsync(toCreateMissionBody(built));
+                  } catch (err) {
+                    toast.error(apiErrorToMessage(err, MISSION_ERROR_OVERRIDES));
+                    return;
+                  }
                   toast.success("Rascunho salvo com sucesso!");
                   resetCreateForm();
                 }}
@@ -4414,51 +4169,44 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
                   // PATCH plus indicator/task create/update/delete mutations
                   // each invalidate their cache key on success, so the
                   // context recomposes with the new tree on the next render.
-                  // members/tags edits are not round-tripped (no API yet).
                   const existingMission = missions.find((m) => m.id === editingMissionId);
+                  if (!existingMission) {
+                    toast.error("Missão não encontrada. Recarregue a página antes de tentar novamente.");
+                    return;
+                  }
                   const built = { ...buildMissionFromForm(existingMission), status: "active" as const };
-                  // Drafts saved locally have ids like "draft-..." or
-                  // "mission-..." and are not on the server yet — promoting
-                  // them to "active" via PATCH would 404. Treat as create
-                  // (nested POST handles indicators/tasks atomically).
-                  if (isLocalMissionId(editingMissionId)) {
-                    try {
-                      await createMissionMutation.mutateAsync(toCreateMissionBody(built));
-                    } catch (err) {
-                      toast.error(apiErrorToMessage(err, MISSION_ERROR_OVERRIDES));
-                      return;
-                    }
-                  } else {
-                    if (!existingMission) {
-                      // The persisted mission disappeared from the cached
-                      // tree (cache invalidation in flight, race with a
-                      // concurrent delete, etc.). Refuse to diff against
-                      // the form-built copy — that would produce a no-op
-                      // and falsely succeed. Force the user to refresh.
-                      toast.error("Missão não encontrada. Recarregue a página antes de tentar novamente.");
-                      return;
-                    }
-                    const errors = await runMissionEditOps(existingMission, built);
-                    if (errors.length > 0) {
-                      toast.error(`Algumas alterações não foram salvas: ${errors.join("; ")}`);
-                      return;
-                    }
+                  const errors = await runMissionEditOps(existingMission, built);
+                  if (errors.length > 0) {
+                    toast.error(`Algumas alterações não foram salvas: ${errors.join("; ")}`);
+                    return;
+                  }
+                  try {
+                    await setMissionMembersMutation.mutateAsync({
+                      missionId: editingMissionId,
+                      members: selectedSupportTeam.map((userId) => ({ userId, role: "supporter" as const })),
+                    });
+                  } catch (err) {
+                    toast.error(apiErrorToMessage(err, MISSION_ERROR_OVERRIDES));
+                    return;
                   }
                   toast.success("Missão atualizada com sucesso!");
                   resetCreateForm();
                 } else {
                   // CREATE FLOW — single nested POST creates the mission with
                   // its indicators and tasks atomically; the response carries
-                  // every server-generated id. We do NOT push into the local
-                  // snapshot anymore: the cache invalidation triggered by the
-                  // mutation re-runs useMissions/useIndicators/useTasks and
+                  // every server-generated id. Cache invalidation triggered by
+                  // the mutation re-runs useMissions/useIndicators/useTasks and
                   // the context's composeMissionTree picks the new tree up on
-                  // the next render. members/tags from the form are dropped
-                  // because the API does not own them yet — they'll come back
-                  // when those resources land.
+                  // the next render.
                   const built = { ...buildMissionFromForm(), status: "active" as const };
                   try {
-                    await createMissionMutation.mutateAsync(toCreateMissionBody(built));
+                    const created = await createMissionMutation.mutateAsync(toCreateMissionBody(built));
+                    if (selectedSupportTeam.length > 0 && created?.id) {
+                      await setMissionMembersMutation.mutateAsync({
+                        missionId: created.id,
+                        members: selectedSupportTeam.map((userId) => ({ userId, role: "supporter" as const })),
+                      });
+                    }
                   } catch (err) {
                     toast.error(apiErrorToMessage(err, MISSION_ERROR_OVERRIDES));
                     return;

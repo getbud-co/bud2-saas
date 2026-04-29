@@ -1332,6 +1332,301 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List tags in active organization */
+        get: {
+            parameters: {
+                query?: {
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TagListResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create tag in active organization */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateTagRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        /** @description URL do recurso criado */
+                        Location?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Tag"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Tag name already in use */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tags/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** Get tag from active organization */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Tag"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        /** Update tag in active organization */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateTagRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Tag"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Tag name already in use */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Soft delete tag from active organization */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/missions": {
         parameters: {
             query?: never;
@@ -2300,6 +2595,320 @@ export interface paths {
         };
         trace?: never;
     };
+    "/checkins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List check-ins by indicator in active organization */
+        get: {
+            parameters: {
+                query: {
+                    indicator_id: string;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CheckInListResponse"];
+                    };
+                };
+                /** @description Bad request (missing or invalid indicator_id) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create check-in in active organization */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateCheckInRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        /** @description URL do recurso criado */
+                        Location?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CheckIn"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/checkins/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** Get check-in from active organization */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CheckIn"];
+                    };
+                };
+                /** @description Bad request (invalid UUID in path) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Soft delete check-in from active organization */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted (idempotent) */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad request (invalid UUID in path) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Update check-in in active organization */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PatchCheckInRequest"];
+                };
+            };
+            responses: {
+                /** @description Updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CheckIn"];
+                    };
+                };
+                /** @description Bad request (invalid UUID in path) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/permissions": {
         parameters: {
             query?: never;
@@ -2697,6 +3306,37 @@ export interface components {
             /** Format: date */
             mid_review_date?: string | null;
         };
+        Tag: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            org_id: string;
+            name: string;
+            /** @enum {string} */
+            color: "neutral" | "orange" | "wine" | "caramel" | "success" | "warning" | "error";
+            /** @description Number of active missions linked to this tag */
+            usage_count: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        TagListResponse: {
+            data: components["schemas"]["Tag"][];
+            total: number;
+            page: number;
+            size: number;
+        };
+        CreateTagRequest: {
+            name: string;
+            /** @enum {string} */
+            color: "neutral" | "orange" | "wine" | "caramel" | "success" | "warning" | "error";
+        };
+        UpdateTagRequest: {
+            name: string;
+            /** @enum {string} */
+            color: "neutral" | "orange" | "wine" | "caramel" | "success" | "warning" | "error";
+        };
         Mission: {
             /** Format: uuid */
             id: string;
@@ -2737,6 +3377,16 @@ export interface components {
              *     when the request was nested.
              */
             tasks?: components["schemas"]["Task"][];
+            members?: components["schemas"]["MissionMember"][];
+            tag_ids?: string[];
+        };
+        MissionMember: {
+            /** Format: uuid */
+            user_id: string;
+            /** @enum {string} */
+            role: "owner" | "supporter" | "observer";
+            /** Format: date-time */
+            joined_at: string;
         };
         MissionListResponse: {
             data: components["schemas"]["Mission"][];
@@ -2771,6 +3421,13 @@ export interface components {
             start_date: string;
             /** Format: date */
             end_date: string;
+            members?: {
+                /** Format: uuid */
+                user_id: string;
+                /** @enum {string} */
+                role?: "owner" | "supporter" | "observer";
+            }[];
+            tag_ids?: string[];
             indicators?: components["schemas"]["CreateMissionIndicatorInline"][];
             tasks?: components["schemas"]["CreateMissionTaskInline"][];
         };
@@ -2837,6 +3494,13 @@ export interface components {
             start_date?: string;
             /** Format: date */
             end_date?: string;
+            members?: {
+                /** Format: uuid */
+                user_id: string;
+                /** @enum {string} */
+                role?: "owner" | "supporter" | "observer";
+            }[];
+            tag_ids?: string[];
         };
         Indicator: {
             /** Format: uuid */
@@ -2847,6 +3511,8 @@ export interface components {
             mission_id: string;
             /** Format: uuid */
             owner_id: string;
+            /** Format: uuid */
+            team_id: string | null;
             title: string;
             description: string | null;
             /** Format: double */
@@ -2858,6 +3524,20 @@ export interface components {
             status: "draft" | "active" | "at_risk" | "done" | "archived";
             /** Format: date */
             due_date: string | null;
+            /** @enum {string} */
+            measurement_mode: "manual" | "survey" | "task" | "mission" | "external";
+            /** @enum {string} */
+            goal_type: "reach" | "above" | "below" | "between" | "survey";
+            /** Format: double */
+            low_threshold: number | null;
+            /** Format: double */
+            high_threshold: number | null;
+            /** Format: date */
+            period_start: string | null;
+            /** Format: date */
+            period_end: string | null;
+            /** Format: uuid */
+            linked_survey_id: string | null;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -2874,6 +3554,8 @@ export interface components {
             mission_id: string;
             /** Format: uuid */
             owner_id: string;
+            /** Format: uuid */
+            team_id?: string | null;
             title: string;
             description?: string | null;
             /** Format: double */
@@ -2885,6 +3567,20 @@ export interface components {
             status?: "draft" | "active" | "at_risk" | "done" | "archived";
             /** Format: date */
             due_date?: string | null;
+            /** @enum {string} */
+            measurement_mode?: "manual" | "survey" | "task" | "mission" | "external";
+            /** @enum {string} */
+            goal_type?: "reach" | "above" | "below" | "between" | "survey";
+            /** Format: double */
+            low_threshold?: number | null;
+            /** Format: double */
+            high_threshold?: number | null;
+            /** Format: date */
+            period_start?: string | null;
+            /** Format: date */
+            period_end?: string | null;
+            /** Format: uuid */
+            linked_survey_id?: string | null;
         };
         /**
          * @description JSON Merge Patch body. All fields are optional; only fields present in
@@ -2897,6 +3593,8 @@ export interface components {
             description?: string;
             /** Format: uuid */
             owner_id?: string;
+            /** Format: uuid */
+            team_id?: string;
             /** Format: double */
             target_value?: number;
             /** Format: double */
@@ -2906,6 +3604,20 @@ export interface components {
             status?: "draft" | "active" | "at_risk" | "done" | "archived";
             /** Format: date */
             due_date?: string;
+            /** @enum {string} */
+            measurement_mode?: "manual" | "survey" | "task" | "mission" | "external";
+            /** @enum {string} */
+            goal_type?: "reach" | "above" | "below" | "between" | "survey";
+            /** Format: double */
+            low_threshold?: number;
+            /** Format: double */
+            high_threshold?: number;
+            /** Format: date */
+            period_start?: string;
+            /** Format: date */
+            period_end?: string;
+            /** Format: uuid */
+            linked_survey_id?: string;
         };
         Task: {
             /** Format: uuid */
@@ -2921,6 +3633,11 @@ export interface components {
              *     the task lives at the mission level.
              */
             indicator_id: string | null;
+            /** Format: uuid */
+            parent_task_id: string | null;
+            /** Format: uuid */
+            team_id: string | null;
+            contributes_to_mission_ids: string[];
             /** Format: uuid */
             assignee_id: string;
             title: string;
@@ -2952,6 +3669,11 @@ export interface components {
              */
             indicator_id?: string | null;
             /** Format: uuid */
+            parent_task_id?: string | null;
+            /** Format: uuid */
+            team_id?: string | null;
+            contributes_to_mission_ids?: string[];
+            /** Format: uuid */
             assignee_id: string;
             title: string;
             description?: string | null;
@@ -2975,6 +3697,9 @@ export interface components {
             indicator_id?: string;
             /** Format: uuid */
             assignee_id?: string;
+            /** Format: uuid */
+            team_id?: string;
+            contributes_to_mission_ids?: string[];
             /** @enum {string} */
             status?: "todo" | "in_progress" | "done" | "cancelled";
             /** Format: date */
@@ -3010,6 +3735,58 @@ export interface components {
         };
         PermissionListResponse: {
             data: components["schemas"]["Permission"][];
+        };
+        CheckIn: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            org_id: string;
+            /** Format: uuid */
+            indicator_id: string;
+            /** Format: uuid */
+            author_id: string;
+            value: string;
+            previous_value?: string | null;
+            /** @enum {string} */
+            confidence: "high" | "medium" | "low" | "barrier" | "deprioritized";
+            note?: string | null;
+            mentions: string[];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            author?: {
+                /** Format: uuid */
+                id?: string;
+                first_name?: string;
+                last_name?: string;
+            } | null;
+        };
+        CheckInListResponse: {
+            data: components["schemas"]["CheckIn"][];
+            /** Format: int64 */
+            total: number;
+            page: number;
+            size: number;
+        };
+        CreateCheckInRequest: {
+            /** Format: uuid */
+            indicator_id: string;
+            /** Format: uuid */
+            author_id: string;
+            value: string;
+            previous_value?: string | null;
+            /** @enum {string} */
+            confidence: "high" | "medium" | "low" | "barrier" | "deprioritized";
+            note?: string | null;
+            mentions?: string[];
+        };
+        PatchCheckInRequest: {
+            value: string;
+            /** @enum {string} */
+            confidence: "high" | "medium" | "low" | "barrier" | "deprioritized";
+            note?: string | null;
+            mentions?: string[];
         };
     };
     responses: never;

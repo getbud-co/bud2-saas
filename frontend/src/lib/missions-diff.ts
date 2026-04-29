@@ -83,9 +83,11 @@ function diffMissionRow(current: Mission, form: Mission): PatchMissionBody | nul
   }
   if (current.status !== form.status) patch.status = form.status;
   if (current.visibility !== form.visibility) patch.visibility = form.visibility;
-  if (current.kanbanStatus !== form.kanbanStatus) patch.kanban_status = form.kanbanStatus;
   if (current.startDate !== form.startDate) patch.start_date = form.startDate;
   if (current.endDate !== form.endDate) patch.end_date = form.endDate;
+  const currentTagIds = [...(current.tagIds ?? [])].sort();
+  const formTagIds = [...(form.tagIds ?? [])].sort();
+  if (currentTagIds.join(",") !== formTagIds.join(",")) patch.tag_ids = form.tagIds ?? [];
   return Object.keys(patch).length === 0 ? null : patch;
 }
 

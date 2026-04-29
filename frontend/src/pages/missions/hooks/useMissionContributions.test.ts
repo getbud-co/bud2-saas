@@ -5,6 +5,10 @@ import { renderHook, act } from "@testing-library/react";
 import { useMissionContributions } from "./useMissionContributions";
 import type { Mission } from "@/types";
 
+vi.mock("@/hooks/use-tasks", () => ({
+  useUpdateTask: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+}));
+
 /* ─── Helpers ───────────────────────────────────────────────────────────────── */
 
 function makeSetState<T>(initial: T) {
@@ -15,22 +19,20 @@ function makeSetState<T>(initial: T) {
   return { get: () => value, setter };
 }
 
-function setupHook() {
-  const missions = makeSetState<Mission[]>([]);
-  const contributesTo = makeSetState<{ missionId: string; missionTitle: string }[]>([]);
+function setupHook(initialMissions: Mission[] = []) {
+  const missions = makeSetState<Mission[]>(initialMissions);
   const openRowMenu = makeSetState<string | null>(null);
   const openContributeFor = makeSetState<string | null>(null);
   const contributePickerSearch = makeSetState<string>("");
 
   return {
     missions,
-    contributesTo,
     openRowMenu,
     openContributeFor,
     contributePickerSearch,
     hookParams: () => ({
+      missions: missions.get(),
       setMissions: missions.setter as unknown as React.Dispatch<React.SetStateAction<Mission[]>>,
-      setDrawerContributesTo: contributesTo.setter as unknown as React.Dispatch<React.SetStateAction<{ missionId: string; missionTitle: string }[]>>,
       setOpenRowMenu: openRowMenu.setter as unknown as React.Dispatch<React.SetStateAction<string | null>>,
       setOpenContributeFor: openContributeFor.setter as unknown as React.Dispatch<React.SetStateAction<string | null>>,
       setContributePickerSearch: contributePickerSearch.setter as unknown as React.Dispatch<React.SetStateAction<string>>,

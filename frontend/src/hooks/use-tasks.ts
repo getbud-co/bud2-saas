@@ -1,7 +1,5 @@
 // Tasks API hook. Mirrors use-indicators: server resource is "task", UI keeps
-// its richer MissionTask type unchanged via internal adapters. Fields the API
-// does not own (keyResultId, teamId, subtasks, contributesTo) keep their
-// local-snapshot defaults.
+// its richer MissionTask type unchanged via internal adapters.
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApiClient } from "./use-api-client";
@@ -126,10 +124,14 @@ export interface CreateTaskInput {
   // indicator (UI shows it inside the indicator block) and the backend
   // verifies the indicator belongs to the same mission.
   indicatorId?: string | null;
+  parentTaskId?: string | null;
+  teamId?: string | null;
+  contributesToMissionIds?: string[];
   assigneeId: string;
   title: string;
   description?: string | null;
   isDone?: boolean;
+  status?: "todo" | "in_progress" | "done" | "cancelled";
   dueDate?: string | null;
 }
 
@@ -155,12 +157,17 @@ export function apiTaskToMissionTask(api: ApiTask): MissionTask {
     title: api.title,
     description: api.description ?? null,
     ownerId: api.assignee_id,
-    teamId: null,
+    teamId: api.team_id ?? null,
     dueDate: api.due_date ?? null,
     isDone: api.status === "done",
+    status: api.status,
     completedAt: api.completed_at ?? null,
     createdAt: api.created_at,
     updatedAt: api.updated_at,
+    contributesTo: (api.contributes_to_mission_ids ?? []).map((id) => ({
+      missionId: id,
+      missionTitle: "",
+    })),
   };
 }
 
@@ -168,10 +175,13 @@ export function missionTaskToCreateTaskBody(input: CreateTaskInput): CreateTaskB
   return {
     mission_id: input.missionId,
     indicator_id: input.indicatorId ?? undefined,
+    parent_task_id: input.parentTaskId ?? undefined,
+    team_id: input.teamId ?? undefined,
+    contributes_to_mission_ids: input.contributesToMissionIds,
     assignee_id: input.assigneeId,
     title: input.title,
     description: input.description ?? undefined,
-    status: input.isDone ? "done" : "todo",
+    status: input.status ?? (input.isDone ? "done" : "todo"),
     due_date: input.dueDate ?? undefined,
   };
 }
@@ -182,7 +192,13 @@ export function missionTaskToPatchTaskBody(patch: UpdateTaskInput): PatchTaskBod
   if (patch.description !== undefined) body.description = patch.description ?? undefined;
   if (patch.indicatorId !== undefined && patch.indicatorId !== null) body.indicator_id = patch.indicatorId;
   if (patch.assigneeId !== undefined) body.assignee_id = patch.assigneeId;
-  if (patch.isDone !== undefined) body.status = patch.isDone ? "done" : "todo";
+  if (patch.teamId !== undefined) body.team_id = patch.teamId ?? undefined;
+  if (patch.contributesToMissionIds !== undefined) body.contributes_to_mission_ids = patch.contributesToMissionIds;
+  if (patch.status !== undefined) {
+    body.status = patch.status;
+  } else if (patch.isDone !== undefined) {
+    body.status = patch.isDone ? "done" : "todo";
+  }
   if (patch.dueDate !== undefined) body.due_date = patch.dueDate ?? undefined;
   return body;
 }

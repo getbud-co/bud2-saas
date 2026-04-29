@@ -109,6 +109,27 @@ func isUniqueViolation(err error) bool {
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
 
+// nonEmptyStr returns s if non-empty, otherwise fallback. Needed when writing
+// NOT NULL TEXT columns with CHECK constraints that don't accept empty strings
+// — passing an empty Go string would fail the check even though the DB has a
+// DEFAULT value (DEFAULT only applies when the column is omitted entirely).
+func nonEmptyStr(s, fallback string) string {
+	if s == "" {
+		return fallback
+	}
+	return s
+}
+
+// nonNilUUIDs returns s if non-nil, otherwise an empty slice. Needed when
+// writing NOT NULL UUID[] columns that default to '{}' — a nil Go slice
+// would be sent as SQL NULL, violating the constraint.
+func nonNilUUIDs(s []uuid.UUID) []uuid.UUID {
+	if s == nil {
+		return []uuid.UUID{}
+	}
+	return s
+}
+
 // isFKViolation reports whether err is a Postgres foreign-key violation
 // (SQLSTATE 23503). Used by repositories that map missing-reference errors
 // to domain-level invalid-reference errors instead of leaking 500s when the

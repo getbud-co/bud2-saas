@@ -43,39 +43,55 @@ func (q *Queries) CountIndicators(ctx context.Context, arg CountIndicatorsParams
 }
 
 const createIndicator = `-- name: CreateIndicator :one
-INSERT INTO indicators (id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-RETURNING id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date, created_at, updated_at
+INSERT INTO indicators (id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date, measurement_mode, goal_type, low_threshold, high_threshold, period_start, period_end, team_id, linked_survey_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+RETURNING id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date, measurement_mode, goal_type, low_threshold, high_threshold, period_start, period_end, team_id, linked_survey_id, created_at, updated_at
 `
 
 type CreateIndicatorParams struct {
-	ID             uuid.UUID
-	OrganizationID uuid.UUID
-	MissionID      uuid.UUID
-	OwnerID        uuid.UUID
-	Title          string
-	Description    pgtype.Text
-	TargetValue    pgtype.Numeric
-	CurrentValue   pgtype.Numeric
-	Unit           pgtype.Text
-	Status         string
-	DueDate        pgtype.Date
+	ID              uuid.UUID
+	OrganizationID  uuid.UUID
+	MissionID       uuid.UUID
+	OwnerID         uuid.UUID
+	Title           string
+	Description     pgtype.Text
+	TargetValue     pgtype.Numeric
+	CurrentValue    pgtype.Numeric
+	Unit            pgtype.Text
+	Status          string
+	DueDate         pgtype.Date
+	MeasurementMode string
+	GoalType        string
+	LowThreshold    pgtype.Numeric
+	HighThreshold   pgtype.Numeric
+	PeriodStart     pgtype.Date
+	PeriodEnd       pgtype.Date
+	TeamID          pgtype.UUID
+	LinkedSurveyID  pgtype.UUID
 }
 
 type CreateIndicatorRow struct {
-	ID             uuid.UUID
-	OrganizationID uuid.UUID
-	MissionID      uuid.UUID
-	OwnerID        uuid.UUID
-	Title          string
-	Description    pgtype.Text
-	TargetValue    pgtype.Numeric
-	CurrentValue   pgtype.Numeric
-	Unit           pgtype.Text
-	Status         string
-	DueDate        pgtype.Date
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID              uuid.UUID
+	OrganizationID  uuid.UUID
+	MissionID       uuid.UUID
+	OwnerID         uuid.UUID
+	Title           string
+	Description     pgtype.Text
+	TargetValue     pgtype.Numeric
+	CurrentValue    pgtype.Numeric
+	Unit            pgtype.Text
+	Status          string
+	DueDate         pgtype.Date
+	MeasurementMode string
+	GoalType        string
+	LowThreshold    pgtype.Numeric
+	HighThreshold   pgtype.Numeric
+	PeriodStart     pgtype.Date
+	PeriodEnd       pgtype.Date
+	TeamID          pgtype.UUID
+	LinkedSurveyID  pgtype.UUID
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 func (q *Queries) CreateIndicator(ctx context.Context, arg CreateIndicatorParams) (CreateIndicatorRow, error) {
@@ -91,6 +107,14 @@ func (q *Queries) CreateIndicator(ctx context.Context, arg CreateIndicatorParams
 		arg.Unit,
 		arg.Status,
 		arg.DueDate,
+		arg.MeasurementMode,
+		arg.GoalType,
+		arg.LowThreshold,
+		arg.HighThreshold,
+		arg.PeriodStart,
+		arg.PeriodEnd,
+		arg.TeamID,
+		arg.LinkedSurveyID,
 	)
 	var i CreateIndicatorRow
 	err := row.Scan(
@@ -105,6 +129,14 @@ func (q *Queries) CreateIndicator(ctx context.Context, arg CreateIndicatorParams
 		&i.Unit,
 		&i.Status,
 		&i.DueDate,
+		&i.MeasurementMode,
+		&i.GoalType,
+		&i.LowThreshold,
+		&i.HighThreshold,
+		&i.PeriodStart,
+		&i.PeriodEnd,
+		&i.TeamID,
+		&i.LinkedSurveyID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -112,7 +144,7 @@ func (q *Queries) CreateIndicator(ctx context.Context, arg CreateIndicatorParams
 }
 
 const getIndicatorByID = `-- name: GetIndicatorByID :one
-SELECT id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date, created_at, updated_at
+SELECT id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date, measurement_mode, goal_type, low_threshold, high_threshold, period_start, period_end, team_id, linked_survey_id, created_at, updated_at
 FROM indicators
 WHERE id = $1
   AND organization_id = $2
@@ -125,19 +157,27 @@ type GetIndicatorByIDParams struct {
 }
 
 type GetIndicatorByIDRow struct {
-	ID             uuid.UUID
-	OrganizationID uuid.UUID
-	MissionID      uuid.UUID
-	OwnerID        uuid.UUID
-	Title          string
-	Description    pgtype.Text
-	TargetValue    pgtype.Numeric
-	CurrentValue   pgtype.Numeric
-	Unit           pgtype.Text
-	Status         string
-	DueDate        pgtype.Date
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID              uuid.UUID
+	OrganizationID  uuid.UUID
+	MissionID       uuid.UUID
+	OwnerID         uuid.UUID
+	Title           string
+	Description     pgtype.Text
+	TargetValue     pgtype.Numeric
+	CurrentValue    pgtype.Numeric
+	Unit            pgtype.Text
+	Status          string
+	DueDate         pgtype.Date
+	MeasurementMode string
+	GoalType        string
+	LowThreshold    pgtype.Numeric
+	HighThreshold   pgtype.Numeric
+	PeriodStart     pgtype.Date
+	PeriodEnd       pgtype.Date
+	TeamID          pgtype.UUID
+	LinkedSurveyID  pgtype.UUID
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 func (q *Queries) GetIndicatorByID(ctx context.Context, arg GetIndicatorByIDParams) (GetIndicatorByIDRow, error) {
@@ -155,6 +195,14 @@ func (q *Queries) GetIndicatorByID(ctx context.Context, arg GetIndicatorByIDPara
 		&i.Unit,
 		&i.Status,
 		&i.DueDate,
+		&i.MeasurementMode,
+		&i.GoalType,
+		&i.LowThreshold,
+		&i.HighThreshold,
+		&i.PeriodStart,
+		&i.PeriodEnd,
+		&i.TeamID,
+		&i.LinkedSurveyID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -162,7 +210,7 @@ func (q *Queries) GetIndicatorByID(ctx context.Context, arg GetIndicatorByIDPara
 }
 
 const listIndicators = `-- name: ListIndicators :many
-SELECT id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date, created_at, updated_at
+SELECT id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date, measurement_mode, goal_type, low_threshold, high_threshold, period_start, period_end, team_id, linked_survey_id, created_at, updated_at
 FROM indicators
 WHERE organization_id = $1
   AND deleted_at IS NULL
@@ -183,19 +231,27 @@ type ListIndicatorsParams struct {
 }
 
 type ListIndicatorsRow struct {
-	ID             uuid.UUID
-	OrganizationID uuid.UUID
-	MissionID      uuid.UUID
-	OwnerID        uuid.UUID
-	Title          string
-	Description    pgtype.Text
-	TargetValue    pgtype.Numeric
-	CurrentValue   pgtype.Numeric
-	Unit           pgtype.Text
-	Status         string
-	DueDate        pgtype.Date
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID              uuid.UUID
+	OrganizationID  uuid.UUID
+	MissionID       uuid.UUID
+	OwnerID         uuid.UUID
+	Title           string
+	Description     pgtype.Text
+	TargetValue     pgtype.Numeric
+	CurrentValue    pgtype.Numeric
+	Unit            pgtype.Text
+	Status          string
+	DueDate         pgtype.Date
+	MeasurementMode string
+	GoalType        string
+	LowThreshold    pgtype.Numeric
+	HighThreshold   pgtype.Numeric
+	PeriodStart     pgtype.Date
+	PeriodEnd       pgtype.Date
+	TeamID          pgtype.UUID
+	LinkedSurveyID  pgtype.UUID
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 func (q *Queries) ListIndicators(ctx context.Context, arg ListIndicatorsParams) ([]ListIndicatorsRow, error) {
@@ -226,6 +282,14 @@ func (q *Queries) ListIndicators(ctx context.Context, arg ListIndicatorsParams) 
 			&i.Unit,
 			&i.Status,
 			&i.DueDate,
+			&i.MeasurementMode,
+			&i.GoalType,
+			&i.LowThreshold,
+			&i.HighThreshold,
+			&i.PeriodStart,
+			&i.PeriodEnd,
+			&i.TeamID,
+			&i.LinkedSurveyID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -262,48 +326,72 @@ func (q *Queries) SoftDeleteIndicator(ctx context.Context, arg SoftDeleteIndicat
 
 const updateIndicator = `-- name: UpdateIndicator :one
 UPDATE indicators
-SET title         = $3,
-    description   = $4,
-    owner_id      = $5,
-    target_value  = $6,
-    current_value = $7,
-    unit          = $8,
-    status        = $9,
-    due_date      = $10,
-    updated_at    = NOW()
+SET title            = $3,
+    description      = $4,
+    owner_id         = $5,
+    target_value     = $6,
+    current_value    = $7,
+    unit             = $8,
+    status           = $9,
+    due_date         = $10,
+    measurement_mode = $11,
+    goal_type        = $12,
+    low_threshold    = $13,
+    high_threshold   = $14,
+    period_start     = $15,
+    period_end       = $16,
+    team_id          = $17,
+    linked_survey_id = $18,
+    updated_at       = NOW()
 WHERE id = $1
   AND organization_id = $2
   AND deleted_at IS NULL
-RETURNING id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date, created_at, updated_at
+RETURNING id, organization_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date, measurement_mode, goal_type, low_threshold, high_threshold, period_start, period_end, team_id, linked_survey_id, created_at, updated_at
 `
 
 type UpdateIndicatorParams struct {
-	ID             uuid.UUID
-	OrganizationID uuid.UUID
-	Title          string
-	Description    pgtype.Text
-	OwnerID        uuid.UUID
-	TargetValue    pgtype.Numeric
-	CurrentValue   pgtype.Numeric
-	Unit           pgtype.Text
-	Status         string
-	DueDate        pgtype.Date
+	ID              uuid.UUID
+	OrganizationID  uuid.UUID
+	Title           string
+	Description     pgtype.Text
+	OwnerID         uuid.UUID
+	TargetValue     pgtype.Numeric
+	CurrentValue    pgtype.Numeric
+	Unit            pgtype.Text
+	Status          string
+	DueDate         pgtype.Date
+	MeasurementMode string
+	GoalType        string
+	LowThreshold    pgtype.Numeric
+	HighThreshold   pgtype.Numeric
+	PeriodStart     pgtype.Date
+	PeriodEnd       pgtype.Date
+	TeamID          pgtype.UUID
+	LinkedSurveyID  pgtype.UUID
 }
 
 type UpdateIndicatorRow struct {
-	ID             uuid.UUID
-	OrganizationID uuid.UUID
-	MissionID      uuid.UUID
-	OwnerID        uuid.UUID
-	Title          string
-	Description    pgtype.Text
-	TargetValue    pgtype.Numeric
-	CurrentValue   pgtype.Numeric
-	Unit           pgtype.Text
-	Status         string
-	DueDate        pgtype.Date
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID              uuid.UUID
+	OrganizationID  uuid.UUID
+	MissionID       uuid.UUID
+	OwnerID         uuid.UUID
+	Title           string
+	Description     pgtype.Text
+	TargetValue     pgtype.Numeric
+	CurrentValue    pgtype.Numeric
+	Unit            pgtype.Text
+	Status          string
+	DueDate         pgtype.Date
+	MeasurementMode string
+	GoalType        string
+	LowThreshold    pgtype.Numeric
+	HighThreshold   pgtype.Numeric
+	PeriodStart     pgtype.Date
+	PeriodEnd       pgtype.Date
+	TeamID          pgtype.UUID
+	LinkedSurveyID  pgtype.UUID
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 func (q *Queries) UpdateIndicator(ctx context.Context, arg UpdateIndicatorParams) (UpdateIndicatorRow, error) {
@@ -318,6 +406,14 @@ func (q *Queries) UpdateIndicator(ctx context.Context, arg UpdateIndicatorParams
 		arg.Unit,
 		arg.Status,
 		arg.DueDate,
+		arg.MeasurementMode,
+		arg.GoalType,
+		arg.LowThreshold,
+		arg.HighThreshold,
+		arg.PeriodStart,
+		arg.PeriodEnd,
+		arg.TeamID,
+		arg.LinkedSurveyID,
 	)
 	var i UpdateIndicatorRow
 	err := row.Scan(
@@ -332,6 +428,14 @@ func (q *Queries) UpdateIndicator(ctx context.Context, arg UpdateIndicatorParams
 		&i.Unit,
 		&i.Status,
 		&i.DueDate,
+		&i.MeasurementMode,
+		&i.GoalType,
+		&i.LowThreshold,
+		&i.HighThreshold,
+		&i.PeriodStart,
+		&i.PeriodEnd,
+		&i.TeamID,
+		&i.LinkedSurveyID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

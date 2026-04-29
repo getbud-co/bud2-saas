@@ -1,32 +1,24 @@
 import { useState, type Dispatch, type SetStateAction } from "react";
 import { toast } from "@getbud-co/buds";
-import type { ExternalContribution, KeyResult, Mission, MissionTask } from "@/types";
-import {
-  addExternalContrib,
-  addKRContribution,
-  addTaskContribution,
-  removeExternalContrib,
-  removeKRContribution,
-  removeTaskContribution,
-} from "../utils/missionTree";
-
-type MissionContributionTarget = { missionId: string; missionTitle: string };
+import type { KeyResult, Mission, MissionTask } from "@/types";
+import { useUpdateTask } from "@/hooks/use-tasks";
+import { findTaskInMissions } from "../utils/missionTree";
 
 interface UseMissionContributionsParams {
-  setMissions: Dispatch<SetStateAction<Mission[]>>;
-  setDrawerContributesTo: Dispatch<SetStateAction<MissionContributionTarget[]>>;
+  missions: Mission[];
   setOpenRowMenu: Dispatch<SetStateAction<string | null>>;
   setOpenContributeFor: Dispatch<SetStateAction<string | null>>;
   setContributePickerSearch: Dispatch<SetStateAction<string>>;
 }
 
 export function useMissionContributions({
-  setMissions,
-  setDrawerContributesTo,
+  missions,
   setOpenRowMenu,
   setOpenContributeFor,
   setContributePickerSearch,
 }: UseMissionContributionsParams) {
+  const updateTask = useUpdateTask();
+
   const [removeContribConfirm, setRemoveContribConfirm] = useState<{
     itemId: string;
     itemType: "indicator" | "task";
@@ -44,14 +36,14 @@ export function useMissionContributions({
   }
 
   function handleRemoveContribution(itemId: string, itemType: "indicator" | "task", targetMissionId: string) {
-    setMissions((prev) => {
-      const removed = itemType === "indicator"
-        ? removeKRContribution(prev, itemId, targetMissionId)
-        : removeTaskContribution(prev, itemId, targetMissionId);
-      return removeExternalContrib(removed, targetMissionId, itemId);
-    });
-
-    setDrawerContributesTo((prev) => prev.filter((ct) => ct.missionId !== targetMissionId));
+    if (itemType === "task") {
+      const task = findTaskInMissions(itemId, missions);
+      const currentIds = task?.contributesTo?.map((c) => c.missionId) ?? [];
+      const newIds = currentIds.filter((id) => id !== targetMissionId);
+      updateTask.mutate({ id: itemId, patch: { contributesToMissionIds: newIds } });
+    }
+    // Indicator contributions: optimistic tree update removed; cache refresh
+    // after useUpdateIndicator (Phase 1) will recompute externalContributions.
     setOpenRowMenu(null);
     setOpenContributeFor(null);
     toast.success("Contribuição removida");
@@ -60,38 +52,18 @@ export function useMissionContributions({
   function handleAddContribution(
     item: KeyResult | MissionTask,
     itemType: "indicator" | "task",
-    sourceMissionId: string,
-    sourceMissionTitle: string,
+    _sourceMissionId: string,
+    _sourceMissionTitle: string,
     targetMissionId: string,
-    targetMissionTitle: string,
+    _targetMissionTitle: string,
   ) {
-    const target = { id: targetMissionId, title: targetMissionTitle };
-
-    const contrib: ExternalContribution = itemType === "indicator"
-      ? {
-          type: "indicator",
-          id: item.id,
-          title: item.title,
-          progress: (item as KeyResult).progress,
-          status: (item as KeyResult).status,
-          owner: item.owner,
-          sourceMission: { id: sourceMissionId, title: sourceMissionTitle },
-        }
-      : {
-          type: "task",
-          id: item.id,
-          title: item.title,
-          isDone: (item as MissionTask).isDone,
-          owner: item.owner,
-          sourceMission: { id: sourceMissionId, title: sourceMissionTitle },
-        };
-
-    setMissions((prev) => {
-      const withConnection = itemType === "indicator"
-        ? addKRContribution(prev, item.id, target)
-        : addTaskContribution(prev, item.id, target);
-      return addExternalContrib(withConnection, targetMissionId, contrib);
-    });
+    if (itemType === "task") {
+      const currentIds = (item as MissionTask).contributesTo?.map((c) => c.missionId) ?? [];
+      const newIds = [...new Set([...currentIds, targetMissionId])];
+      updateTask.mutate({ id: item.id, patch: { contributesToMissionIds: newIds } });
+    }
+    // Indicator contributions: optimistic tree update removed; Phase 1 will
+    // wire useUpdateIndicator here and cache refresh recomputes contributions.
 
     setOpenRowMenu(null);
     setOpenContributeFor(null);

@@ -27,6 +27,7 @@ const apiIndicator: ApiIndicator = {
   org_id: "org-1",
   mission_id: "m-1",
   owner_id: "u-1",
+  team_id: null,
   title: "Churn",
   description: null,
   target_value: 100,
@@ -34,6 +35,13 @@ const apiIndicator: ApiIndicator = {
   unit: "%",
   status: "active",
   due_date: null,
+  measurement_mode: "manual",
+  goal_type: "reach",
+  low_threshold: null,
+  high_threshold: null,
+  period_start: null,
+  period_end: null,
+  linked_survey_id: null,
   created_at: "2024-01-01T00:00:00Z",
   updated_at: "2024-01-01T00:00:00Z",
 };
@@ -151,13 +159,37 @@ describe("useCreateIndicator", () => {
 });
 
 describe("apiIndicatorToKeyResult", () => {
-  it("uses safe defaults for fields the API does not own", () => {
+  it("maps all API fields to KeyResult correctly", () => {
     const kr = apiIndicatorToKeyResult(apiIndicator);
     expect(kr.measurementMode).toBe("manual");
     expect(kr.goalType).toBe("reach");
+    expect(kr.teamId).toBeNull();
     expect(kr.parentKrId).toBeNull();
     expect(kr.linkedMissionId).toBeNull();
+    expect(kr.linkedSurveyId).toBeNull();
     expect(kr.startValue).toBe("0");
+  });
+
+  it("maps non-default measurement_mode and goal_type from API", () => {
+    const kr = apiIndicatorToKeyResult({ ...apiIndicator, measurement_mode: "survey", goal_type: "between" });
+    expect(kr.measurementMode).toBe("survey");
+    expect(kr.goalType).toBe("between");
+  });
+
+  it("maps thresholds and periods from API", () => {
+    const kr = apiIndicatorToKeyResult({
+      ...apiIndicator,
+      low_threshold: 10,
+      high_threshold: 90,
+      period_start: "2024-01-01",
+      period_end: "2024-12-31",
+      linked_survey_id: "survey-123",
+    });
+    expect(kr.lowThreshold).toBe("10");
+    expect(kr.highThreshold).toBe("90");
+    expect(kr.periodStart).toBe("2024-01-01");
+    expect(kr.periodEnd).toBe("2024-12-31");
+    expect(kr.linkedSurveyId).toBe("survey-123");
   });
 
   it("normalizes nullable numerics to strings or null", () => {

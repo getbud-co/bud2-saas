@@ -62,3 +62,40 @@ RETURNING id, organization_id, parent_id, owner_id, team_id, title, description,
 -- IsMissionDescendant and SoftDeleteMissionSubtree use recursive CTEs and are
 -- implemented as raw pgx queries in the repository (sqlc parser does not
 -- handle recursive CTE column aliasing reliably).
+
+-- name: ListMissionTagIDs :many
+SELECT tag_id
+FROM mission_tags
+WHERE org_id = $1 AND mission_id = $2
+ORDER BY created_at ASC;
+
+-- name: InsertMissionTag :exec
+INSERT INTO mission_tags (org_id, mission_id, tag_id)
+VALUES ($1, $2, $3)
+ON CONFLICT DO NOTHING;
+
+-- name: DeleteMissionTagByTag :exec
+DELETE FROM mission_tags
+WHERE org_id = $1 AND mission_id = $2 AND tag_id = $3;
+
+-- name: DeleteMissionTags :exec
+DELETE FROM mission_tags
+WHERE org_id = $1 AND mission_id = $2;
+
+-- name: ListMissionMembers :many
+SELECT org_id, mission_id, user_id, role, joined_at
+FROM mission_members
+WHERE org_id = $1 AND mission_id = $2
+ORDER BY joined_at ASC;
+
+-- name: DeleteMissionMembers :exec
+DELETE FROM mission_members
+WHERE org_id = $1 AND mission_id = $2;
+
+-- name: DeleteMissionMemberByUser :exec
+DELETE FROM mission_members
+WHERE org_id = $1 AND mission_id = $2 AND user_id = $3;
+
+-- name: InsertMissionMember :exec
+INSERT INTO mission_members (org_id, mission_id, user_id, role, joined_at)
+VALUES ($1, $2, $3, $4, $5);

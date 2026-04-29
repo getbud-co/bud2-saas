@@ -23,6 +23,14 @@ type missionQuerier interface {
 	ListMissions(ctx context.Context, arg sqlc.ListMissionsParams) ([]sqlc.ListMissionsRow, error)
 	CountMissions(ctx context.Context, arg sqlc.CountMissionsParams) (int64, error)
 	UpdateMission(ctx context.Context, arg sqlc.UpdateMissionParams) (sqlc.UpdateMissionRow, error)
+	ListMissionMembers(ctx context.Context, arg sqlc.ListMissionMembersParams) ([]sqlc.MissionMember, error)
+	DeleteMissionMembers(ctx context.Context, arg sqlc.DeleteMissionMembersParams) error
+	DeleteMissionMemberByUser(ctx context.Context, arg sqlc.DeleteMissionMemberByUserParams) error
+	InsertMissionMember(ctx context.Context, arg sqlc.InsertMissionMemberParams) error
+	ListMissionTagIDs(ctx context.Context, arg sqlc.ListMissionTagIDsParams) ([]uuid.UUID, error)
+	InsertMissionTag(ctx context.Context, arg sqlc.InsertMissionTagParams) error
+	DeleteMissionTagByTag(ctx context.Context, arg sqlc.DeleteMissionTagByTagParams) error
+	DeleteMissionTags(ctx context.Context, arg sqlc.DeleteMissionTagsParams) error
 }
 
 type MissionRepository struct {
@@ -56,7 +64,22 @@ func (r *MissionRepository) Create(ctx context.Context, m *mission.Mission) (*mi
 		}
 		return nil, err
 	}
-	return missionRowToDomain(missionRowData(row)), nil
+	created := missionRowToDomain(missionRowData(row))
+	created.Members = m.Members
+	if err := r.syncMembers(ctx, created); err != nil {
+		return nil, err
+	}
+	if err := r.loadMembers(ctx, created); err != nil {
+		return nil, err
+	}
+	created.TagIDs = m.TagIDs
+	if err := r.syncTagIDs(ctx, created); err != nil {
+		return nil, err
+	}
+	if err := r.loadTagIDs(ctx, created); err != nil {
+		return nil, err
+	}
+	return created, nil
 }
 
 func (r *MissionRepository) GetByID(ctx context.Context, id, organizationID uuid.UUID) (*mission.Mission, error) {
@@ -67,7 +90,14 @@ func (r *MissionRepository) GetByID(ctx context.Context, id, organizationID uuid
 		}
 		return nil, err
 	}
-	return missionRowToDomain(missionRowData(row)), nil
+	m := missionRowToDomain(missionRowData(row))
+	if err := r.loadMembers(ctx, m); err != nil {
+		return nil, err
+	}
+	if err := r.loadTagIDs(ctx, m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func (r *MissionRepository) List(ctx context.Context, f mission.ListFilter) (mission.ListResult, error) {
@@ -118,6 +148,14 @@ func (r *MissionRepository) List(ctx context.Context, f mission.ListFilter) (mis
 	for _, row := range rows {
 		missions = append(missions, *missionRowToDomain(missionRowData(row)))
 	}
+	for i := range missions {
+		if err := r.loadMembers(ctx, &missions[i]); err != nil {
+			return mission.ListResult{}, err
+		}
+		if err := r.loadTagIDs(ctx, &missions[i]); err != nil {
+			return mission.ListResult{}, err
+		}
+	}
 	return mission.ListResult{Missions: missions, Total: total}, nil
 }
 
@@ -146,7 +184,22 @@ func (r *MissionRepository) Update(ctx context.Context, m *mission.Mission) (*mi
 		}
 		return nil, err
 	}
-	return missionRowToDomain(missionRowData(row)), nil
+	updated := missionRowToDomain(missionRowData(row))
+	updated.Members = m.Members
+	if err := r.syncMembers(ctx, updated); err != nil {
+		return nil, err
+	}
+	if err := r.loadMembers(ctx, updated); err != nil {
+		return nil, err
+	}
+	updated.TagIDs = m.TagIDs
+	if err := r.syncTagIDs(ctx, updated); err != nil {
+		return nil, err
+	}
+	if err := r.loadTagIDs(ctx, updated); err != nil {
+		return nil, err
+	}
+	return updated, nil
 }
 
 func (r *MissionRepository) SoftDeleteSubtree(ctx context.Context, id, organizationID uuid.UUID) error {
@@ -192,6 +245,160 @@ func missionRowToDomain(row missionRowData) *mission.Mission {
 		CreatedAt:      row.CreatedAt,
 		UpdatedAt:      row.UpdatedAt,
 	}
+}
+
+// ── Member helpers ─────────────────────────────────────────────────────────────
+
+func (r *MissionRepository) loadMembers(ctx context.Context, m *mission.Mission) error {
+	rows, err := r.q.ListMissionMembers(ctx, sqlc.ListMissionMembersParams{
+		OrgID:     m.OrganizationID,
+		MissionID: m.ID,
+	})
+	if err != nil {
+		return err
+	}
+	m.Members = make([]mission.Member, len(rows))
+	for i, row := range rows {
+		m.Members[i] = mission.Member{
+			OrganizationID: row.OrgID,
+			MissionID:      row.MissionID,
+			UserID:         row.UserID,
+			Role:           mission.MemberRole(row.Role),
+			JoinedAt:       row.JoinedAt,
+		}
+	}
+	return nil
+}
+
+func (r *MissionRepository) syncMembers(ctx context.Context, m *mission.Mission) error {
+	existing, err := r.q.ListMissionMembers(ctx, sqlc.ListMissionMembersParams{
+		OrgID:     m.OrganizationID,
+		MissionID: m.ID,
+	})
+	if err != nil {
+		return err
+	}
+	existingByUserID := make(map[uuid.UUID]sqlc.MissionMember, len(existing))
+	for _, e := range existing {
+		existingByUserID[e.UserID] = e
+	}
+
+	desiredUserIDs := make(map[uuid.UUID]struct{}, len(m.Members))
+	for i := range m.Members {
+		mem := &m.Members[i]
+		desiredUserIDs[mem.UserID] = struct{}{}
+
+		if e, found := existingByUserID[mem.UserID]; found {
+			// Preserve the original joined_at.
+			mem.JoinedAt = e.JoinedAt
+			if e.Role != string(mem.Role) {
+				// Role changed: delete and re-insert to update role.
+				if err := r.q.DeleteMissionMemberByUser(ctx, sqlc.DeleteMissionMemberByUserParams{
+					OrgID:     m.OrganizationID,
+					MissionID: m.ID,
+					UserID:    mem.UserID,
+				}); err != nil {
+					return err
+				}
+				if err := r.q.InsertMissionMember(ctx, sqlc.InsertMissionMemberParams{
+					OrgID:     m.OrganizationID,
+					MissionID: m.ID,
+					UserID:    mem.UserID,
+					Role:      string(mem.Role),
+					JoinedAt:  mem.JoinedAt,
+				}); err != nil {
+					return err
+				}
+			}
+		} else {
+			if err := r.q.InsertMissionMember(ctx, sqlc.InsertMissionMemberParams{
+				OrgID:     m.OrganizationID,
+				MissionID: m.ID,
+				UserID:    mem.UserID,
+				Role:      string(mem.Role),
+				JoinedAt:  mem.JoinedAt,
+			}); err != nil {
+				return err
+			}
+		}
+	}
+
+	for userID := range existingByUserID {
+		if _, keep := desiredUserIDs[userID]; !keep {
+			if err := r.q.DeleteMissionMemberByUser(ctx, sqlc.DeleteMissionMemberByUserParams{
+				OrgID:     m.OrganizationID,
+				MissionID: m.ID,
+				UserID:    userID,
+			}); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// ── Tag helpers ────────────────────────────────────────────────────────────────
+
+func (r *MissionRepository) loadTagIDs(ctx context.Context, m *mission.Mission) error {
+	ids, err := r.q.ListMissionTagIDs(ctx, sqlc.ListMissionTagIDsParams{
+		OrgID:     m.OrganizationID,
+		MissionID: m.ID,
+	})
+	if err != nil {
+		return err
+	}
+	if ids == nil {
+		ids = []uuid.UUID{}
+	}
+	m.TagIDs = ids
+	return nil
+}
+
+func (r *MissionRepository) syncTagIDs(ctx context.Context, m *mission.Mission) error {
+	existing, err := r.q.ListMissionTagIDs(ctx, sqlc.ListMissionTagIDsParams{
+		OrgID:     m.OrganizationID,
+		MissionID: m.ID,
+	})
+	if err != nil {
+		return err
+	}
+
+	existingSet := make(map[uuid.UUID]struct{}, len(existing))
+	for _, id := range existing {
+		existingSet[id] = struct{}{}
+	}
+
+	desiredSet := make(map[uuid.UUID]struct{}, len(m.TagIDs))
+	for _, id := range m.TagIDs {
+		desiredSet[id] = struct{}{}
+	}
+
+	for id := range desiredSet {
+		if _, found := existingSet[id]; !found {
+			if err := r.q.InsertMissionTag(ctx, sqlc.InsertMissionTagParams{
+				OrgID:     m.OrganizationID,
+				MissionID: m.ID,
+				TagID:     id,
+			}); err != nil {
+				return err
+			}
+		}
+	}
+
+	for id := range existingSet {
+		if _, keep := desiredSet[id]; !keep {
+			if err := r.q.DeleteMissionTagByTag(ctx, sqlc.DeleteMissionTagByTagParams{
+				OrgID:     m.OrganizationID,
+				MissionID: m.ID,
+				TagID:     id,
+			}); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 // pgtype helpers live in helpers.go (shared across repositories).

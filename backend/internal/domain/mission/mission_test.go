@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/getbud-co/bud2/backend/internal/domain"
@@ -115,6 +116,46 @@ func TestMission_Validate_CompletedAtRequiresCompletedStatus(t *testing.T) {
 	m := validMission()
 	m.Status = StatusActive
 	m.CompletedAt = &now
+	assert.ErrorIs(t, m.Validate(), domain.ErrValidation)
+}
+
+func TestMemberRole_IsValid(t *testing.T) {
+	for _, r := range []MemberRole{MemberRoleOwner, MemberRoleSupporter, MemberRoleObserver} {
+		assert.True(t, r.IsValid(), "expected %q to be valid", r)
+	}
+	assert.False(t, MemberRole("admin").IsValid())
+	assert.False(t, MemberRole("").IsValid())
+}
+
+func validMember() Member {
+	return Member{
+		UserID: uuid.New(),
+		Role:   MemberRoleSupporter,
+	}
+}
+
+func TestMember_Validate_Success(t *testing.T) {
+	m := validMember()
+	assert.NoError(t, m.Validate())
+}
+
+func TestMember_Validate_MissingUserID(t *testing.T) {
+	m := validMember()
+	m.UserID = uuid.Nil
+	assert.ErrorIs(t, m.Validate(), domain.ErrValidation)
+}
+
+func TestMember_Validate_InvalidRole(t *testing.T) {
+	m := validMember()
+	m.Role = MemberRole("god")
+	assert.ErrorIs(t, m.Validate(), domain.ErrValidation)
+}
+
+func TestMission_Validate_InvalidMember_PropagatesError(t *testing.T) {
+	m := validMission()
+	bad := validMember()
+	bad.Role = MemberRole("unknown")
+	m.Members = []Member{bad}
 	assert.ErrorIs(t, m.Validate(), domain.ErrValidation)
 }
 

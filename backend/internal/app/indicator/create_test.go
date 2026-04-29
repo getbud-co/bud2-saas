@@ -22,6 +22,7 @@ import (
 type indicatorDeps struct {
 	indicators *mocks.IndicatorRepository
 	missions   *mocks.MissionRepository
+	teams      *mocks.TeamRepository
 	users      *mocks.UserRepository
 }
 
@@ -29,6 +30,7 @@ func newIndicatorDeps() indicatorDeps {
 	return indicatorDeps{
 		indicators: new(mocks.IndicatorRepository),
 		missions:   new(mocks.MissionRepository),
+		teams:      new(mocks.TeamRepository),
 		users:      new(mocks.UserRepository),
 	}
 }
@@ -46,7 +48,7 @@ func (d indicatorDeps) allowOwner() indicatorDeps {
 }
 
 func (d indicatorDeps) newCreateUseCase() *CreateUseCase {
-	return NewCreateUseCase(d.indicators, d.missions, d.users, testutil.NewDiscardLogger())
+	return NewCreateUseCase(d.indicators, d.missions, d.teams, d.users, testutil.NewDiscardLogger())
 }
 
 func validCmd() CreateCommand {

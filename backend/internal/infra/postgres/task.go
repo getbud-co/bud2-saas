@@ -32,16 +32,19 @@ func NewTaskRepository(q taskQuerier) *TaskRepository {
 
 func (r *TaskRepository) Create(ctx context.Context, t *task.Task) (*task.Task, error) {
 	row, err := r.q.CreateTask(ctx, sqlc.CreateTaskParams{
-		ID:             t.ID,
-		OrganizationID: t.OrganizationID,
-		MissionID:      t.MissionID,
-		IndicatorID:    uuidPtrToPgtype(t.IndicatorID),
-		AssigneeID:     t.AssigneeID,
-		Title:          t.Title,
-		Description:    textToPgtype(t.Description),
-		Status:         string(t.Status),
-		DueDate:        timeToPgtypeDate(t.DueDate),
-		CompletedAt:    timeToPgtypeTimestamptz(t.CompletedAt),
+		ID:                      t.ID,
+		OrganizationID:          t.OrganizationID,
+		MissionID:               t.MissionID,
+		IndicatorID:             uuidPtrToPgtype(t.IndicatorID),
+		AssigneeID:              t.AssigneeID,
+		ParentTaskID:            uuidPtrToPgtype(t.ParentTaskID),
+		TeamID:                  uuidPtrToPgtype(t.TeamID),
+		ContributesToMissionIds: nonNilUUIDs(t.ContributesToMissionIDs),
+		Title:                   t.Title,
+		Description:             textToPgtype(t.Description),
+		Status:                  string(t.Status),
+		DueDate:                 timeToPgtypeDate(t.DueDate),
+		CompletedAt:             timeToPgtypeTimestamptz(t.CompletedAt),
 	})
 	if err != nil {
 		if isFKViolation(err) {
@@ -88,6 +91,7 @@ func (r *TaskRepository) List(ctx context.Context, f task.ListFilter) (task.List
 		IndicatorID:    uuidPtrToPgtype(f.IndicatorID),
 		AssigneeID:     uuidPtrToPgtype(f.AssigneeID),
 		Status:         statusParam,
+		ParentTaskID:   uuidPtrToPgtype(f.ParentTaskID),
 	}
 
 	rows, err := r.q.ListTasks(ctx, listParams)
@@ -100,6 +104,7 @@ func (r *TaskRepository) List(ctx context.Context, f task.ListFilter) (task.List
 		IndicatorID:    listParams.IndicatorID,
 		AssigneeID:     listParams.AssigneeID,
 		Status:         listParams.Status,
+		ParentTaskID:   listParams.ParentTaskID,
 	})
 	if err != nil {
 		return task.ListResult{}, err
@@ -114,15 +119,17 @@ func (r *TaskRepository) List(ctx context.Context, f task.ListFilter) (task.List
 
 func (r *TaskRepository) Update(ctx context.Context, t *task.Task) (*task.Task, error) {
 	row, err := r.q.UpdateTask(ctx, sqlc.UpdateTaskParams{
-		ID:             t.ID,
-		OrganizationID: t.OrganizationID,
-		Title:          t.Title,
-		Description:    textToPgtype(t.Description),
-		IndicatorID:    uuidPtrToPgtype(t.IndicatorID),
-		AssigneeID:     t.AssigneeID,
-		Status:         string(t.Status),
-		DueDate:        timeToPgtypeDate(t.DueDate),
-		CompletedAt:    timeToPgtypeTimestamptz(t.CompletedAt),
+		ID:                      t.ID,
+		OrganizationID:          t.OrganizationID,
+		Title:                   t.Title,
+		Description:             textToPgtype(t.Description),
+		IndicatorID:             uuidPtrToPgtype(t.IndicatorID),
+		AssigneeID:              t.AssigneeID,
+		TeamID:                  uuidPtrToPgtype(t.TeamID),
+		ContributesToMissionIds: nonNilUUIDs(t.ContributesToMissionIDs),
+		Status:                  string(t.Status),
+		DueDate:                 timeToPgtypeDate(t.DueDate),
+		CompletedAt:             timeToPgtypeTimestamptz(t.CompletedAt),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -144,33 +151,43 @@ func (r *TaskRepository) SoftDelete(ctx context.Context, id, organizationID uuid
 // ── helpers ────────────────────────────────────────────────────────────────
 
 type taskRowData struct {
-	ID             uuid.UUID
-	OrganizationID uuid.UUID
-	MissionID      uuid.UUID
-	IndicatorID    pgtype.UUID
-	AssigneeID     uuid.UUID
-	Title          string
-	Description    pgtype.Text
-	Status         string
-	DueDate        pgtype.Date
-	CompletedAt    pgtype.Timestamptz
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID                      uuid.UUID
+	OrganizationID          uuid.UUID
+	MissionID               uuid.UUID
+	IndicatorID             pgtype.UUID
+	AssigneeID              uuid.UUID
+	ParentTaskID            pgtype.UUID
+	TeamID                  pgtype.UUID
+	ContributesToMissionIds []uuid.UUID
+	Title                   string
+	Description             pgtype.Text
+	Status                  string
+	DueDate                 pgtype.Date
+	CompletedAt             pgtype.Timestamptz
+	CreatedAt               time.Time
+	UpdatedAt               time.Time
 }
 
 func taskRowToDomain(row taskRowData) *task.Task {
+	contributes := row.ContributesToMissionIds
+	if contributes == nil {
+		contributes = []uuid.UUID{}
+	}
 	return &task.Task{
-		ID:             row.ID,
-		OrganizationID: row.OrganizationID,
-		MissionID:      row.MissionID,
-		IndicatorID:    pgtypeToUUIDPtr(row.IndicatorID),
-		AssigneeID:     row.AssigneeID,
-		Title:          row.Title,
-		Description:    pgtypeToText(row.Description),
-		Status:         task.Status(row.Status),
-		DueDate:        pgtypeDateToTime(row.DueDate),
-		CompletedAt:    pgtypeTimestamptzToTime(row.CompletedAt),
-		CreatedAt:      row.CreatedAt,
-		UpdatedAt:      row.UpdatedAt,
+		ID:                      row.ID,
+		OrganizationID:          row.OrganizationID,
+		MissionID:               row.MissionID,
+		IndicatorID:             pgtypeToUUIDPtr(row.IndicatorID),
+		ParentTaskID:            pgtypeToUUIDPtr(row.ParentTaskID),
+		TeamID:                  pgtypeToUUIDPtr(row.TeamID),
+		ContributesToMissionIDs: contributes,
+		AssigneeID:              row.AssigneeID,
+		Title:                   row.Title,
+		Description:             pgtypeToText(row.Description),
+		Status:                  task.Status(row.Status),
+		DueDate:                 pgtypeDateToTime(row.DueDate),
+		CompletedAt:             pgtypeTimestamptzToTime(row.CompletedAt),
+		CreatedAt:               row.CreatedAt,
+		UpdatedAt:               row.UpdatedAt,
 	}
 }

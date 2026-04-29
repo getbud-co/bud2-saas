@@ -135,7 +135,6 @@ interface MissionDetailsDrawerProps {
   checkInHistoryForIndicator: CheckIn[];
   checkInChartDataForIndicator: CheckInChartPoint[];
   checkInSyncStateById: Record<string, CheckInSyncState>;
-  retryCheckInSync: (checkInId: string) => void;
   onUpdateCheckIn: (checkInId: string, patch: UpdateCheckInPatch) => void;
   onDeleteCheckIn: (checkInId: string) => void;
   newlyCreatedCheckInId: string | null;
@@ -198,7 +197,6 @@ export function MissionDetailsDrawer({
   checkInHistoryForIndicator,
   checkInChartDataForIndicator,
   checkInSyncStateById,
-  retryCheckInSync,
   onUpdateCheckIn,
   onDeleteCheckIn,
   newlyCreatedCheckInId,
@@ -957,15 +955,6 @@ export function MissionDetailsDrawer({
                                   <div className={styles.drawerTimelineSyncMeta}>
                                     {isSyncPending && <Badge color="neutral">Sincronizando</Badge>}
                                     {isSyncFailed && <Badge color="error">Falha de sync</Badge>}
-                                    {isSyncFailed && (
-                                      <button
-                                        type="button"
-                                        className={styles.drawerTimelineRetryBtn}
-                                        onClick={() => retryCheckInSync(entry.id)}
-                                      >
-                                        Tentar novamente
-                                      </button>
-                                    )}
                                   </div>
                                 )}
                                 {isSyncFailed && syncState?.error && (

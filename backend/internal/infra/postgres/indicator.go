@@ -32,17 +32,25 @@ func NewIndicatorRepository(q indicatorQuerier) *IndicatorRepository {
 
 func (r *IndicatorRepository) Create(ctx context.Context, i *indicator.Indicator) (*indicator.Indicator, error) {
 	row, err := r.q.CreateIndicator(ctx, sqlc.CreateIndicatorParams{
-		ID:             i.ID,
-		OrganizationID: i.OrganizationID,
-		MissionID:      i.MissionID,
-		OwnerID:        i.OwnerID,
-		Title:          i.Title,
-		Description:    textToPgtype(i.Description),
-		TargetValue:    float64PtrToPgtypeNumeric(i.TargetValue),
-		CurrentValue:   float64PtrToPgtypeNumeric(i.CurrentValue),
-		Unit:           textToPgtype(i.Unit),
-		Status:         string(i.Status),
-		DueDate:        timeToPgtypeDate(i.DueDate),
+		ID:              i.ID,
+		OrganizationID:  i.OrganizationID,
+		MissionID:       i.MissionID,
+		OwnerID:         i.OwnerID,
+		TeamID:          uuidPtrToPgtype(i.TeamID),
+		Title:           i.Title,
+		Description:     textToPgtype(i.Description),
+		TargetValue:     float64PtrToPgtypeNumeric(i.TargetValue),
+		CurrentValue:    float64PtrToPgtypeNumeric(i.CurrentValue),
+		Unit:            textToPgtype(i.Unit),
+		Status:          string(i.Status),
+		DueDate:         timeToPgtypeDate(i.DueDate),
+		MeasurementMode: nonEmptyStr(string(i.MeasurementMode), "manual"),
+		GoalType:        nonEmptyStr(string(i.GoalType), "reach"),
+		LowThreshold:    float64PtrToPgtypeNumeric(i.LowThreshold),
+		HighThreshold:   float64PtrToPgtypeNumeric(i.HighThreshold),
+		PeriodStart:     timeToPgtypeDate(i.PeriodStart),
+		PeriodEnd:       timeToPgtypeDate(i.PeriodEnd),
+		LinkedSurveyID:  uuidPtrToPgtype(i.LinkedSurveyID),
 	})
 	if err != nil {
 		if isFKViolation(err) {
@@ -113,16 +121,24 @@ func (r *IndicatorRepository) List(ctx context.Context, f indicator.ListFilter) 
 
 func (r *IndicatorRepository) Update(ctx context.Context, i *indicator.Indicator) (*indicator.Indicator, error) {
 	row, err := r.q.UpdateIndicator(ctx, sqlc.UpdateIndicatorParams{
-		ID:             i.ID,
-		OrganizationID: i.OrganizationID,
-		Title:          i.Title,
-		Description:    textToPgtype(i.Description),
-		OwnerID:        i.OwnerID,
-		TargetValue:    float64PtrToPgtypeNumeric(i.TargetValue),
-		CurrentValue:   float64PtrToPgtypeNumeric(i.CurrentValue),
-		Unit:           textToPgtype(i.Unit),
-		Status:         string(i.Status),
-		DueDate:        timeToPgtypeDate(i.DueDate),
+		ID:              i.ID,
+		OrganizationID:  i.OrganizationID,
+		Title:           i.Title,
+		Description:     textToPgtype(i.Description),
+		OwnerID:         i.OwnerID,
+		TeamID:          uuidPtrToPgtype(i.TeamID),
+		TargetValue:     float64PtrToPgtypeNumeric(i.TargetValue),
+		CurrentValue:    float64PtrToPgtypeNumeric(i.CurrentValue),
+		Unit:            textToPgtype(i.Unit),
+		Status:          string(i.Status),
+		DueDate:         timeToPgtypeDate(i.DueDate),
+		MeasurementMode: nonEmptyStr(string(i.MeasurementMode), "manual"),
+		GoalType:        nonEmptyStr(string(i.GoalType), "reach"),
+		LowThreshold:    float64PtrToPgtypeNumeric(i.LowThreshold),
+		HighThreshold:   float64PtrToPgtypeNumeric(i.HighThreshold),
+		PeriodStart:     timeToPgtypeDate(i.PeriodStart),
+		PeriodEnd:       timeToPgtypeDate(i.PeriodEnd),
+		LinkedSurveyID:  uuidPtrToPgtype(i.LinkedSurveyID),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -144,35 +160,51 @@ func (r *IndicatorRepository) SoftDelete(ctx context.Context, id, organizationID
 // ── helpers ────────────────────────────────────────────────────────────────
 
 type indicatorRowData struct {
-	ID             uuid.UUID
-	OrganizationID uuid.UUID
-	MissionID      uuid.UUID
-	OwnerID        uuid.UUID
-	Title          string
-	Description    pgtype.Text
-	TargetValue    pgtype.Numeric
-	CurrentValue   pgtype.Numeric
-	Unit           pgtype.Text
-	Status         string
-	DueDate        pgtype.Date
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID              uuid.UUID
+	OrganizationID  uuid.UUID
+	MissionID       uuid.UUID
+	OwnerID         uuid.UUID
+	Title           string
+	Description     pgtype.Text
+	TargetValue     pgtype.Numeric
+	CurrentValue    pgtype.Numeric
+	Unit            pgtype.Text
+	Status          string
+	DueDate         pgtype.Date
+	MeasurementMode string
+	GoalType        string
+	LowThreshold    pgtype.Numeric
+	HighThreshold   pgtype.Numeric
+	PeriodStart     pgtype.Date
+	PeriodEnd       pgtype.Date
+	TeamID          pgtype.UUID
+	LinkedSurveyID  pgtype.UUID
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 func indicatorRowToDomain(row indicatorRowData) *indicator.Indicator {
 	return &indicator.Indicator{
-		ID:             row.ID,
-		OrganizationID: row.OrganizationID,
-		MissionID:      row.MissionID,
-		OwnerID:        row.OwnerID,
-		Title:          row.Title,
-		Description:    pgtypeToText(row.Description),
-		TargetValue:    pgtypeNumericToFloat64Ptr(row.TargetValue),
-		CurrentValue:   pgtypeNumericToFloat64Ptr(row.CurrentValue),
-		Unit:           pgtypeToText(row.Unit),
-		Status:         indicator.Status(row.Status),
-		DueDate:        pgtypeDateToTime(row.DueDate),
-		CreatedAt:      row.CreatedAt,
-		UpdatedAt:      row.UpdatedAt,
+		ID:              row.ID,
+		OrganizationID:  row.OrganizationID,
+		MissionID:       row.MissionID,
+		OwnerID:         row.OwnerID,
+		TeamID:          pgtypeToUUIDPtr(row.TeamID),
+		Title:           row.Title,
+		Description:     pgtypeToText(row.Description),
+		TargetValue:     pgtypeNumericToFloat64Ptr(row.TargetValue),
+		CurrentValue:    pgtypeNumericToFloat64Ptr(row.CurrentValue),
+		Unit:            pgtypeToText(row.Unit),
+		Status:          indicator.Status(row.Status),
+		DueDate:         pgtypeDateToTime(row.DueDate),
+		MeasurementMode: indicator.MeasurementMode(row.MeasurementMode),
+		GoalType:        indicator.GoalType(row.GoalType),
+		LowThreshold:    pgtypeNumericToFloat64Ptr(row.LowThreshold),
+		HighThreshold:   pgtypeNumericToFloat64Ptr(row.HighThreshold),
+		PeriodStart:     pgtypeDateToTime(row.PeriodStart),
+		PeriodEnd:       pgtypeDateToTime(row.PeriodEnd),
+		LinkedSurveyID:  pgtypeToUUIDPtr(row.LinkedSurveyID),
+		CreatedAt:       row.CreatedAt,
+		UpdatedAt:       row.UpdatedAt,
 	}
 }

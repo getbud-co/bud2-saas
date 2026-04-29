@@ -1,0 +1,4 @@
+project_name_override: bud2-api-client
+package_name_override: bud2_api_client
+field_prefix: field_
+class_overrides: {}

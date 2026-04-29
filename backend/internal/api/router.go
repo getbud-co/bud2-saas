@@ -11,7 +11,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/getbud-co/bud2/backend/internal/api/auth"
+	apicheckin "github.com/getbud-co/bud2/backend/internal/api/checkin"
 	apicycle "github.com/getbud-co/bud2/backend/internal/api/cycle"
+	apitag "github.com/getbud-co/bud2/backend/internal/api/tag"
 	"github.com/getbud-co/bud2/backend/internal/api/health"
 	apiindicator "github.com/getbud-co/bud2/backend/internal/api/indicator"
 	"github.com/getbud-co/bud2/backend/internal/api/middleware"
@@ -40,7 +42,7 @@ type RouterConfig struct {
 	RequestTimeout time.Duration
 }
 
-func NewRouter(bootstrapHandler BootstrapHandler, authHandler *auth.Handler, orgHandler *apiorg.Handler, userHandler *apiuser.Handler, teamHandler *apiteam.Handler, roleHandler *apirole.Handler, permissionHandler *apiperm.Handler, cycleHandler *apicycle.Handler, missionHandler *apimission.Handler, indicatorHandler *apiindicator.Handler, taskHandler *apitask.Handler, cfg RouterConfig) *chi.Mux {
+func NewRouter(bootstrapHandler BootstrapHandler, authHandler *auth.Handler, orgHandler *apiorg.Handler, userHandler *apiuser.Handler, teamHandler *apiteam.Handler, roleHandler *apirole.Handler, permissionHandler *apiperm.Handler, cycleHandler *apicycle.Handler, tagHandler *apitag.Handler, missionHandler *apimission.Handler, indicatorHandler *apiindicator.Handler, taskHandler *apitask.Handler, checkInHandler *apicheckin.Handler, cfg RouterConfig) *chi.Mux {
 	r := chi.NewRouter()
 
 	allowedOrigins := cfg.AllowedOrigins
@@ -145,6 +147,17 @@ func NewRouter(bootstrapHandler BootstrapHandler, authHandler *auth.Handler, org
 			r.With(middleware.RequirePermission(cfg.Enforcer, "settings", "write")).Delete("/{id}", cycleHandler.Delete)
 		})
 
+		r.Route("/tags", func(r chi.Router) {
+			r.Use(middleware.AuthMiddleware(middleware.AuthMiddlewareConfig{JWTSecret: cfg.JWTSecret}))
+			r.Use(middleware.TenantMiddleware)
+			r.Use(middleware.ActiveOrganizationMiddleware(sqlc.New(cfg.Pool)))
+			r.With(middleware.RequirePermission(cfg.Enforcer, "settings", "write")).Post("/", tagHandler.Create)
+			r.With(middleware.RequirePermission(cfg.Enforcer, "settings", "read")).Get("/", tagHandler.List)
+			r.With(middleware.RequirePermission(cfg.Enforcer, "settings", "read")).Get("/{id}", tagHandler.Get)
+			r.With(middleware.RequirePermission(cfg.Enforcer, "settings", "write")).Put("/{id}", tagHandler.Update)
+			r.With(middleware.RequirePermission(cfg.Enforcer, "settings", "write")).Delete("/{id}", tagHandler.Delete)
+		})
+
 		r.Route("/missions", func(r chi.Router) {
 			r.Use(middleware.AuthMiddleware(middleware.AuthMiddlewareConfig{JWTSecret: cfg.JWTSecret}))
 			r.Use(middleware.TenantMiddleware)
@@ -176,6 +189,17 @@ func NewRouter(bootstrapHandler BootstrapHandler, authHandler *auth.Handler, org
 			r.With(middleware.RequirePermission(cfg.Enforcer, "tasks", "read")).Get("/{id}", taskHandler.Get)
 			r.With(middleware.RequirePermission(cfg.Enforcer, "tasks", "write")).Patch("/{id}", taskHandler.Update)
 			r.With(middleware.RequirePermission(cfg.Enforcer, "tasks", "delete")).Delete("/{id}", taskHandler.Delete)
+		})
+
+		r.Route("/checkins", func(r chi.Router) {
+			r.Use(middleware.AuthMiddleware(middleware.AuthMiddlewareConfig{JWTSecret: cfg.JWTSecret}))
+			r.Use(middleware.TenantMiddleware)
+			r.Use(middleware.ActiveOrganizationMiddleware(sqlc.New(cfg.Pool)))
+			r.With(middleware.RequirePermission(cfg.Enforcer, "checkins", "write")).Post("/", checkInHandler.Create)
+			r.With(middleware.RequirePermission(cfg.Enforcer, "checkins", "read")).Get("/", checkInHandler.List)
+			r.With(middleware.RequirePermission(cfg.Enforcer, "checkins", "read")).Get("/{id}", checkInHandler.Get)
+			r.With(middleware.RequirePermission(cfg.Enforcer, "checkins", "write")).Patch("/{id}", checkInHandler.Update)
+			r.With(middleware.RequirePermission(cfg.Enforcer, "checkins", "delete")).Delete("/{id}", checkInHandler.Delete)
 		})
 	})
 

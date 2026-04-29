@@ -30,6 +30,30 @@ services:
       backend:
         condition: service_started
 
+  agents:
+    build:
+      context: ./agents
+      dockerfile: Dockerfile
+    command: ["sh", "-c", "bud2-agents-migrate && exec bud2-agents"]
+    ports:
+      - "8090:8090"
+    env_file:
+      - ./agents/.env.example
+    environment:
+      BUD2_API_BASE_URL: http://backend:8080
+      AGENTS_DATABASE_URL: postgresql://user:password@db:5432/bud2
+    depends_on:
+      backend:
+        condition: service_started
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8090/health/ready\")' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   db:
     image: postgres:18-alpine
     ports:

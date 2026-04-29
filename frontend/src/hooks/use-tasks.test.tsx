@@ -27,6 +27,9 @@ const apiTask: ApiTask = {
   org_id: "org-1",
   mission_id: "m-1",
   indicator_id: null,
+  parent_task_id: null,
+  team_id: null,
+  contributes_to_mission_ids: [],
   assignee_id: "u-1",
   title: "Triage",
   description: null,
@@ -152,6 +155,13 @@ describe("apiTaskToMissionTask", () => {
     expect(apiTaskToMissionTask({ ...apiTask, status: "in_progress" }).isDone).toBe(false);
     expect(apiTaskToMissionTask({ ...apiTask, status: "cancelled" }).isDone).toBe(false);
   });
+
+  it("preserves status field from the API", () => {
+    expect(apiTaskToMissionTask({ ...apiTask, status: "in_progress" }).status).toBe("in_progress");
+    expect(apiTaskToMissionTask({ ...apiTask, status: "todo" }).status).toBe("todo");
+    expect(apiTaskToMissionTask({ ...apiTask, status: "done" }).status).toBe("done");
+    expect(apiTaskToMissionTask({ ...apiTask, status: "cancelled" }).status).toBe("cancelled");
+  });
 });
 
 describe("missionTaskToCreateTaskBody", () => {
@@ -160,6 +170,11 @@ describe("missionTaskToCreateTaskBody", () => {
     expect(done.status).toBe("done");
     const open = missionTaskToCreateTaskBody({ missionId: "m-1", assigneeId: "u-1", title: "x", isDone: false });
     expect(open.status).toBe("todo");
+  });
+
+  it("status takes priority over isDone when both provided", () => {
+    const body = missionTaskToCreateTaskBody({ missionId: "m-1", assigneeId: "u-1", title: "x", status: "in_progress", isDone: false });
+    expect(body.status).toBe("in_progress");
   });
 });
 
@@ -171,5 +186,15 @@ describe("missionTaskToPatchTaskBody", () => {
   it("maps isDone to status when present", () => {
     expect(missionTaskToPatchTaskBody({ isDone: true }).status).toBe("done");
     expect(missionTaskToPatchTaskBody({ isDone: false }).status).toBe("todo");
+  });
+
+  it("uses status directly when provided (kanban move)", () => {
+    expect(missionTaskToPatchTaskBody({ status: "in_progress" }).status).toBe("in_progress");
+    expect(missionTaskToPatchTaskBody({ status: "todo" }).status).toBe("todo");
+    expect(missionTaskToPatchTaskBody({ status: "done" }).status).toBe("done");
+  });
+
+  it("status takes priority over isDone when both provided", () => {
+    expect(missionTaskToPatchTaskBody({ status: "in_progress", isDone: false }).status).toBe("in_progress");
   });
 });

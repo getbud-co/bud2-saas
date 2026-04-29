@@ -1,11 +1,6 @@
 // Indicators API hook. The backend resource is called "indicator"; the UI
 // consumes its richer KeyResult type unchanged. The adapter below keeps that
 // translation contained so no component file needs to change.
-//
-// Fields that exist only on the UI side (measurementMode, goalType, progress,
-// linked* etc.) get safe defaults when coming from the API — the server does
-// not own them yet. When the user edits those fields the local snapshot still
-// holds the truth; only fields the API understands round-trip.
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApiClient } from "./use-api-client";
@@ -133,6 +128,7 @@ export function useDeleteIndicator() {
 export interface CreateIndicatorInput {
   missionId: string;
   ownerId: string;
+  teamId?: string | null;
   title: string;
   description?: string | null;
   targetValue?: string | null;
@@ -140,6 +136,13 @@ export interface CreateIndicatorInput {
   unitLabel?: string | null;
   status?: KRStatus;
   dueDate?: string | null;
+  measurementMode?: string | null;
+  goalType?: string | null;
+  lowThreshold?: string | null;
+  highThreshold?: string | null;
+  periodStart?: string | null;
+  periodEnd?: string | null;
+  linkedSurveyId?: string | null;
 }
 
 export type UpdateIndicatorInput = Partial<Omit<CreateIndicatorInput, "missionId">>;
@@ -160,27 +163,27 @@ export function apiIndicatorToKeyResult(api: ApiIndicator): KeyResult {
     title: api.title,
     description: api.description ?? null,
     ownerId: api.owner_id,
-    teamId: null,
-    measurementMode: "manual",
-    goalType: "reach",
+    teamId: api.team_id ?? null,
+    measurementMode: (api.measurement_mode ?? "manual") as KeyResult["measurementMode"],
+    goalType: (api.goal_type ?? "reach") as KeyResult["goalType"],
     targetValue: api.target_value != null ? String(api.target_value) : null,
     currentValue: api.current_value != null ? String(api.current_value) : "0",
     startValue: "0",
-    lowThreshold: null,
-    highThreshold: null,
+    lowThreshold: api.low_threshold != null ? String(api.low_threshold) : null,
+    highThreshold: api.high_threshold != null ? String(api.high_threshold) : null,
     unit: inferUnit(api.unit),
     unitLabel: api.unit ?? null,
     expectedValue: null,
     status: apiStatusToKRStatus(api.status),
     progress: 0,
     periodLabel: null,
-    periodStart: null,
-    periodEnd: null,
+    periodStart: api.period_start ?? null,
+    periodEnd: api.period_end ?? null,
     createdAt: api.created_at,
     updatedAt: api.updated_at,
     deletedAt: null,
     linkedMissionId: null,
-    linkedSurveyId: null,
+    linkedSurveyId: api.linked_survey_id ?? null,
     externalSource: null,
     externalConfig: null,
   };
@@ -190,6 +193,7 @@ export function keyResultToCreateIndicatorBody(input: CreateIndicatorInput): Cre
   return {
     mission_id: input.missionId,
     owner_id: input.ownerId,
+    team_id: input.teamId ?? undefined,
     title: input.title,
     description: input.description ?? undefined,
     target_value: parseNumberOrUndefined(input.targetValue),
@@ -197,6 +201,13 @@ export function keyResultToCreateIndicatorBody(input: CreateIndicatorInput): Cre
     unit: input.unitLabel ?? undefined,
     status: input.status ? krStatusToApiStatus(input.status) : undefined,
     due_date: input.dueDate ?? undefined,
+    measurement_mode: (input.measurementMode ?? undefined) as CreateIndicatorBody["measurement_mode"],
+    goal_type: (input.goalType ?? undefined) as CreateIndicatorBody["goal_type"],
+    low_threshold: parseNumberOrUndefined(input.lowThreshold),
+    high_threshold: parseNumberOrUndefined(input.highThreshold),
+    period_start: input.periodStart ?? undefined,
+    period_end: input.periodEnd ?? undefined,
+    linked_survey_id: input.linkedSurveyId ?? undefined,
   };
 }
 
@@ -205,11 +216,19 @@ export function keyResultToPatchIndicatorBody(patch: UpdateIndicatorInput): Patc
   if (patch.title !== undefined) body.title = patch.title;
   if (patch.description !== undefined) body.description = patch.description ?? undefined;
   if (patch.ownerId !== undefined) body.owner_id = patch.ownerId;
+  if (patch.teamId !== undefined) body.team_id = patch.teamId ?? undefined;
   if (patch.targetValue !== undefined) body.target_value = parseNumberOrUndefined(patch.targetValue);
   if (patch.currentValue !== undefined) body.current_value = parseNumberOrUndefined(patch.currentValue);
   if (patch.unitLabel !== undefined) body.unit = patch.unitLabel ?? undefined;
   if (patch.status !== undefined) body.status = krStatusToApiStatus(patch.status);
   if (patch.dueDate !== undefined) body.due_date = patch.dueDate ?? undefined;
+  if (patch.measurementMode !== undefined) body.measurement_mode = (patch.measurementMode ?? undefined) as PatchIndicatorBody["measurement_mode"];
+  if (patch.goalType !== undefined) body.goal_type = (patch.goalType ?? undefined) as PatchIndicatorBody["goal_type"];
+  if (patch.lowThreshold !== undefined) body.low_threshold = parseNumberOrUndefined(patch.lowThreshold);
+  if (patch.highThreshold !== undefined) body.high_threshold = parseNumberOrUndefined(patch.highThreshold);
+  if (patch.periodStart !== undefined) body.period_start = patch.periodStart ?? undefined;
+  if (patch.periodEnd !== undefined) body.period_end = patch.periodEnd ?? undefined;
+  if (patch.linkedSurveyId !== undefined) body.linked_survey_id = patch.linkedSurveyId ?? undefined;
   return body;
 }
 

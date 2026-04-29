@@ -12,6 +12,24 @@ import (
 	domaintask "github.com/getbud-co/bud2/backend/internal/domain/task"
 )
 
+func toMemberResponses(members []domainmission.Member) []MemberResponse {
+	out := make([]MemberResponse, len(members))
+	for i, m := range members {
+		out[i] = MemberResponse{
+			UserID:   m.UserID.String(),
+			Role:     string(m.Role),
+			JoinedAt: m.JoinedAt.Format(time.RFC3339),
+		}
+	}
+	return out
+}
+
+type MemberResponse struct {
+	UserID   string `json:"user_id"`
+	Role     string `json:"role"`
+	JoinedAt string `json:"joined_at"`
+}
+
 type Response struct {
 	ID           string              `json:"id"`
 	OrgID        string              `json:"org_id"`
@@ -28,6 +46,8 @@ type Response struct {
 	CompletedAt  *string             `json:"completed_at"`
 	CreatedAt    string              `json:"created_at"`
 	UpdatedAt    string              `json:"updated_at"`
+	Members      []MemberResponse    `json:"members,omitempty"`
+	TagIDs       []string            `json:"tag_ids,omitempty"`
 	Indicators   []indicatorResponse `json:"indicators,omitempty"`
 	Tasks        []taskResponse      `json:"tasks,omitempty"`
 }
@@ -76,6 +96,10 @@ type ListResponse struct {
 }
 
 func toResponse(m *domainmission.Mission) Response {
+	tagIDs := make([]string, len(m.TagIDs))
+	for i, id := range m.TagIDs {
+		tagIDs[i] = id.String()
+	}
 	return Response{
 		ID:           m.ID.String(),
 		OrgID:        m.OrganizationID.String(),
@@ -92,6 +116,8 @@ func toResponse(m *domainmission.Mission) Response {
 		CompletedAt:  formatOptionalTimestamp(m.CompletedAt),
 		CreatedAt:    m.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:    m.UpdatedAt.Format(time.RFC3339),
+		Members:      toMemberResponses(m.Members),
+		TagIDs:       tagIDs,
 	}
 }
 

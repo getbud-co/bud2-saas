@@ -37,6 +37,12 @@ type Task struct {
 	// nil when the task is at the mission level. mission_id is set
 	// either way — the indicator parent is purely a UI affordance.
 	IndicatorID *uuid.UUID
+	// ParentTaskID links a subtask to its parent. Depth is capped at 1:
+	// a task whose ParentTaskID is set must not itself be the parent of
+	// another task. Self-referencing is also rejected.
+	ParentTaskID             *uuid.UUID
+	TeamID                   *uuid.UUID
+	ContributesToMissionIDs  []uuid.UUID
 	AssigneeID  uuid.UUID
 	Title       string
 	Description *string
@@ -63,6 +69,9 @@ func (t *Task) Validate() error {
 	if t.CompletedAt != nil && t.Status != StatusDone {
 		return fmt.Errorf("%w: completed_at is only allowed when status is 'done'", domain.ErrValidation)
 	}
+	if t.ParentTaskID != nil && *t.ParentTaskID == t.ID {
+		return fmt.Errorf("%w: task cannot be its own parent", domain.ErrValidation)
+	}
 	return nil
 }
 
@@ -72,6 +81,7 @@ type ListFilter struct {
 	IndicatorID    *uuid.UUID
 	AssigneeID     *uuid.UUID
 	Status         *Status
+	ParentTaskID   *uuid.UUID
 	Page           int
 	Size           int
 }

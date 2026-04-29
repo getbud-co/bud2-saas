@@ -6,7 +6,6 @@ import type { components, paths } from "@/lib/types";
 export type ApiMission = components["schemas"]["Mission"];
 export type ApiMissionStatus = ApiMission["status"];
 export type ApiMissionVisibility = ApiMission["visibility"];
-export type ApiMissionKanbanStatus = ApiMission["kanban_status"];
 
 type CreateMissionBody = components["schemas"]["CreateMissionRequest"];
 type PatchMissionBody = components["schemas"]["PatchMissionRequest"];
@@ -75,7 +74,11 @@ export function useCreateMission() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["missions", orgId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["missions", orgId] });
+      qc.invalidateQueries({ queryKey: ["indicators", orgId] });
+      qc.invalidateQueries({ queryKey: ["tasks", orgId] });
+    },
   });
 }
 
@@ -93,7 +96,11 @@ export function useUpdateMission() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["missions", orgId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["missions", orgId] });
+      qc.invalidateQueries({ queryKey: ["indicators", orgId] });
+      qc.invalidateQueries({ queryKey: ["tasks", orgId] });
+    },
   });
 }
 
@@ -109,6 +116,56 @@ export function useDeleteMission() {
       });
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["missions", orgId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["missions", orgId] });
+      qc.invalidateQueries({ queryKey: ["indicators", orgId] });
+      qc.invalidateQueries({ queryKey: ["tasks", orgId] });
+    },
+  });
+}
+
+export function useGetMission(id: string | undefined) {
+  const client = useApiClient();
+  const { isAuthenticated, activeOrganization, getToken } = useAuth();
+  const orgId = activeOrganization?.id;
+  const token = getToken();
+  return useQuery({
+    queryKey: ["missions", orgId, "detail", id],
+    enabled: isAuthenticated && !!orgId && !!token && !!id,
+    queryFn: async () => {
+      const { data, error } = await client.GET("/missions/{id}", {
+        params: { path: { id: id! } },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export interface SetMissionMembersInput {
+  missionId: string;
+  members: { userId: string; role?: "owner" | "supporter" | "observer" }[];
+}
+
+export function useSetMissionMembers() {
+  const client = useApiClient();
+  const qc = useQueryClient();
+  const { activeOrganization } = useAuth();
+  const orgId = activeOrganization?.id;
+  return useMutation({
+    mutationFn: async ({ missionId, members }: SetMissionMembersInput) => {
+      const { data, error } = await client.PUT("/missions/{id}/members", {
+        params: { path: { id: missionId } },
+        body: {
+          members: members.map((m) => ({ user_id: m.userId, role: m.role })),
+        },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_data, { missionId }) => {
+      qc.invalidateQueries({ queryKey: ["missions", orgId] });
+      qc.invalidateQueries({ queryKey: ["missions", orgId, "detail", missionId] });
+    },
   });
 }

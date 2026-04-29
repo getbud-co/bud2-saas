@@ -29,20 +29,64 @@ func (s Status) IsValid() bool {
 	return false
 }
 
+type MeasurementMode string
+
+const (
+	MeasurementModeManual   MeasurementMode = "manual"
+	MeasurementModeSurvey   MeasurementMode = "survey"
+	MeasurementModeTask     MeasurementMode = "task"
+	MeasurementModeMission  MeasurementMode = "mission"
+	MeasurementModeExternal MeasurementMode = "external"
+)
+
+func (m MeasurementMode) IsValid() bool {
+	switch m {
+	case MeasurementModeManual, MeasurementModeSurvey, MeasurementModeTask, MeasurementModeMission, MeasurementModeExternal:
+		return true
+	}
+	return false
+}
+
+type GoalType string
+
+const (
+	GoalTypeReach   GoalType = "reach"
+	GoalTypeAbove   GoalType = "above"
+	GoalTypeBelow   GoalType = "below"
+	GoalTypeBetween GoalType = "between"
+	GoalTypeSurvey  GoalType = "survey"
+)
+
+func (g GoalType) IsValid() bool {
+	switch g {
+	case GoalTypeReach, GoalTypeAbove, GoalTypeBelow, GoalTypeBetween, GoalTypeSurvey:
+		return true
+	}
+	return false
+}
+
 type Indicator struct {
-	ID             uuid.UUID
-	OrganizationID uuid.UUID
-	MissionID      uuid.UUID
-	OwnerID        uuid.UUID
-	Title          string
-	Description    *string
-	TargetValue    *float64
-	CurrentValue   *float64
-	Unit           *string
-	Status  Status
-	DueDate *time.Time
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID              uuid.UUID
+	OrganizationID  uuid.UUID
+	MissionID       uuid.UUID
+	OwnerID         uuid.UUID
+	TeamID          *uuid.UUID
+	Title           string
+	Description     *string
+	TargetValue     *float64
+	CurrentValue    *float64
+	Unit            *string
+	Status          Status
+	DueDate         *time.Time
+	MeasurementMode MeasurementMode
+	GoalType        GoalType
+	LowThreshold    *float64
+	HighThreshold   *float64
+	PeriodStart     *time.Time
+	PeriodEnd       *time.Time
+	LinkedSurveyID  *uuid.UUID
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 func (i *Indicator) Validate() error {
@@ -60,6 +104,18 @@ func (i *Indicator) Validate() error {
 	}
 	if !i.Status.IsValid() {
 		return fmt.Errorf("%w: status must be one of: draft, active, at_risk, done, archived", domain.ErrValidation)
+	}
+	if i.MeasurementMode != "" && !i.MeasurementMode.IsValid() {
+		return fmt.Errorf("%w: measurement_mode must be one of: manual, survey, task, mission, external", domain.ErrValidation)
+	}
+	if i.GoalType != "" && !i.GoalType.IsValid() {
+		return fmt.Errorf("%w: goal_type must be one of: reach, above, below, between, survey", domain.ErrValidation)
+	}
+	if i.LowThreshold != nil && i.HighThreshold != nil && *i.LowThreshold > *i.HighThreshold {
+		return fmt.Errorf("%w: low_threshold must be ≤ high_threshold", domain.ErrValidation)
+	}
+	if i.PeriodStart != nil && i.PeriodEnd != nil && i.PeriodStart.After(*i.PeriodEnd) {
+		return fmt.Errorf("%w: period_start must be ≤ period_end", domain.ErrValidation)
 	}
 	return nil
 }

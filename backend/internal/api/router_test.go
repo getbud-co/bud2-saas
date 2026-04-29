@@ -61,6 +61,8 @@ func TestNewRouter_OrganizationsDoNotRequireActiveTenantForSystemAdmin(t *testin
 		nil,
 		nil,
 		nil,
+		nil,
+		nil,
 		RouterConfig{JWTSecret: "test-secret", Enforcer: stubPermissionChecker{}, MaxBodySize: 1024, RequestTimeout: time.Second},
 	)
 
@@ -86,6 +88,8 @@ func TestNewRouter_UsersStillRequireActiveTenant(t *testing.T) {
 		apiteam.NewHandler(nil, nil, nil, nil, nil),
 		&apirole.Handler{},
 		&apiperm.Handler{},
+		nil,
+		nil,
 		nil,
 		nil,
 		nil,
@@ -116,6 +120,8 @@ func TestNewRouter_OrganizationCreateRequiresSystemAdmin(t *testing.T) {
 		apiteam.NewHandler(nil, nil, nil, nil, nil),
 		&apirole.Handler{},
 		&apiperm.Handler{},
+		nil,
+		nil,
 		nil,
 		nil,
 		nil,

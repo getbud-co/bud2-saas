@@ -1,20 +1,60 @@
-/**
- * Tests for TagsModule
- *
- * This module provides CRUD operations for tags within the settings page.
- * It uses the ConfigDataContext for data management and follows the standard
- * Table + Modal CRUD pattern used throughout the application.
- *
- * Note: Some tests that require modal interactions (open/close) may have
- * timing issues with happy-dom. These tests verify the component structure
- * and basic interactions.
- */
-
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "../../../../tests/setup/test-utils";
 import { TagsModule } from "./TagsModule";
+
+// ─── Mocks ───
+
+const mockTags = [
+  {
+    id: "tag-1",
+    org_id: "org-1",
+    name: "Engenharia",
+    color: "orange" as const,
+    created_at: "2024-01-15T10:00:00Z",
+    updated_at: "2024-01-15T10:00:00Z",
+  },
+  {
+    id: "tag-2",
+    org_id: "org-1",
+    name: "Design",
+    color: "wine" as const,
+    created_at: "2024-02-20T14:30:00Z",
+    updated_at: "2024-02-20T14:30:00Z",
+  },
+  {
+    id: "tag-3",
+    org_id: "org-1",
+    name: "Produto",
+    color: "success" as const,
+    created_at: "2024-03-01T09:00:00Z",
+    updated_at: "2024-03-01T09:00:00Z",
+  },
+];
+
+const mockMutateAsync = vi.fn().mockResolvedValue(undefined);
+
+vi.mock("@/hooks/use-tags", () => ({
+  useTags: () => ({
+    data: mockTags,
+    isLoading: false,
+    error: null,
+    total: mockTags.length,
+  }),
+  useCreateTag: () => ({
+    mutateAsync: mockMutateAsync,
+    isPending: false,
+  }),
+  useUpdateTag: () => ({
+    mutateAsync: mockMutateAsync,
+    isPending: false,
+  }),
+  useDeleteTag: () => ({
+    mutateAsync: mockMutateAsync,
+    isPending: false,
+  }),
+}));
 
 // ─── Test Helpers ───
 
@@ -27,7 +67,6 @@ function setup() {
 async function openCreateModal(user: ReturnType<typeof userEvent.setup>) {
   const createButton = screen.getByRole("button", { name: /nova tag/i });
   await user.click(createButton);
-  // Wait for modal to be in the document
   await waitFor(() => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
@@ -42,7 +81,7 @@ async function getNameInputInModal() {
 
 describe("TagsModule", () => {
   beforeEach(() => {
-    localStorage.clear();
+    mockMutateAsync.mockClear();
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -72,18 +111,23 @@ describe("TagsModule", () => {
       expect(screen.getByRole("button", { name: /ordenar por criado em/i })).toBeInTheDocument();
     });
 
-    it("renders tags from context", async () => {
+    it("renders tags from API", async () => {
       setup();
       const rows = await screen.findAllByRole("row");
-      // Header row + at least one data row (seed data has 11 tags)
-      expect(rows.length).toBeGreaterThan(1);
+      // Header row + 3 data rows
+      expect(rows.length).toBe(4);
     });
 
     it("renders badge showing tag count", () => {
       setup();
-      // The badge is inside the table card header, showing count
-      // Seed data has 11 tags
-      expect(screen.getByText("11")).toBeInTheDocument();
+      expect(screen.getByText("3")).toBeInTheDocument();
+    });
+
+    it("renders tag names in the table", () => {
+      setup();
+      expect(screen.getByText("Engenharia")).toBeInTheDocument();
+      expect(screen.getByText("Design")).toBeInTheDocument();
+      expect(screen.getByText("Produto")).toBeInTheDocument();
     });
   });
 
@@ -94,10 +138,6 @@ describe("TagsModule", () => {
   describe("search functionality", () => {
     it("filters tags by search term", async () => {
       const { user } = setup();
-
-      // Verify we start with multiple rows
-      const initialRows = screen.getAllByRole("row");
-      expect(initialRows.length).toBeGreaterThan(1);
 
       const searchInput = screen.getByPlaceholderText("Buscar tag...");
       await user.type(searchInput, "xyznonexistent123");
@@ -113,23 +153,20 @@ describe("TagsModule", () => {
       const { user } = setup();
 
       const searchInput = screen.getByPlaceholderText("Buscar tag...");
-
-      await user.type(searchInput, "test");
+      await user.type(searchInput, "eng");
       await user.clear(searchInput);
 
       const rows = screen.getAllByRole("row");
-      expect(rows.length).toBeGreaterThan(1);
+      expect(rows.length).toBe(4);
     });
 
     it("filters case-insensitively", async () => {
       const { user } = setup();
 
-      // Search for a known seed tag with different case
       const searchInput = screen.getByPlaceholderText("Buscar tag...");
       await user.type(searchInput, "ENGENHARIA");
 
       await waitFor(() => {
-        // Should find the "Engenharia" tag
         expect(screen.getByText("Engenharia")).toBeInTheDocument();
       });
     });
@@ -228,7 +265,6 @@ describe("TagsModule", () => {
       const { user } = setup();
 
       const checkboxes = screen.getAllByRole("checkbox");
-      expect(checkboxes.length).toBeGreaterThan(0);
       const headerCheckbox = checkboxes[0]!;
 
       await user.click(headerCheckbox);
@@ -247,8 +283,6 @@ describe("TagsModule", () => {
       const checkboxes = screen.getAllByRole("checkbox");
       await user.click(checkboxes[1]!);
 
-      // TableBulkActions renders via portal with delete button
-      // The text format is "N selecionado(s)" - look for the excluir button instead
       await waitFor(() => {
         const bulkDeleteButton = screen.getByRole("button", { name: /excluir/i });
         expect(bulkDeleteButton).toBeInTheDocument();
@@ -346,7 +380,6 @@ describe("TagsModule", () => {
       const orangeButton = within(dialog).getByTitle("Laranja");
       await user.click(orangeButton);
 
-      // The selected color should have the active class
       expect(orangeButton.className).toContain("Active");
     });
   });
@@ -359,7 +392,6 @@ describe("TagsModule", () => {
     it("renders action buttons for each row", () => {
       setup();
 
-      // Each row should have an actions button
       const actionButtons = screen.getAllByRole("button", { name: /abrir ações/i });
       expect(actionButtons.length).toBeGreaterThan(0);
     });
@@ -367,7 +399,6 @@ describe("TagsModule", () => {
     it("has descriptive aria-label for action buttons", () => {
       setup();
 
-      // Check that action buttons have tag name in aria-label
       const engenhariaActionsButton = screen.getByRole("button", {
         name: /abrir ações da tag engenharia/i,
       });
@@ -388,25 +419,21 @@ describe("TagsModule", () => {
 
       await waitFor(() => {
         const rows = screen.getAllByRole("row");
-        // Only header row
         expect(rows.length).toBe(1);
       });
 
-      // Badge should show 0
       expect(screen.getByText("0")).toBeInTheDocument();
     });
 
     it("updates badge count when filtering", async () => {
       const { user } = setup();
 
-      // Initial count is 11
-      expect(screen.getByText("11")).toBeInTheDocument();
+      expect(screen.getByText("3")).toBeInTheDocument();
 
       const searchInput = screen.getByPlaceholderText("Buscar tag...");
       await user.type(searchInput, "Engenharia");
 
       await waitFor(() => {
-        // Should show filtered count (1 tag matches "Engenharia")
         expect(screen.getByText("1")).toBeInTheDocument();
       });
     });
@@ -414,10 +441,8 @@ describe("TagsModule", () => {
     it("shows linked items count as 0 for all tags", () => {
       setup();
 
-      // All tags should show 0 linked items (since linkedItems is hardcoded to 0)
       const cells = screen.getAllByRole("cell");
       const zeroCells = cells.filter((cell) => cell.textContent === "0");
-      // Should have one "0" for each tag row
       expect(zeroCells.length).toBeGreaterThan(0);
     });
   });
@@ -447,7 +472,6 @@ describe("TagsModule", () => {
     it("has proper checkbox labels", () => {
       setup();
 
-      // Header checkbox
       expect(
         screen.getByRole("checkbox", { name: /selecionar todas as linhas/i })
       ).toBeInTheDocument();

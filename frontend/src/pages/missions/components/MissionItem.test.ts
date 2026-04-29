@@ -20,7 +20,6 @@ function makeMission(overrides: Partial<Mission> = {}): Mission {
     status: "active",
     visibility: "public",
     progress: 0,
-    kanbanStatus: "uncategorized",
     startDate: "2025-01-01",
     endDate: "2025-12-31",
     completedAt: null,

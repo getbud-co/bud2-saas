@@ -16,12 +16,12 @@ import (
 	"github.com/getbud-co/bud2/backend/internal/test/testutil"
 )
 
-func newUpdateDeps() (*mocks.IndicatorRepository, *mocks.UserRepository) {
-	return new(mocks.IndicatorRepository), new(mocks.UserRepository)
+func newUpdateDeps() (*mocks.IndicatorRepository, *mocks.TeamRepository, *mocks.UserRepository) {
+	return new(mocks.IndicatorRepository), new(mocks.TeamRepository), new(mocks.UserRepository)
 }
 
 func TestUpdateUseCase_Execute_AppliesPartialFields(t *testing.T) {
-	repo, users := newUpdateDeps()
+	repo, teams, users := newUpdateDeps()
 	id := uuid.New()
 	existing := &domainindicator.Indicator{
 		ID:     id,
@@ -34,7 +34,7 @@ func TestUpdateUseCase_Execute_AppliesPartialFields(t *testing.T) {
 		return i.Title == newTitle && i.Status == domainindicator.StatusActive
 	})).Return(existing, nil)
 
-	_, err := NewUpdateUseCase(repo, users, testutil.NewDiscardLogger()).Execute(context.Background(), UpdateCommand{
+	_, err := NewUpdateUseCase(repo, teams, users, testutil.NewDiscardLogger()).Execute(context.Background(), UpdateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
 		ID:             id,
 		Title:          &newTitle,
@@ -44,13 +44,13 @@ func TestUpdateUseCase_Execute_AppliesPartialFields(t *testing.T) {
 }
 
 func TestUpdateUseCase_Execute_OwnerChange_NotMember_ReturnsInvalidReference(t *testing.T) {
-	repo, users := newUpdateDeps()
+	repo, teams, users := newUpdateDeps()
 	existing := &domainindicator.Indicator{ID: uuid.New(), Title: "x", OwnerID: uuid.New(), Status: domainindicator.StatusActive}
 	repo.On("GetByID", mock.Anything, mock.Anything, mock.Anything).Return(existing, nil)
 	users.On("GetActiveMemberByID", mock.Anything, mock.Anything, mock.Anything).Return(nil, domainuser.ErrNotFound)
 
 	newOwner := uuid.New()
-	_, err := NewUpdateUseCase(repo, users, testutil.NewDiscardLogger()).Execute(context.Background(), UpdateCommand{
+	_, err := NewUpdateUseCase(repo, teams, users, testutil.NewDiscardLogger()).Execute(context.Background(), UpdateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
 		ID:             existing.ID,
 		OwnerID:        &newOwner,
@@ -60,10 +60,10 @@ func TestUpdateUseCase_Execute_OwnerChange_NotMember_ReturnsInvalidReference(t *
 }
 
 func TestUpdateUseCase_Execute_PropagatesNotFoundFromGet(t *testing.T) {
-	repo, users := newUpdateDeps()
+	repo, teams, users := newUpdateDeps()
 	repo.On("GetByID", mock.Anything, mock.Anything, mock.Anything).Return(nil, domainindicator.ErrNotFound)
 
-	_, err := NewUpdateUseCase(repo, users, testutil.NewDiscardLogger()).Execute(context.Background(), UpdateCommand{
+	_, err := NewUpdateUseCase(repo, teams, users, testutil.NewDiscardLogger()).Execute(context.Background(), UpdateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
 		ID:             uuid.New(),
 	})

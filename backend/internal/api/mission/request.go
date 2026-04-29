@@ -11,6 +11,11 @@ import (
 	"github.com/getbud-co/bud2/backend/internal/domain"
 )
 
+type memberInline struct {
+	UserID uuid.UUID `json:"user_id" validate:"required"`
+	Role   string    `json:"role"    validate:"omitempty,oneof=owner supporter observer"`
+}
+
 type createRequest struct {
 	Title        string                  `json:"title" validate:"required,min=1,max=200"`
 	Description  *string                 `json:"description" validate:"omitempty,max=5000"`
@@ -22,6 +27,8 @@ type createRequest struct {
 	KanbanStatus string                  `json:"kanban_status" validate:"omitempty,oneof=uncategorized todo doing done"`
 	StartDate    string                  `json:"start_date" validate:"required,datetime=2006-01-02"`
 	EndDate      string                  `json:"end_date" validate:"required,datetime=2006-01-02"`
+	Members      []memberInline          `json:"members" validate:"omitempty,dive"`
+	TagIDs       []uuid.UUID             `json:"tag_ids" validate:"omitempty"`
 	Indicators   []createIndicatorInline `json:"indicators" validate:"omitempty,dive"`
 	Tasks        []createTaskInline      `json:"tasks" validate:"omitempty,dive"`
 }
@@ -65,15 +72,17 @@ type createTaskInline struct {
 // from "field explicitly null". Sending null on a nullable field does NOT
 // clear it. If clearing is needed in the future, switch to **T or a Wrapper.
 type updateRequest struct {
-	Title        *string    `json:"title" validate:"omitempty,min=1,max=200"`
-	Description  *string    `json:"description" validate:"omitempty,max=5000"`
-	OwnerID      *uuid.UUID `json:"owner_id" validate:"omitempty"`
-	TeamID       *uuid.UUID `json:"team_id" validate:"omitempty"`
-	Status       *string    `json:"status" validate:"omitempty,oneof=draft active paused completed cancelled"`
-	Visibility   *string    `json:"visibility" validate:"omitempty,oneof=public team_only private"`
-	KanbanStatus *string    `json:"kanban_status" validate:"omitempty,oneof=uncategorized todo doing done"`
-	StartDate    *string    `json:"start_date" validate:"omitempty,datetime=2006-01-02"`
-	EndDate      *string    `json:"end_date" validate:"omitempty,datetime=2006-01-02"`
+	Title        *string         `json:"title" validate:"omitempty,min=1,max=200"`
+	Description  *string         `json:"description" validate:"omitempty,max=5000"`
+	OwnerID      *uuid.UUID      `json:"owner_id" validate:"omitempty"`
+	TeamID       *uuid.UUID      `json:"team_id" validate:"omitempty"`
+	Status       *string         `json:"status" validate:"omitempty,oneof=draft active paused completed cancelled"`
+	Visibility   *string         `json:"visibility" validate:"omitempty,oneof=public team_only private"`
+	KanbanStatus *string         `json:"kanban_status" validate:"omitempty,oneof=uncategorized todo doing done"`
+	StartDate    *string         `json:"start_date" validate:"omitempty,datetime=2006-01-02"`
+	EndDate      *string         `json:"end_date" validate:"omitempty,datetime=2006-01-02"`
+	Members      *[]memberInline `json:"members" validate:"omitempty,dive"`
+	TagIDs       *[]uuid.UUID    `json:"tag_ids" validate:"omitempty"`
 }
 
 // isEmpty reports whether the patch body carries no actionable field. The
@@ -83,7 +92,8 @@ func (r updateRequest) isEmpty() bool {
 	return r.Title == nil && r.Description == nil &&
 		r.OwnerID == nil && r.TeamID == nil && r.Status == nil &&
 		r.Visibility == nil && r.KanbanStatus == nil &&
-		r.StartDate == nil && r.EndDate == nil
+		r.StartDate == nil && r.EndDate == nil && r.Members == nil &&
+		r.TagIDs == nil
 }
 
 var parseOptionalDate = httputil.ParseOptionalDate
@@ -112,6 +122,13 @@ func (r createRequest) toCommand(organizationID domain.TenantID) (appmission.Cre
 		KanbanStatus:   r.KanbanStatus,
 		StartDate:      startDate,
 		EndDate:        endDate,
+		TagIDs:         r.TagIDs,
+	}
+	if len(r.Members) > 0 {
+		cmd.Members = make([]appmission.MemberInput, len(r.Members))
+		for i, m := range r.Members {
+			cmd.Members[i] = appmission.MemberInput{UserID: m.UserID, Role: m.Role}
+		}
 	}
 	if len(r.Indicators) > 0 {
 		cmd.Indicators = make([]appmission.CreateIndicatorInput, len(r.Indicators))
@@ -146,7 +163,7 @@ func (r createRequest) toCommand(organizationID domain.TenantID) (appmission.Cre
 }
 
 func (r updateRequest) toCommand(organizationID domain.TenantID, id uuid.UUID) appmission.UpdateCommand {
-	return appmission.UpdateCommand{
+	cmd := appmission.UpdateCommand{
 		OrganizationID: organizationID,
 		ID:             id,
 		Title:          r.Title,
@@ -158,5 +175,14 @@ func (r updateRequest) toCommand(organizationID domain.TenantID, id uuid.UUID) a
 		KanbanStatus:   r.KanbanStatus,
 		StartDate:      parseOptionalDate(r.StartDate),
 		EndDate:        parseOptionalDate(r.EndDate),
+		TagIDs:         r.TagIDs,
 	}
+	if r.Members != nil {
+		inputs := make([]appmission.MemberInput, len(*r.Members))
+		for i, m := range *r.Members {
+			inputs[i] = appmission.MemberInput{UserID: m.UserID, Role: m.Role}
+		}
+		cmd.Members = &inputs
+	}
+	return cmd
 }

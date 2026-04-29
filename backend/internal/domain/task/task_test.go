@@ -38,6 +38,12 @@ func TestTask_Validate_RejectsCompletedAtWithoutDoneStatus(t *testing.T) {
 	assert.ErrorIs(t, tk.Validate(), domain.ErrValidation)
 }
 
+func TestTask_Validate_RejectsSelfReference(t *testing.T) {
+	tk := newValid()
+	tk.ParentTaskID = &tk.ID
+	assert.ErrorIs(t, tk.Validate(), domain.ErrValidation)
+}
+
 func TestTask_Validate_AcceptsValidTask(t *testing.T) {
 	assert.NoError(t, newValid().Validate())
 }

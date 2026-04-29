@@ -35,14 +35,16 @@ func NewRefreshUseCase(
 	refreshTokenRepo domainauth.RefreshTokenRepository,
 	tokenHasher domainauth.TokenHasher,
 	logger *slog.Logger,
+	tokenTTL time.Duration,
+	refreshTokenTTL time.Duration,
 ) *RefreshUseCase {
 	return &RefreshUseCase{support: newAuthSupport(
 		users, organizations,
 		issuer, passwordHasher,
 		refreshTokenRepo, tokenHasher,
 		logger,
-		15*time.Minute, // access token TTL
-		7*24*time.Hour, // refresh token TTL
+		tokenTTL,
+		refreshTokenTTL,
 	)}
 }
 

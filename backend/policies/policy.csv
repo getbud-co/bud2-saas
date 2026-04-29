@@ -65,3 +65,16 @@ p, gestor, tasks, read
 p, gestor, tasks, delete
 p, colaborador, tasks, read
 p, visualizador, tasks, read
+
+p, super-admin, checkins, write
+p, super-admin, checkins, read
+p, super-admin, checkins, delete
+p, admin-rh, checkins, write
+p, admin-rh, checkins, read
+p, admin-rh, checkins, delete
+p, gestor, checkins, write
+p, gestor, checkins, read
+p, gestor, checkins, delete
+p, colaborador, checkins, write
+p, colaborador, checkins, read
+p, visualizador, checkins, read

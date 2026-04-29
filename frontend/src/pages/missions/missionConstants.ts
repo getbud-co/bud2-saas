@@ -354,9 +354,8 @@ export const UNIT_OPTIONS = [
 ];
 
 export const KANBAN_COLUMNS: { id: KanbanStatus; label: string; color: string }[] = [
-  { id: "uncategorized", label: "Não categorizado", color: "var(--color-neutral-400)" },
   { id: "todo", label: "Para fazer", color: "var(--color-caramel-400)" },
-  { id: "doing", label: "Fazendo", color: "var(--color-orange-500)" },
+  { id: "doing", label: "Em andamento", color: "var(--color-orange-500)" },
   { id: "done", label: "Feito", color: "var(--color-green-500)" },
 ];
 

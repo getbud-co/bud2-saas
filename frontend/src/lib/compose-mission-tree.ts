@@ -95,15 +95,40 @@ export function composeMissionTree(
 
 // Same composer but accepting raw API payloads for indicators/tasks. Useful
 // when the consumer fetched them through a non-adapted client (tests).
+// Subtask grouping is done here: child tasks (parent_task_id != null) are
+// attached as SubTask[] on their parent's MissionTask before composing.
 export function composeMissionTreeFromApi(
   missions: ApiMission[] | undefined,
   indicators: ApiIndicator[] | undefined,
   tasks: ApiTask[] | undefined,
 ): Mission[] {
+  const allTasks = tasks ?? [];
+
+  const childByParent = groupBy(
+    allTasks.filter((t) => t.parent_task_id != null),
+    (t) => t.parent_task_id as string,
+  );
+
+  const adaptedTasks: MissionTask[] = allTasks
+    .filter((t) => t.parent_task_id == null)
+    .map((t) => {
+      const adapted = apiTaskToMissionTask(t);
+      const children = childByParent.get(t.id);
+      if (children && children.length > 0) {
+        adapted.subtasks = children.map((c) => ({
+          id: c.id,
+          taskId: t.id,
+          title: c.title,
+          isDone: c.status === "done",
+        }));
+      }
+      return adapted;
+    });
+
   return composeMissionTree(
     missions,
     (indicators ?? []).map(apiIndicatorToKeyResult),
-    (tasks ?? []).map(apiTaskToMissionTask),
+    adaptedTasks,
   );
 }
 
@@ -121,7 +146,6 @@ function apiMissionToMission(api: ApiMission, keyResults: KeyResult[], tasks: Mi
     status: api.status,
     visibility: api.visibility,
     progress: 0,
-    kanbanStatus: api.kanban_status,
     startDate: api.start_date,
     endDate: api.end_date,
     completedAt: api.completed_at ?? null,
@@ -132,6 +156,14 @@ function apiMissionToMission(api: ApiMission, keyResults: KeyResult[], tasks: Mi
     tasks,
     children: [],
     tags: [],
+    tagIds: api.tag_ids ?? [],
+    members: api.members?.map((m) => ({
+      missionId: api.id,
+      userId: m.user_id,
+      role: m.role as import("@/types").MissionMemberRole,
+      addedAt: m.joined_at,
+      addedBy: null,
+    })),
   };
 }
 

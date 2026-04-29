@@ -11,26 +11,31 @@ import (
 	"github.com/getbud-co/bud2/backend/internal/domain"
 	domainindicator "github.com/getbud-co/bud2/backend/internal/domain/indicator"
 	domaintask "github.com/getbud-co/bud2/backend/internal/domain/task"
+	domainteam "github.com/getbud-co/bud2/backend/internal/domain/team"
 	domainuser "github.com/getbud-co/bud2/backend/internal/domain/user"
 )
 
 // UpdateCommand carries the partial-update intent: every optional field is a
 // pointer, only non-nil fields are applied. mission_id is intentionally absent
 // — moving a task between missions is not exposed via this endpoint.
+// indicator_id, however, can be re-assigned within the same mission.
 type UpdateCommand struct {
-	OrganizationID domain.TenantID
-	ID             uuid.UUID
-	Title          *string
-	Description    *string
-	IndicatorID    *uuid.UUID
-	AssigneeID     *uuid.UUID
-	Status         *string
-	DueDate        *time.Time
+	OrganizationID          domain.TenantID
+	ID                      uuid.UUID
+	Title                   *string
+	Description             *string
+	IndicatorID             *uuid.UUID
+	AssigneeID              *uuid.UUID
+	TeamID                  *uuid.UUID
+	ContributesToMissionIDs []uuid.UUID
+	Status                  *string
+	DueDate                 *time.Time
 }
 
 type UpdateUseCase struct {
 	tasks      domaintask.Repository
 	indicators domainindicator.Repository
+	teams      domainteam.Repository
 	users      domainuser.Repository
 	logger     *slog.Logger
 }
@@ -38,10 +43,11 @@ type UpdateUseCase struct {
 func NewUpdateUseCase(
 	tasks domaintask.Repository,
 	indicators domainindicator.Repository,
+	teams domainteam.Repository,
 	users domainuser.Repository,
 	logger *slog.Logger,
 ) *UpdateUseCase {
-	return &UpdateUseCase{tasks: tasks, indicators: indicators, users: users, logger: logger}
+	return &UpdateUseCase{tasks: tasks, indicators: indicators, teams: teams, users: users, logger: logger}
 }
 
 func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*domaintask.Task, error) {
@@ -77,6 +83,14 @@ func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*domai
 			return nil, domaintask.ErrInvalidReference
 		}
 	}
+	if cmd.TeamID != nil {
+		if _, err := uc.teams.GetByID(ctx, *cmd.TeamID, orgID); err != nil {
+			if errors.Is(err, domainteam.ErrNotFound) {
+				return nil, domaintask.ErrInvalidReference
+			}
+			return nil, err
+		}
+	}
 
 	if cmd.Title != nil {
 		existing.Title = *cmd.Title
@@ -89,6 +103,12 @@ func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*domai
 	}
 	if cmd.IndicatorID != nil {
 		existing.IndicatorID = cmd.IndicatorID
+	}
+	if cmd.TeamID != nil {
+		existing.TeamID = cmd.TeamID
+	}
+	if cmd.ContributesToMissionIDs != nil {
+		existing.ContributesToMissionIDs = cmd.ContributesToMissionIDs
 	}
 	if cmd.Status != nil {
 		existing.Status = domaintask.Status(*cmd.Status)

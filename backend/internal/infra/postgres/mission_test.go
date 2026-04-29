@@ -32,6 +32,9 @@ type fakeMissionQuerier struct {
 	updateRow    sqlc.UpdateMissionRow
 	updateErr    error
 	updateParams sqlc.UpdateMissionParams
+	// member support
+	memberRows    []sqlc.MissionMember
+	memberListErr error
 }
 
 func (f *fakeMissionQuerier) CreateMission(_ context.Context, arg sqlc.CreateMissionParams) (sqlc.CreateMissionRow, error) {
@@ -56,6 +59,38 @@ func (f *fakeMissionQuerier) CountMissions(_ context.Context, arg sqlc.CountMiss
 func (f *fakeMissionQuerier) UpdateMission(_ context.Context, arg sqlc.UpdateMissionParams) (sqlc.UpdateMissionRow, error) {
 	f.updateParams = arg
 	return f.updateRow, f.updateErr
+}
+
+func (f *fakeMissionQuerier) ListMissionMembers(_ context.Context, _ sqlc.ListMissionMembersParams) ([]sqlc.MissionMember, error) {
+	return f.memberRows, f.memberListErr
+}
+
+func (f *fakeMissionQuerier) DeleteMissionMembers(_ context.Context, _ sqlc.DeleteMissionMembersParams) error {
+	return nil
+}
+
+func (f *fakeMissionQuerier) DeleteMissionMemberByUser(_ context.Context, _ sqlc.DeleteMissionMemberByUserParams) error {
+	return nil
+}
+
+func (f *fakeMissionQuerier) InsertMissionMember(_ context.Context, _ sqlc.InsertMissionMemberParams) error {
+	return nil
+}
+
+func (f *fakeMissionQuerier) ListMissionTagIDs(_ context.Context, _ sqlc.ListMissionTagIDsParams) ([]uuid.UUID, error) {
+	return nil, nil
+}
+
+func (f *fakeMissionQuerier) InsertMissionTag(_ context.Context, _ sqlc.InsertMissionTagParams) error {
+	return nil
+}
+
+func (f *fakeMissionQuerier) DeleteMissionTagByTag(_ context.Context, _ sqlc.DeleteMissionTagByTagParams) error {
+	return nil
+}
+
+func (f *fakeMissionQuerier) DeleteMissionTags(_ context.Context, _ sqlc.DeleteMissionTagsParams) error {
+	return nil
 }
 
 func TestMissionRepository_Create_TranslatesNullableFieldsAndMapsRow(t *testing.T) {
@@ -264,11 +299,11 @@ func TestMissionRepository_Update_PassesNullableParent(t *testing.T) {
 	q := &fakeMissionQuerier{
 		updateRow: sqlc.UpdateMissionRow{
 			ID: uuid.New(), Title: "x",
-			Status:    string(mission.StatusActive),
-			Visibility: string(mission.VisibilityPublic),
+			Status:       string(mission.StatusActive),
+			Visibility:   string(mission.VisibilityPublic),
 			KanbanStatus: string(mission.KanbanTodo),
-			StartDate: pgtype.Date{Time: start, Valid: true},
-			EndDate:   pgtype.Date{Time: end, Valid: true},
+			StartDate:    pgtype.Date{Time: start, Valid: true},
+			EndDate:      pgtype.Date{Time: end, Valid: true},
 		},
 	}
 	repo := NewMissionRepository(q, nil)
