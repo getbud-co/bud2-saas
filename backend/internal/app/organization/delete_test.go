@@ -25,12 +25,12 @@ type deleteOrgTestTxRepos struct {
 	orgRepo org.Repository
 }
 
-func (r deleteOrgTestTxRepos) Organizations() org.Repository       { return r.orgRepo }
-func (r deleteOrgTestTxRepos) Users() usr.Repository               { return nil }
-func (r deleteOrgTestTxRepos) Teams() team.Repository              { return nil }
-func (r deleteOrgTestTxRepos) Missions() mission.Repository        { return nil }
-func (r deleteOrgTestTxRepos) Indicators() indicator.Repository    { return nil }
-func (r deleteOrgTestTxRepos) Tasks() task.Repository              { return nil }
+func (r deleteOrgTestTxRepos) Organizations() org.Repository    { return r.orgRepo }
+func (r deleteOrgTestTxRepos) Users() usr.Repository            { return nil }
+func (r deleteOrgTestTxRepos) Teams() team.Repository           { return nil }
+func (r deleteOrgTestTxRepos) Missions() mission.Repository     { return nil }
+func (r deleteOrgTestTxRepos) Indicators() indicator.Repository { return nil }
+func (r deleteOrgTestTxRepos) Tasks() task.Repository           { return nil }
 
 type deleteOrgTestTxManager struct {
 	repos     apptx.Repositories
