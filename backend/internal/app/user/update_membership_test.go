@@ -36,12 +36,12 @@ type fakeRepositories struct {
 	teams team.Repository
 }
 
-func (r fakeRepositories) Organizations() org.Repository              { return r.orgs }
-func (r fakeRepositories) Users() usr.Repository                      { return r.users }
-func (r fakeRepositories) Teams() team.Repository                     { return r.teams }
-func (r fakeRepositories) Missions() domainmission.Repository         { return nil }
-func (r fakeRepositories) Indicators() domainindicator.Repository     { return nil }
-func (r fakeRepositories) Tasks() domaintask.Repository               { return nil }
+func (r fakeRepositories) Organizations() org.Repository          { return r.orgs }
+func (r fakeRepositories) Users() usr.Repository                  { return r.users }
+func (r fakeRepositories) Teams() team.Repository                 { return r.teams }
+func (r fakeRepositories) Missions() domainmission.Repository     { return nil }
+func (r fakeRepositories) Indicators() domainindicator.Repository { return nil }
+func (r fakeRepositories) Tasks() domaintask.Repository           { return nil }
 
 type fakeTeamRepository struct {
 	softDeleteMemberByUserCalls int

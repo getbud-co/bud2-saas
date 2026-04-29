@@ -26,12 +26,12 @@ type deleteUserTestTxRepos struct {
 	teamRepo team.Repository
 }
 
-func (r deleteUserTestTxRepos) Organizations() organization.Repository    { return nil }
-func (r deleteUserTestTxRepos) Users() usr.Repository                     { return r.userRepo }
-func (r deleteUserTestTxRepos) Teams() team.Repository                    { return r.teamRepo }
-func (r deleteUserTestTxRepos) Missions() domainmission.Repository        { return nil }
-func (r deleteUserTestTxRepos) Indicators() domainindicator.Repository    { return nil }
-func (r deleteUserTestTxRepos) Tasks() domaintask.Repository              { return nil }
+func (r deleteUserTestTxRepos) Organizations() organization.Repository { return nil }
+func (r deleteUserTestTxRepos) Users() usr.Repository                  { return r.userRepo }
+func (r deleteUserTestTxRepos) Teams() team.Repository                 { return r.teamRepo }
+func (r deleteUserTestTxRepos) Missions() domainmission.Repository     { return nil }
+func (r deleteUserTestTxRepos) Indicators() domainindicator.Repository { return nil }
+func (r deleteUserTestTxRepos) Tasks() domaintask.Repository           { return nil }
 
 type deleteUserTeamRepo struct {
 	softDeleteMemberByUserCalled bool

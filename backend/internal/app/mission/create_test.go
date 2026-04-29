@@ -90,7 +90,6 @@ func newMissionDeps() missionDeps {
 	}
 }
 
-
 // allowOwner pre-wires GetActiveMemberByID to accept any user. Tests that
 // validate the gate set their own expectation.
 func (d missionDeps) allowOwner() missionDeps {
