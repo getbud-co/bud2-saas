@@ -84,7 +84,7 @@ import { buildCheckInChartData, sortCheckInsDesc } from "./utils/checkinReadMode
 import { addChildToParent, removeChildFromTree, replaceItemInTree, calendarDateToIso, unitFromValue, getGoalSummary, countAllItems } from "./utils/missionItemTree";
 import { filterMissions } from "./utils/filterMissions";
 import { getKanbanStatus, taskColToApiStatus, missionColToApiStatus } from "./utils/kanbanUtils";
-import type { KanbanItem, KanbanChildItem } from "./utils/kanbanUtils";
+import type { KanbanItem } from "./utils/kanbanUtils";
 import { useSavedViews } from "@/contexts/SavedViewsContext";
 import { useMissionsData } from "@/contexts/MissionsDataContext";
 import { usePeopleData } from "@/contexts/PeopleDataContext";
