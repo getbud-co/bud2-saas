@@ -21,14 +21,14 @@ func TestUpdateRequest_IsEmpty_AnyFieldSet_False(t *testing.T) {
 	ownerID := uuid.New()
 	dueDate := "2026-05-01"
 	cases := map[string]updateRequest{
-		"title":        {Title: &title},
-		"description":  {Description: &title},
-		"owner_id":     {OwnerID: &ownerID},
-		"target_value": {TargetValue: &target},
+		"title":         {Title: &title},
+		"description":   {Description: &title},
+		"owner_id":      {OwnerID: &ownerID},
+		"target_value":  {TargetValue: &target},
 		"current_value": {CurrentValue: &target},
-		"unit":         {Unit: &title},
-		"status":       {Status: &title},
-		"due_date":     {DueDate: &dueDate},
+		"unit":          {Unit: &title},
+		"status":        {Status: &title},
+		"due_date":      {DueDate: &dueDate},
 	}
 	for name, r := range cases {
 		t.Run(name, func(t *testing.T) {

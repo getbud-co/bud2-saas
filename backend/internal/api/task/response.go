@@ -73,4 +73,3 @@ func toResponse(t *domaintask.Task) Response {
 
 var formatOptionalDate = httputil.FormatOptionalDate
 var formatOptionalTimestamp = httputil.FormatOptionalTimestamp
-
