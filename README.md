@@ -1,6 +1,6 @@
 # bud2
 
-SaaS multi-tenant — monorepo com backend em Go e frontend em React + Vite + TypeScript.
+SaaS multi-tenant — monorepo com backend em Go, frontend em React + Vite + TypeScript e agentes em Python + ADK.
 
 Este documento é o ponto de entrada para novos desenvolvedores. O objetivo é construir um modelo mental sólido da arquitetura antes de tocar em código.
 
@@ -26,7 +26,7 @@ Este documento é o ponto de entrada para novos desenvolvedores. O objetivo é c
 
 ## Início rápido
 
-**Pré-requisitos:** Go 1.26+, Node.js 20+, Docker, `make`.
+**Pré-requisitos:** Go 1.26+, Node.js 20+, Python 3.12+, `uv`, Docker, `make`.
 
 ```bash
 # 1. Copie as variáveis de ambiente
@@ -41,11 +41,12 @@ make compose-up     # tudo via Docker Compose
 curl http://localhost:8080/health/ready
 ```
 
-| Serviço  | Endereço              |
-|----------|-----------------------|
-| Backend  | http://localhost:8080 |
-| Frontend | http://localhost:3000 |
-| Banco    | localhost:5432        |
+| Serviço   | Endereço              |
+|-----------|-----------------------|
+| Backend   | http://localhost:8080 |
+| Frontend  | http://localhost:3000 |
+| Agents    | http://localhost:8090 |
+| Banco     | localhost:5432        |
 
 ---
 
@@ -73,6 +74,10 @@ bud2/
 │       ├── routes/       # Configuração de rotas (react-router-dom)
 │       ├── types/        # Tipos TypeScript
 │       └── utils/        # Funções utilitárias
+├── agents/
+│   ├── src/bud2/  # App Python ADK dos agentes conversacionais
+│   ├── tests/            # Testes da app de agentes
+│   └── pyproject.toml    # Dependências e tooling Python
 ├── docs/                   # ADRs (Architecture Decision Records)
 ├── compose.yml
 └── Makefile

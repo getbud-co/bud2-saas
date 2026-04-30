@@ -32,22 +32,19 @@ export interface BriefingItem {
  * - healthy: completed or progress >= 70%
  * - needs-attention: everything else that's active
  */
-function getMissionHealth(mission: { status: string; progress: number; dueDate: string | null }): "at-risk" | "healthy" | "needs-attention" {
+function getMissionHealth(mission: { status: string; progress: number; endDate: string }): "at-risk" | "healthy" | "needs-attention" {
   if (mission.status === "completed") return "healthy";
   if (mission.status !== "active") return "needs-attention";
 
   if (mission.progress >= 70) return "healthy";
 
-  // Check if close to due date with low progress
-  if (mission.dueDate && mission.progress < 50) {
-    const [day, month, year] = mission.dueDate.split("/").map(Number);
-    if (day && month && year) {
-      const dueDate = new Date(year, month - 1, day);
-      const today = new Date();
-      const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      if (daysUntilDue <= 14 && daysUntilDue > 0) {
-        return "at-risk";
-      }
+  // Check if close to end date with low progress (endDate is YYYY-MM-DD)
+  if (mission.endDate && mission.progress < 50) {
+    const dueDate = new Date(mission.endDate);
+    const today = new Date();
+    const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysUntilDue <= 14 && daysUntilDue > 0) {
+      return "at-risk";
     }
   }
 

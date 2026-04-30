@@ -51,3 +51,14 @@ npm-debug.log*
 
 # typescript
 *.tsbuildinfo
+
+# Python agents
+agents/.venv/
+agents/.pytest_cache/
+agents/.ruff_cache/
+agents/**/.ruff_cache/
+agents/.mypy_cache/
+agents/**/__pycache__/
+agents/**/*.pyc
+agents/dist/
+agents/build/

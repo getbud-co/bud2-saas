@@ -265,7 +265,7 @@ export function filterMissions(
       && !indicatorTypeFilterActive
       && !statusFilterActive
       && !taskStateFilterActive
-      && dateRangeMatches(mission.dueDate, mission.dueDate)
+      && dateRangeMatches(mission.startDate, mission.endDate)
       && ownerMatches(mission.owner)
       && missionContributionMatches(mission)
       && missionSupporterMatches(mission);

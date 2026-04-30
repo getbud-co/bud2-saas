@@ -108,14 +108,9 @@ export function useHomeMissionReadModel() {
     const quarterlyCycle = cycles.find((c) => c.type === "quarterly" && c.status === "active") ?? null;
 
     const activeMissions = missions.filter((mission) => mission.status !== "cancelled");
-    
-    // Filter missions by cycle
-    const annualMissions = activeMissions.filter((m) => m.cycleId === annualCycle?.id);
-    const quarterlyMissions = activeMissions.filter((m) => m.cycleId === quarterlyCycle?.id);
-    
-    // If no missions linked to cycles, use all active missions as fallback
-    const annualKrs = flattenKrs(annualMissions.length > 0 ? annualMissions : activeMissions);
-    const quarterlyKrs = flattenKrs(quarterlyMissions.length > 0 ? quarterlyMissions : activeMissions);
+
+    const annualKrs = flattenKrs(activeMissions);
+    const quarterlyKrs = flattenKrs(activeMissions);
 
     const annualExpected = getExpectedProgress(annualCycle);
     const quarterlyExpected = getExpectedProgress(quarterlyCycle);

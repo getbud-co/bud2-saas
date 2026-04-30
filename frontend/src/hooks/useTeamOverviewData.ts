@@ -101,7 +101,11 @@ export function useTeamOverviewData(
   teamIds: string[],
   periodFilter?: PeriodFilter | null,
 ): TeamOverviewData {
-  const { missions, checkInHistory } = useMissionsData();
+  const { missions } = useMissionsData();
+  // Phase 5: wire check-in history to useCheckIns per indicator once the
+  // team overview drives its own queries. For now use an empty map so the
+  // engagement aggregation degrades gracefully.
+  const checkInHistory: Record<string, import("@/types").CheckIn[]> = {};
   const { teams } = usePeopleData();
   const { activities } = useActivityData();
   const { surveys } = useSurveysData();

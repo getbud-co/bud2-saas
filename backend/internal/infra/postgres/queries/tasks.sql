@@ -1,0 +1,59 @@
+-- name: CreateTask :one
+INSERT INTO tasks (id, organization_id, mission_id, indicator_id, assignee_id, parent_task_id, team_id, contributes_to_mission_ids, title, description, status, due_date, completed_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+RETURNING id, organization_id, mission_id, indicator_id, assignee_id, parent_task_id, team_id, contributes_to_mission_ids, title, description, status, due_date, completed_at, created_at, updated_at;
+
+-- name: GetTaskByID :one
+SELECT id, organization_id, mission_id, indicator_id, assignee_id, parent_task_id, team_id, contributes_to_mission_ids, title, description, status, due_date, completed_at, created_at, updated_at
+FROM tasks
+WHERE id = $1
+  AND organization_id = $2
+  AND deleted_at IS NULL;
+
+-- name: ListTasks :many
+SELECT id, organization_id, mission_id, indicator_id, assignee_id, parent_task_id, team_id, contributes_to_mission_ids, title, description, status, due_date, completed_at, created_at, updated_at
+FROM tasks
+WHERE organization_id = $1
+  AND deleted_at IS NULL
+  AND (sqlc.narg('mission_id')::uuid IS NULL OR mission_id = sqlc.narg('mission_id'))
+  AND (sqlc.narg('indicator_id')::uuid IS NULL OR indicator_id = sqlc.narg('indicator_id'))
+  AND (sqlc.narg('assignee_id')::uuid IS NULL OR assignee_id = sqlc.narg('assignee_id'))
+  AND (sqlc.narg('status')::text IS NULL OR status = sqlc.narg('status'))
+  AND (sqlc.narg('parent_task_id')::uuid IS NULL OR parent_task_id = sqlc.narg('parent_task_id'))
+ORDER BY created_at ASC
+LIMIT $2 OFFSET $3;
+
+-- name: CountTasks :one
+SELECT COUNT(*)
+FROM tasks
+WHERE organization_id = $1
+  AND deleted_at IS NULL
+  AND (sqlc.narg('mission_id')::uuid IS NULL OR mission_id = sqlc.narg('mission_id'))
+  AND (sqlc.narg('indicator_id')::uuid IS NULL OR indicator_id = sqlc.narg('indicator_id'))
+  AND (sqlc.narg('assignee_id')::uuid IS NULL OR assignee_id = sqlc.narg('assignee_id'))
+  AND (sqlc.narg('status')::text IS NULL OR status = sqlc.narg('status'))
+  AND (sqlc.narg('parent_task_id')::uuid IS NULL OR parent_task_id = sqlc.narg('parent_task_id'));
+
+-- name: UpdateTask :one
+UPDATE tasks
+SET title                       = $3,
+    description                 = $4,
+    indicator_id                = $5,
+    assignee_id                 = $6,
+    team_id                     = $7,
+    contributes_to_mission_ids  = $8,
+    status                      = $9,
+    due_date                    = $10,
+    completed_at                = $11,
+    updated_at                  = NOW()
+WHERE id = $1
+  AND organization_id = $2
+  AND deleted_at IS NULL
+RETURNING id, organization_id, mission_id, indicator_id, assignee_id, parent_task_id, team_id, contributes_to_mission_ids, title, description, status, due_date, completed_at, created_at, updated_at;
+
+-- name: SoftDeleteTask :execrows
+UPDATE tasks
+SET deleted_at = NOW()
+WHERE id = $1
+  AND organization_id = $2
+  AND deleted_at IS NULL;

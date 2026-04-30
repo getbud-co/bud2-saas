@@ -34,11 +34,6 @@ func (m *MissionRepository) List(ctx context.Context, filter mission.ListFilter)
 	return args.Get(0).(mission.ListResult), args.Error(1)
 }
 
-func (m *MissionRepository) IsDescendant(ctx context.Context, organizationID, ancestorID, candidateID uuid.UUID) (bool, error) {
-	args := m.Called(ctx, organizationID, ancestorID, candidateID)
-	return args.Bool(0), args.Error(1)
-}
-
 func (m *MissionRepository) Update(ctx context.Context, ms *mission.Mission) (*mission.Mission, error) {
 	args := m.Called(ctx, ms)
 	if args.Get(0) == nil {

@@ -75,34 +75,8 @@ describe("MissionsPage — filtro 'Time de apoio'", () => {
   });
 });
 
-// ── Seed data com members (time de apoio) ─────────────────────────────────────
-
-describe("MissionsPage — seed data com members no apoio", () => {
-  beforeEach(() => {
-    localStorage.clear();
-  });
-
-  it("exibe missão 'Lançar módulo de Missões v2' que tem apoio", async () => {
-    renderWithProviders(<MissionsPage mine={false} />);
-    expect(
-      await screen.findByText(/Lançar módulo de Missões v2/i),
-    ).toBeInTheDocument();
-  });
-
-  it("exibe missão 'Aumentar adoção do produto em 50%' que tem apoio", async () => {
-    renderWithProviders(<MissionsPage mine={false} />);
-    expect(
-      await screen.findByText(/Aumentar adoção do produto em 50%/i),
-    ).toBeInTheDocument();
-  });
-
-  it("missões do seed com time de apoio são renderizadas corretamente", async () => {
-    renderWithProviders(<MissionsPage mine={false} />);
-    // Aguarda carregamento; verifica que pelo menos uma missão do time produto aparece
-    const mp1 = await screen.findByText(/Lançar módulo de Missões v2/i);
-    expect(mp1).toBeInTheDocument();
-
-    const mp2 = await screen.findByText(/Aumentar adoção/i);
-    expect(mp2).toBeInTheDocument();
-  });
-});
+// As checagens originais "exibe missão 'X' do seed" dependiam de MOCK_MISSIONS
+// hidratado no snapshot. Schema 8 substitui essa fonte pela API; a cobertura
+// de seed/members vive agora nos testes que injetam dados via setQueryData
+// (ainda a ser introduzido, ver plano commit 10). Mantemos apenas os casos
+// que exercitam o filtro em si, acima.

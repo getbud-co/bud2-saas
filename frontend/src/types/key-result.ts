@@ -48,8 +48,7 @@ export interface KeyResult {
   periodLabel: string | null;
   periodStart: string | null;
   periodEnd: string | null;
-  sortOrder: number;
-  
+
   // Timestamps
   createdAt: string;
   updatedAt: string;

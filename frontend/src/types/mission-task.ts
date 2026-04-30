@@ -8,7 +8,7 @@ export interface MissionTask {
   teamId: string | null;
   dueDate: string | null;
   isDone: boolean;
-  sortOrder: number;
+  status: "todo" | "in_progress" | "done" | "cancelled";
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -29,5 +29,4 @@ export interface SubTask {
   taskId: string;
   title: string;
   isDone: boolean;
-  sortOrder: number;
 }

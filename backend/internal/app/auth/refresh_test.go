@@ -29,6 +29,7 @@ func newRefreshUseCase(
 		issuer, hasher,
 		rtRepo, tokenHasher,
 		testutil.NewDiscardLogger(),
+		8*time.Hour, 7*24*time.Hour,
 	)
 }
 

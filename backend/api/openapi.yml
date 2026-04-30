@@ -784,6 +784,191 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
 
+  /tags:
+    get:
+      summary: List tags in active organization
+      tags: [Tags]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: size
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TagListResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    post:
+      summary: Create tag in active organization
+      tags: [Tags]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTagRequest"
+      responses:
+        "201":
+          description: Created
+          headers:
+            Location:
+              schema:
+                type: string
+              description: URL do recurso criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tag"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: Tag name already in use
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: Validation error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
+  /tags/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get tag from active organization
+      tags: [Tags]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tag"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    put:
+      summary: Update tag in active organization
+      tags: [Tags]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTagRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tag"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: Tag name already in use
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: Validation error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    delete:
+      summary: Soft delete tag from active organization
+      tags: [Tags]
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
   /missions:
     get:
       summary: List missions in active organization
@@ -797,9 +982,6 @@ paths:
         - name: size
           in: query
           schema: { type: integer, default: 20 }
-        - name: cycle_id
-          in: query
-          schema: { type: string, format: uuid }
         - name: parent_id
           in: query
           description: "Filter by parent. Use 'null' literal to fetch only root missions."
@@ -983,6 +1165,629 @@ paths:
       responses:
         "204":
           description: Deleted
+        "400":
+          description: Bad request (invalid UUID in path)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
+  /indicators:
+    get:
+      summary: List indicators in active organization
+      tags: [Indicators]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: size
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: mission_id
+          in: query
+          schema: { type: string, format: uuid }
+        - name: owner_id
+          in: query
+          schema: { type: string, format: uuid }
+        - name: status
+          in: query
+          schema: { type: string, enum: [draft, active, at_risk, done, archived] }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndicatorListResponse"
+        "400":
+          description: Bad request (invalid UUID, invalid status filter)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    post:
+      summary: Create indicator in active organization
+      tags: [Indicators]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateIndicatorRequest"
+      responses:
+        "201":
+          description: Created
+          headers:
+            Location:
+              schema:
+                type: string
+              description: URL do recurso criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Indicator"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: Validation error or invalid reference (mission_id/owner_id)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
+  /indicators/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get indicator from active organization
+      tags: [Indicators]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Indicator"
+        "400":
+          description: Bad request (invalid UUID in path)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    patch:
+      summary: Partially update indicator in active organization
+      description: |
+        JSON Merge Patch semantics (RFC 7396): only fields present in the body
+        are applied; absent fields preserve their current value. `mission_id`
+        is intentionally NOT exposed — moving an indicator between missions
+        is not supported via this endpoint.
+      tags: [Indicators]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchIndicatorRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Indicator"
+        "400":
+          description: Bad request (invalid UUID in path or empty body)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: Validation error or invalid reference (owner_id)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    delete:
+      summary: Soft delete indicator from active organization
+      tags: [Indicators]
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Deleted
+        "400":
+          description: Bad request (invalid UUID in path)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
+  /tasks:
+    get:
+      summary: List tasks in active organization
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: size
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: mission_id
+          in: query
+          schema: { type: string, format: uuid }
+        - name: assignee_id
+          in: query
+          schema: { type: string, format: uuid }
+        - name: status
+          in: query
+          schema: { type: string, enum: [todo, in_progress, done, cancelled] }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskListResponse"
+        "400":
+          description: Bad request (invalid UUID, invalid status filter)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    post:
+      summary: Create task in active organization
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTaskRequest"
+      responses:
+        "201":
+          description: Created
+          headers:
+            Location:
+              schema:
+                type: string
+              description: URL do recurso criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: Validation error or invalid reference (mission_id/assignee_id)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
+  /tasks/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get task from active organization
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          description: Bad request (invalid UUID in path)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    patch:
+      summary: Partially update task in active organization
+      description: |
+        JSON Merge Patch semantics (RFC 7396): only fields present in the body
+        are applied; absent fields preserve their current value. `mission_id`
+        is intentionally NOT exposed — moving a task between missions is not
+        supported via this endpoint.
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchTaskRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          description: Bad request (invalid UUID in path or empty body)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: Validation error or invalid reference (assignee_id)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    delete:
+      summary: Soft delete task from active organization
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Deleted
+        "400":
+          description: Bad request (invalid UUID in path)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
+  /checkins:
+    get:
+      summary: List check-ins by indicator in active organization
+      tags: [CheckIns]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: indicator_id
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: size
+          in: query
+          schema: { type: integer, default: 50 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckInListResponse"
+        "400":
+          description: Bad request (missing or invalid indicator_id)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    post:
+      summary: Create check-in in active organization
+      tags: [CheckIns]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCheckInRequest"
+      responses:
+        "201":
+          description: Created
+          headers:
+            Location:
+              schema:
+                type: string
+              description: URL do recurso criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckIn"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: Validation error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
+  /checkins/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get check-in from active organization
+      tags: [CheckIns]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckIn"
+        "400":
+          description: Bad request (invalid UUID in path)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    patch:
+      summary: Update check-in in active organization
+      tags: [CheckIns]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchCheckInRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckIn"
+        "400":
+          description: Bad request (invalid UUID in path)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: Validation error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    delete:
+      summary: Soft delete check-in from active organization
+      tags: [CheckIns]
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Deleted (idempotent)
         "400":
           description: Bad request (invalid UUID in path)
           content:
@@ -1419,13 +2224,50 @@ components:
         okr_definition_deadline: { type: string, format: date, nullable: true }
         mid_review_date: { type: string, format: date, nullable: true }
 
-    Mission:
+    Tag:
       type: object
-      required: [id, org_id, cycle_id, parent_id, owner_id, team_id, title, description, status, visibility, kanban_status, sort_order, due_date, completed_at, created_at, updated_at]
+      required: [id, org_id, name, color, usage_count, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         org_id: { type: string, format: uuid }
-        cycle_id: { type: string, format: uuid, nullable: true }
+        name: { type: string }
+        color: { type: string, enum: [neutral, orange, wine, caramel, success, warning, error] }
+        usage_count: { type: integer, description: "Number of active missions linked to this tag" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    TagListResponse:
+      type: object
+      required: [data, total, page, size]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Tag"
+        total: { type: integer }
+        page: { type: integer }
+        size: { type: integer }
+
+    CreateTagRequest:
+      type: object
+      required: [name, color]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        color: { type: string, enum: [neutral, orange, wine, caramel, success, warning, error] }
+
+    UpdateTagRequest:
+      type: object
+      required: [name, color]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        color: { type: string, enum: [neutral, orange, wine, caramel, success, warning, error] }
+
+    Mission:
+      type: object
+      required: [id, org_id, parent_id, owner_id, team_id, title, description, status, visibility, kanban_status, start_date, end_date, completed_at, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
         parent_id: { type: string, format: uuid, nullable: true }
         owner_id: { type: string, format: uuid }
         team_id: { type: string, format: uuid, nullable: true }
@@ -1434,11 +2276,41 @@ components:
         status: { type: string, enum: [draft, active, paused, completed, cancelled] }
         visibility: { type: string, enum: [public, team_only, private] }
         kanban_status: { type: string, enum: [uncategorized, todo, doing, done] }
-        sort_order: { type: integer }
-        due_date: { type: string, format: date, nullable: true }
+        start_date: { type: string, format: date }
+        end_date: { type: string, format: date }
         completed_at: { type: string, format: date-time, nullable: true }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+        indicators:
+          description: |
+            Only populated on the response of POST /missions when the request
+            included nested indicators. GET /missions and GET /missions/{id}
+            do not return this field — fetch /indicators?mission_id=… instead.
+          type: array
+          items:
+            $ref: "#/components/schemas/Indicator"
+        tasks:
+          description: |
+            Same semantics as `indicators`: only present on the POST response
+            when the request was nested.
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/MissionMember"
+        tag_ids:
+          type: array
+          items: { type: string, format: uuid }
+
+    MissionMember:
+      type: object
+      required: [user_id, role, joined_at]
+      properties:
+        user_id: { type: string, format: uuid }
+        role: { type: string, enum: [owner, supporter, observer] }
+        joined_at: { type: string, format: date-time }
 
     MissionListResponse:
       type: object
@@ -1454,18 +2326,79 @@ components:
 
     CreateMissionRequest:
       type: object
-      required: [title, owner_id]
+      required: [title, owner_id, start_date, end_date]
+      description: |
+        POST /missions accepts inline `indicators` and `tasks` so the whole
+        mission can be created atomically (one request, one transaction). To
+        manage indicators/tasks AFTER creation use the `/indicators` and
+        `/tasks` endpoints — PATCH /missions/{id} does NOT accept these
+        fields. Owner_id of nested children defaults to the mission owner
+        when omitted.
       properties:
         title: { type: string, minLength: 1, maxLength: 200 }
         description: { type: string, maxLength: 5000, nullable: true }
-        cycle_id: { type: string, format: uuid, nullable: true }
         parent_id: { type: string, format: uuid, nullable: true }
         owner_id: { type: string, format: uuid }
         team_id: { type: string, format: uuid, nullable: true }
         status: { type: string, enum: [draft, active, paused, completed, cancelled] }
         visibility: { type: string, enum: [public, team_only, private] }
         kanban_status: { type: string, enum: [uncategorized, todo, doing, done] }
-        sort_order: { type: integer }
+        start_date: { type: string, format: date }
+        end_date: { type: string, format: date }
+        members:
+          type: array
+          items:
+            type: object
+            required: [user_id]
+            properties:
+              user_id: { type: string, format: uuid }
+              role: { type: string, enum: [owner, supporter, observer] }
+        tag_ids:
+          type: array
+          items: { type: string, format: uuid }
+        indicators:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateMissionIndicatorInline"
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateMissionTaskInline"
+
+    CreateMissionIndicatorInline:
+      type: object
+      required: [title]
+      description: Indicator created inline with its parent mission. mission_id is supplied by the parent.
+      properties:
+        owner_id: { type: string, format: uuid, nullable: true }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 5000, nullable: true }
+        target_value: { type: number, format: double, nullable: true }
+        current_value: { type: number, format: double, nullable: true }
+        unit: { type: string, maxLength: 32, nullable: true }
+        status: { type: string, enum: [draft, active, at_risk, done, archived] }
+        due_date: { type: string, format: date, nullable: true }
+
+    CreateMissionTaskInline:
+      type: object
+      required: [title]
+      description: |
+        Task created inline with its parent mission. mission_id is supplied
+        by the parent. The task may be nested under one of the inline
+        indicators (use indicator_index, the position in the parent
+        request's indicators array) or under an existing indicator
+        already on the server (indicator_id). The two are mutually
+        exclusive; both null means the task lives at the mission level.
+      properties:
+        assignee_id: { type: string, format: uuid, nullable: true }
+        indicator_id: { type: string, format: uuid, nullable: true }
+        indicator_index:
+          type: integer
+          minimum: 0
+          nullable: true
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 5000, nullable: true }
+        status: { type: string, enum: [todo, in_progress, done, cancelled] }
         due_date: { type: string, format: date, nullable: true }
 
     PatchMissionRequest:
@@ -1481,13 +2414,193 @@ components:
       properties:
         title: { type: string, minLength: 1, maxLength: 200 }
         description: { type: string, maxLength: 5000 }
-        cycle_id: { type: string, format: uuid }
         owner_id: { type: string, format: uuid }
         team_id: { type: string, format: uuid }
         status: { type: string, enum: [draft, active, paused, completed, cancelled] }
         visibility: { type: string, enum: [public, team_only, private] }
         kanban_status: { type: string, enum: [uncategorized, todo, doing, done] }
-        sort_order: { type: integer }
+        start_date: { type: string, format: date }
+        end_date: { type: string, format: date }
+        members:
+          type: array
+          items:
+            type: object
+            required: [user_id]
+            properties:
+              user_id: { type: string, format: uuid }
+              role: { type: string, enum: [owner, supporter, observer] }
+        tag_ids:
+          type: array
+          items: { type: string, format: uuid }
+
+    Indicator:
+      type: object
+      required: [id, org_id, mission_id, owner_id, title, description, target_value, current_value, unit, status, due_date, measurement_mode, goal_type, low_threshold, high_threshold, period_start, period_end, team_id, linked_survey_id, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        mission_id: { type: string, format: uuid }
+        owner_id: { type: string, format: uuid }
+        team_id: { type: string, format: uuid, nullable: true }
+        title: { type: string }
+        description: { type: string, nullable: true }
+        target_value: { type: number, format: double, nullable: true }
+        current_value: { type: number, format: double, nullable: true }
+        unit: { type: string, nullable: true }
+        status: { type: string, enum: [draft, active, at_risk, done, archived] }
+        due_date: { type: string, format: date, nullable: true }
+        measurement_mode: { type: string, enum: [manual, survey, task, mission, external] }
+        goal_type: { type: string, enum: [reach, above, below, between, survey] }
+        low_threshold: { type: number, format: double, nullable: true }
+        high_threshold: { type: number, format: double, nullable: true }
+        period_start: { type: string, format: date, nullable: true }
+        period_end: { type: string, format: date, nullable: true }
+        linked_survey_id: { type: string, format: uuid, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    IndicatorListResponse:
+      type: object
+      required: [data, total, page, size]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Indicator"
+        total: { type: integer }
+        page: { type: integer }
+        size: { type: integer }
+
+    CreateIndicatorRequest:
+      type: object
+      required: [mission_id, owner_id, title]
+      properties:
+        mission_id: { type: string, format: uuid }
+        owner_id: { type: string, format: uuid }
+        team_id: { type: string, format: uuid, nullable: true }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 5000, nullable: true }
+        target_value: { type: number, format: double, nullable: true }
+        current_value: { type: number, format: double, nullable: true }
+        unit: { type: string, maxLength: 32, nullable: true }
+        status: { type: string, enum: [draft, active, at_risk, done, archived] }
+        due_date: { type: string, format: date, nullable: true }
+        measurement_mode: { type: string, enum: [manual, survey, task, mission, external] }
+        goal_type: { type: string, enum: [reach, above, below, between, survey] }
+        low_threshold: { type: number, format: double, nullable: true }
+        high_threshold: { type: number, format: double, nullable: true }
+        period_start: { type: string, format: date, nullable: true }
+        period_end: { type: string, format: date, nullable: true }
+        linked_survey_id: { type: string, format: uuid, nullable: true }
+
+    PatchIndicatorRequest:
+      type: object
+      description: |
+        JSON Merge Patch body. All fields are optional; only fields present in
+        the request are applied. `mission_id` is intentionally NOT exposed —
+        moving an indicator between missions is not supported via this endpoint.
+        Same null-vs-absent limitation as the mission patch endpoint.
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 5000 }
+        owner_id: { type: string, format: uuid }
+        team_id: { type: string, format: uuid }
+        target_value: { type: number, format: double }
+        current_value: { type: number, format: double }
+        unit: { type: string, maxLength: 32 }
+        status: { type: string, enum: [draft, active, at_risk, done, archived] }
+        due_date: { type: string, format: date }
+        measurement_mode: { type: string, enum: [manual, survey, task, mission, external] }
+        goal_type: { type: string, enum: [reach, above, below, between, survey] }
+        low_threshold: { type: number, format: double }
+        high_threshold: { type: number, format: double }
+        period_start: { type: string, format: date }
+        period_end: { type: string, format: date }
+        linked_survey_id: { type: string, format: uuid }
+
+    Task:
+      type: object
+      required: [id, org_id, mission_id, indicator_id, parent_task_id, team_id, contributes_to_mission_ids, assignee_id, title, description, status, due_date, completed_at, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        mission_id: { type: string, format: uuid }
+        indicator_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: |
+            When set, the task is nested under one of the mission's
+            indicators (UI shows it inside the indicator card). When null,
+            the task lives at the mission level.
+        parent_task_id: { type: string, format: uuid, nullable: true }
+        team_id: { type: string, format: uuid, nullable: true }
+        contributes_to_mission_ids:
+          type: array
+          items: { type: string, format: uuid }
+        assignee_id: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string, nullable: true }
+        status: { type: string, enum: [todo, in_progress, done, cancelled] }
+        due_date: { type: string, format: date, nullable: true }
+        completed_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    TaskListResponse:
+      type: object
+      required: [data, total, page, size]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
+        total: { type: integer }
+        page: { type: integer }
+        size: { type: integer }
+
+    CreateTaskRequest:
+      type: object
+      required: [mission_id, assignee_id, title]
+      properties:
+        mission_id: { type: string, format: uuid }
+        indicator_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: |
+            Optional. When set, the task is nested under the indicator;
+            the indicator must belong to the same mission.
+        parent_task_id: { type: string, format: uuid, nullable: true }
+        team_id: { type: string, format: uuid, nullable: true }
+        contributes_to_mission_ids:
+          type: array
+          items: { type: string, format: uuid }
+        assignee_id: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 5000, nullable: true }
+        status: { type: string, enum: [todo, in_progress, done, cancelled] }
+        due_date: { type: string, format: date, nullable: true }
+
+    PatchTaskRequest:
+      type: object
+      description: |
+        JSON Merge Patch body. All fields are optional; only fields present in
+        the request are applied. `mission_id` is intentionally NOT exposed.
+        `indicator_id` can be set to re-assign the task within the same
+        mission; clearing it (moving back to the mission root) requires a
+        future endpoint that supports null/absent distinction.
+        completed_at is managed by the server based on status transitions.
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 5000 }
+        indicator_id: { type: string, format: uuid }
+        assignee_id: { type: string, format: uuid }
+        team_id: { type: string, format: uuid }
+        contributes_to_mission_ids:
+          type: array
+          items: { type: string, format: uuid }
+        status: { type: string, enum: [todo, in_progress, done, cancelled] }
         due_date: { type: string, format: date }
 
     Role:
@@ -1534,3 +2647,71 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Permission"
+
+    CheckIn:
+      type: object
+      required: [id, org_id, indicator_id, author_id, value, confidence, mentions, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        indicator_id: { type: string, format: uuid }
+        author_id: { type: string, format: uuid }
+        value: { type: string }
+        previous_value: { type: string, nullable: true }
+        confidence:
+          type: string
+          enum: [high, medium, low, barrier, deprioritized]
+        note: { type: string, nullable: true }
+        mentions:
+          type: array
+          items: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        author:
+          type: object
+          nullable: true
+          properties:
+            id: { type: string, format: uuid }
+            first_name: { type: string }
+            last_name: { type: string }
+
+    CheckInListResponse:
+      type: object
+      required: [data, total, page, size]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/CheckIn"
+        total: { type: integer, format: int64 }
+        page: { type: integer }
+        size: { type: integer }
+
+    CreateCheckInRequest:
+      type: object
+      required: [indicator_id, author_id, value, confidence]
+      properties:
+        indicator_id: { type: string, format: uuid }
+        author_id: { type: string, format: uuid }
+        value: { type: string, minLength: 1 }
+        previous_value: { type: string, nullable: true }
+        confidence:
+          type: string
+          enum: [high, medium, low, barrier, deprioritized]
+        note: { type: string, nullable: true }
+        mentions:
+          type: array
+          items: { type: string }
+
+    PatchCheckInRequest:
+      type: object
+      required: [value, confidence]
+      properties:
+        value: { type: string, minLength: 1 }
+        confidence:
+          type: string
+          enum: [high, medium, low, barrier, deprioritized]
+        note: { type: string, nullable: true }
+        mentions:
+          type: array
+          items: { type: string }

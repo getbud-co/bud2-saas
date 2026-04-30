@@ -21,6 +21,8 @@ type Config struct {
 	MaxBodySize     int64
 	RequestTimeout  time.Duration
 	ShutdownTimeout time.Duration
+	TokenTTL        time.Duration
+	RefreshTokenTTL time.Duration
 }
 
 func Load() *Config {
@@ -39,6 +41,8 @@ func Load() *Config {
 		MaxBodySize:     getEnvInt64("MAX_BODY_SIZE", 1048576), // 1 MB default
 		RequestTimeout:  getEnvDuration("REQUEST_TIMEOUT", 30*time.Second),
 		ShutdownTimeout: getEnvDuration("SHUTDOWN_TIMEOUT", 30*time.Second),
+		TokenTTL:        getEnvDuration("TOKEN_TTL", 8*time.Hour),
+		RefreshTokenTTL: getEnvDuration("REFRESH_TOKEN_TTL", 7*24*time.Hour),
 	}
 
 	return cfg

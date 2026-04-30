@@ -12,7 +12,6 @@ import (
 
 type ListCommand struct {
 	OrganizationID domain.TenantID
-	CycleID        *uuid.UUID
 	OwnerID        *uuid.UUID
 	TeamID         *uuid.UUID
 	Status         *string
@@ -50,7 +49,6 @@ func (uc *ListUseCase) Execute(ctx context.Context, cmd ListCommand) (domainmiss
 
 	res, err := uc.missions.List(ctx, domainmission.ListFilter{
 		OrganizationID: cmd.OrganizationID.UUID(),
-		CycleID:        cmd.CycleID,
 		OwnerID:        cmd.OwnerID,
 		TeamID:         cmd.TeamID,
 		Status:         status,

@@ -1332,6 +1332,301 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List tags in active organization */
+        get: {
+            parameters: {
+                query?: {
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TagListResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create tag in active organization */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateTagRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        /** @description URL do recurso criado */
+                        Location?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Tag"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Tag name already in use */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tags/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** Get tag from active organization */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Tag"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        /** Update tag in active organization */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateTagRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Tag"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Tag name already in use */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Soft delete tag from active organization */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/missions": {
         parameters: {
             query?: never;
@@ -1345,7 +1640,6 @@ export interface paths {
                 query?: {
                     page?: number;
                     size?: number;
-                    cycle_id?: string;
                     /** @description Filter by parent. Use 'null' literal to fetch only root missions. */
                     parent_id?: string;
                     status?: "draft" | "active" | "paused" | "completed" | "cancelled";
@@ -1609,6 +1903,964 @@ export interface paths {
                     };
                 };
                 /** @description Bad request (invalid UUID in path or empty body) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/indicators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List indicators in active organization */
+        get: {
+            parameters: {
+                query?: {
+                    page?: number;
+                    size?: number;
+                    mission_id?: string;
+                    owner_id?: string;
+                    status?: "draft" | "active" | "at_risk" | "done" | "archived";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["IndicatorListResponse"];
+                    };
+                };
+                /** @description Bad request (invalid UUID, invalid status filter) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create indicator in active organization */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateIndicatorRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        /** @description URL do recurso criado */
+                        Location?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Indicator"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Validation error or invalid reference (mission_id/owner_id) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/indicators/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** Get indicator from active organization */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Indicator"];
+                    };
+                };
+                /** @description Bad request (invalid UUID in path) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Soft delete indicator from active organization */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad request (invalid UUID in path) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Partially update indicator in active organization
+         * @description JSON Merge Patch semantics (RFC 7396): only fields present in the body
+         *     are applied; absent fields preserve their current value. `mission_id`
+         *     is intentionally NOT exposed — moving an indicator between missions
+         *     is not supported via this endpoint.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PatchIndicatorRequest"];
+                };
+            };
+            responses: {
+                /** @description Updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Indicator"];
+                    };
+                };
+                /** @description Bad request (invalid UUID in path or empty body) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Validation error or invalid reference (owner_id) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List tasks in active organization */
+        get: {
+            parameters: {
+                query?: {
+                    page?: number;
+                    size?: number;
+                    mission_id?: string;
+                    assignee_id?: string;
+                    status?: "todo" | "in_progress" | "done" | "cancelled";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TaskListResponse"];
+                    };
+                };
+                /** @description Bad request (invalid UUID, invalid status filter) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create task in active organization */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateTaskRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        /** @description URL do recurso criado */
+                        Location?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Task"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Validation error or invalid reference (mission_id/assignee_id) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** Get task from active organization */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Task"];
+                    };
+                };
+                /** @description Bad request (invalid UUID in path) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Soft delete task from active organization */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad request (invalid UUID in path) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Partially update task in active organization
+         * @description JSON Merge Patch semantics (RFC 7396): only fields present in the body
+         *     are applied; absent fields preserve their current value. `mission_id`
+         *     is intentionally NOT exposed — moving a task between missions is not
+         *     supported via this endpoint.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PatchTaskRequest"];
+                };
+            };
+            responses: {
+                /** @description Updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Task"];
+                    };
+                };
+                /** @description Bad request (invalid UUID in path or empty body) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Validation error or invalid reference (assignee_id) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/checkins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List check-ins by indicator in active organization */
+        get: {
+            parameters: {
+                query: {
+                    indicator_id: string;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CheckInListResponse"];
+                    };
+                };
+                /** @description Bad request (missing or invalid indicator_id) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create check-in in active organization */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateCheckInRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        /** @description URL do recurso criado */
+                        Location?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CheckIn"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/checkins/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** Get check-in from active organization */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CheckIn"];
+                    };
+                };
+                /** @description Bad request (invalid UUID in path) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Soft delete check-in from active organization */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted (idempotent) */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad request (invalid UUID in path) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetail"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Update check-in in active organization */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PatchCheckInRequest"];
+                };
+            };
+            responses: {
+                /** @description Updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CheckIn"];
+                    };
+                };
+                /** @description Bad request (invalid UUID in path) */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -2054,13 +3306,42 @@ export interface components {
             /** Format: date */
             mid_review_date?: string | null;
         };
+        Tag: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            org_id: string;
+            name: string;
+            /** @enum {string} */
+            color: "neutral" | "orange" | "wine" | "caramel" | "success" | "warning" | "error";
+            /** @description Number of active missions linked to this tag */
+            usage_count: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        TagListResponse: {
+            data: components["schemas"]["Tag"][];
+            total: number;
+            page: number;
+            size: number;
+        };
+        CreateTagRequest: {
+            name: string;
+            /** @enum {string} */
+            color: "neutral" | "orange" | "wine" | "caramel" | "success" | "warning" | "error";
+        };
+        UpdateTagRequest: {
+            name: string;
+            /** @enum {string} */
+            color: "neutral" | "orange" | "wine" | "caramel" | "success" | "warning" | "error";
+        };
         Mission: {
             /** Format: uuid */
             id: string;
             /** Format: uuid */
             org_id: string;
-            /** Format: uuid */
-            cycle_id: string | null;
             /** Format: uuid */
             parent_id: string | null;
             /** Format: uuid */
@@ -2075,15 +3356,37 @@ export interface components {
             visibility: "public" | "team_only" | "private";
             /** @enum {string} */
             kanban_status: "uncategorized" | "todo" | "doing" | "done";
-            sort_order: number;
             /** Format: date */
-            due_date: string | null;
+            start_date: string;
+            /** Format: date */
+            end_date: string;
             /** Format: date-time */
             completed_at: string | null;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
             updated_at: string;
+            /**
+             * @description Only populated on the response of POST /missions when the request
+             *     included nested indicators. GET /missions and GET /missions/{id}
+             *     do not return this field — fetch /indicators?mission_id=… instead.
+             */
+            indicators?: components["schemas"]["Indicator"][];
+            /**
+             * @description Same semantics as `indicators`: only present on the POST response
+             *     when the request was nested.
+             */
+            tasks?: components["schemas"]["Task"][];
+            members?: components["schemas"]["MissionMember"][];
+            tag_ids?: string[];
+        };
+        MissionMember: {
+            /** Format: uuid */
+            user_id: string;
+            /** @enum {string} */
+            role: "owner" | "supporter" | "observer";
+            /** Format: date-time */
+            joined_at: string;
         };
         MissionListResponse: {
             data: components["schemas"]["Mission"][];
@@ -2091,11 +3394,17 @@ export interface components {
             page: number;
             size: number;
         };
+        /**
+         * @description POST /missions accepts inline `indicators` and `tasks` so the whole
+         *     mission can be created atomically (one request, one transaction). To
+         *     manage indicators/tasks AFTER creation use the `/indicators` and
+         *     `/tasks` endpoints — PATCH /missions/{id} does NOT accept these
+         *     fields. Owner_id of nested children defaults to the mission owner
+         *     when omitted.
+         */
         CreateMissionRequest: {
             title: string;
             description?: string | null;
-            /** Format: uuid */
-            cycle_id?: string | null;
             /** Format: uuid */
             parent_id?: string | null;
             /** Format: uuid */
@@ -2108,7 +3417,54 @@ export interface components {
             visibility?: "public" | "team_only" | "private";
             /** @enum {string} */
             kanban_status?: "uncategorized" | "todo" | "doing" | "done";
-            sort_order?: number;
+            /** Format: date */
+            start_date: string;
+            /** Format: date */
+            end_date: string;
+            members?: {
+                /** Format: uuid */
+                user_id: string;
+                /** @enum {string} */
+                role?: "owner" | "supporter" | "observer";
+            }[];
+            tag_ids?: string[];
+            indicators?: components["schemas"]["CreateMissionIndicatorInline"][];
+            tasks?: components["schemas"]["CreateMissionTaskInline"][];
+        };
+        /** @description Indicator created inline with its parent mission. mission_id is supplied by the parent. */
+        CreateMissionIndicatorInline: {
+            /** Format: uuid */
+            owner_id?: string | null;
+            title: string;
+            description?: string | null;
+            /** Format: double */
+            target_value?: number | null;
+            /** Format: double */
+            current_value?: number | null;
+            unit?: string | null;
+            /** @enum {string} */
+            status?: "draft" | "active" | "at_risk" | "done" | "archived";
+            /** Format: date */
+            due_date?: string | null;
+        };
+        /**
+         * @description Task created inline with its parent mission. mission_id is supplied
+         *     by the parent. The task may be nested under one of the inline
+         *     indicators (use indicator_index, the position in the parent
+         *     request's indicators array) or under an existing indicator
+         *     already on the server (indicator_id). The two are mutually
+         *     exclusive; both null means the task lives at the mission level.
+         */
+        CreateMissionTaskInline: {
+            /** Format: uuid */
+            assignee_id?: string | null;
+            /** Format: uuid */
+            indicator_id?: string | null;
+            indicator_index?: number | null;
+            title: string;
+            description?: string | null;
+            /** @enum {string} */
+            status?: "todo" | "in_progress" | "done" | "cancelled";
             /** Format: date */
             due_date?: string | null;
         };
@@ -2125,8 +3481,6 @@ export interface components {
             title?: string;
             description?: string;
             /** Format: uuid */
-            cycle_id?: string;
-            /** Format: uuid */
             owner_id?: string;
             /** Format: uuid */
             team_id?: string;
@@ -2136,7 +3490,218 @@ export interface components {
             visibility?: "public" | "team_only" | "private";
             /** @enum {string} */
             kanban_status?: "uncategorized" | "todo" | "doing" | "done";
-            sort_order?: number;
+            /** Format: date */
+            start_date?: string;
+            /** Format: date */
+            end_date?: string;
+            members?: {
+                /** Format: uuid */
+                user_id: string;
+                /** @enum {string} */
+                role?: "owner" | "supporter" | "observer";
+            }[];
+            tag_ids?: string[];
+        };
+        Indicator: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            org_id: string;
+            /** Format: uuid */
+            mission_id: string;
+            /** Format: uuid */
+            owner_id: string;
+            /** Format: uuid */
+            team_id: string | null;
+            title: string;
+            description: string | null;
+            /** Format: double */
+            target_value: number | null;
+            /** Format: double */
+            current_value: number | null;
+            unit: string | null;
+            /** @enum {string} */
+            status: "draft" | "active" | "at_risk" | "done" | "archived";
+            /** Format: date */
+            due_date: string | null;
+            /** @enum {string} */
+            measurement_mode: "manual" | "survey" | "task" | "mission" | "external";
+            /** @enum {string} */
+            goal_type: "reach" | "above" | "below" | "between" | "survey";
+            /** Format: double */
+            low_threshold: number | null;
+            /** Format: double */
+            high_threshold: number | null;
+            /** Format: date */
+            period_start: string | null;
+            /** Format: date */
+            period_end: string | null;
+            /** Format: uuid */
+            linked_survey_id: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        IndicatorListResponse: {
+            data: components["schemas"]["Indicator"][];
+            total: number;
+            page: number;
+            size: number;
+        };
+        CreateIndicatorRequest: {
+            /** Format: uuid */
+            mission_id: string;
+            /** Format: uuid */
+            owner_id: string;
+            /** Format: uuid */
+            team_id?: string | null;
+            title: string;
+            description?: string | null;
+            /** Format: double */
+            target_value?: number | null;
+            /** Format: double */
+            current_value?: number | null;
+            unit?: string | null;
+            /** @enum {string} */
+            status?: "draft" | "active" | "at_risk" | "done" | "archived";
+            /** Format: date */
+            due_date?: string | null;
+            /** @enum {string} */
+            measurement_mode?: "manual" | "survey" | "task" | "mission" | "external";
+            /** @enum {string} */
+            goal_type?: "reach" | "above" | "below" | "between" | "survey";
+            /** Format: double */
+            low_threshold?: number | null;
+            /** Format: double */
+            high_threshold?: number | null;
+            /** Format: date */
+            period_start?: string | null;
+            /** Format: date */
+            period_end?: string | null;
+            /** Format: uuid */
+            linked_survey_id?: string | null;
+        };
+        /**
+         * @description JSON Merge Patch body. All fields are optional; only fields present in
+         *     the request are applied. `mission_id` is intentionally NOT exposed —
+         *     moving an indicator between missions is not supported via this endpoint.
+         *     Same null-vs-absent limitation as the mission patch endpoint.
+         */
+        PatchIndicatorRequest: {
+            title?: string;
+            description?: string;
+            /** Format: uuid */
+            owner_id?: string;
+            /** Format: uuid */
+            team_id?: string;
+            /** Format: double */
+            target_value?: number;
+            /** Format: double */
+            current_value?: number;
+            unit?: string;
+            /** @enum {string} */
+            status?: "draft" | "active" | "at_risk" | "done" | "archived";
+            /** Format: date */
+            due_date?: string;
+            /** @enum {string} */
+            measurement_mode?: "manual" | "survey" | "task" | "mission" | "external";
+            /** @enum {string} */
+            goal_type?: "reach" | "above" | "below" | "between" | "survey";
+            /** Format: double */
+            low_threshold?: number;
+            /** Format: double */
+            high_threshold?: number;
+            /** Format: date */
+            period_start?: string;
+            /** Format: date */
+            period_end?: string;
+            /** Format: uuid */
+            linked_survey_id?: string;
+        };
+        Task: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            org_id: string;
+            /** Format: uuid */
+            mission_id: string;
+            /**
+             * Format: uuid
+             * @description When set, the task is nested under one of the mission's
+             *     indicators (UI shows it inside the indicator card). When null,
+             *     the task lives at the mission level.
+             */
+            indicator_id: string | null;
+            /** Format: uuid */
+            parent_task_id: string | null;
+            /** Format: uuid */
+            team_id: string | null;
+            contributes_to_mission_ids: string[];
+            /** Format: uuid */
+            assignee_id: string;
+            title: string;
+            description: string | null;
+            /** @enum {string} */
+            status: "todo" | "in_progress" | "done" | "cancelled";
+            /** Format: date */
+            due_date: string | null;
+            /** Format: date-time */
+            completed_at: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        TaskListResponse: {
+            data: components["schemas"]["Task"][];
+            total: number;
+            page: number;
+            size: number;
+        };
+        CreateTaskRequest: {
+            /** Format: uuid */
+            mission_id: string;
+            /**
+             * Format: uuid
+             * @description Optional. When set, the task is nested under the indicator;
+             *     the indicator must belong to the same mission.
+             */
+            indicator_id?: string | null;
+            /** Format: uuid */
+            parent_task_id?: string | null;
+            /** Format: uuid */
+            team_id?: string | null;
+            contributes_to_mission_ids?: string[];
+            /** Format: uuid */
+            assignee_id: string;
+            title: string;
+            description?: string | null;
+            /** @enum {string} */
+            status?: "todo" | "in_progress" | "done" | "cancelled";
+            /** Format: date */
+            due_date?: string | null;
+        };
+        /**
+         * @description JSON Merge Patch body. All fields are optional; only fields present in
+         *     the request are applied. `mission_id` is intentionally NOT exposed.
+         *     `indicator_id` can be set to re-assign the task within the same
+         *     mission; clearing it (moving back to the mission root) requires a
+         *     future endpoint that supports null/absent distinction.
+         *     completed_at is managed by the server based on status transitions.
+         */
+        PatchTaskRequest: {
+            title?: string;
+            description?: string;
+            /** Format: uuid */
+            indicator_id?: string;
+            /** Format: uuid */
+            assignee_id?: string;
+            /** Format: uuid */
+            team_id?: string;
+            contributes_to_mission_ids?: string[];
+            /** @enum {string} */
+            status?: "todo" | "in_progress" | "done" | "cancelled";
             /** Format: date */
             due_date?: string;
         };
@@ -2170,6 +3735,58 @@ export interface components {
         };
         PermissionListResponse: {
             data: components["schemas"]["Permission"][];
+        };
+        CheckIn: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            org_id: string;
+            /** Format: uuid */
+            indicator_id: string;
+            /** Format: uuid */
+            author_id: string;
+            value: string;
+            previous_value?: string | null;
+            /** @enum {string} */
+            confidence: "high" | "medium" | "low" | "barrier" | "deprioritized";
+            note?: string | null;
+            mentions: string[];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            author?: {
+                /** Format: uuid */
+                id?: string;
+                first_name?: string;
+                last_name?: string;
+            } | null;
+        };
+        CheckInListResponse: {
+            data: components["schemas"]["CheckIn"][];
+            /** Format: int64 */
+            total: number;
+            page: number;
+            size: number;
+        };
+        CreateCheckInRequest: {
+            /** Format: uuid */
+            indicator_id: string;
+            /** Format: uuid */
+            author_id: string;
+            value: string;
+            previous_value?: string | null;
+            /** @enum {string} */
+            confidence: "high" | "medium" | "low" | "barrier" | "deprioritized";
+            note?: string | null;
+            mentions?: string[];
+        };
+        PatchCheckInRequest: {
+            value: string;
+            /** @enum {string} */
+            confidence: "high" | "medium" | "low" | "barrier" | "deprioritized";
+            note?: string | null;
+            mentions?: string[];
         };
     };
     responses: never;

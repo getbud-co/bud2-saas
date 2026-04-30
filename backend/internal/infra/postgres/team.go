@@ -253,9 +253,10 @@ func (r *TeamRepository) SyncMembersByUser(ctx context.Context, organizationID, 
 		desiredTeamIDs[tid] = struct{}{}
 		if _, exists := currentByTeamID[tid]; !exists {
 			if _, createErr := r.q.CreateTeamMember(ctx, sqlc.CreateTeamMemberParams{
-				TeamID:     tid,
-				UserID:     userID,
-				RoleInTeam: string(defaultRole),
+				OrganizationID: organizationID,
+				TeamID:         tid,
+				UserID:         userID,
+				RoleInTeam:     string(defaultRole),
 			}); createErr != nil {
 				return createErr
 			}
@@ -328,9 +329,10 @@ func (r *TeamRepository) syncMembers(ctx context.Context, t *team.Team) error {
 		} else {
 			// New member — insert.
 			row, createErr := r.q.CreateTeamMember(ctx, sqlc.CreateTeamMemberParams{
-				TeamID:     t.ID,
-				UserID:     m.UserID,
-				RoleInTeam: string(m.RoleInTeam),
+				OrganizationID: t.OrganizationID,
+				TeamID:         t.ID,
+				UserID:         m.UserID,
+				RoleInTeam:     string(m.RoleInTeam),
 			})
 			if createErr != nil {
 				return createErr

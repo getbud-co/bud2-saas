@@ -18,8 +18,9 @@ import {
   CaretDown,
   Fire,
 } from "@phosphor-icons/react";
-import { useMissionsData } from "@/contexts/MissionsDataContext";
 import { usePeopleData } from "@/contexts/PeopleDataContext";
+import { useMissionsData } from "@/contexts/MissionsDataContext";
+import { useCheckIns, useCreateCheckIn } from "@/hooks/use-checkins";
 import type { KeyResult, Mission, CheckIn, ConfidenceLevel } from "@/types";
 import styles from "./QuickCheckinDrawer.module.css";
 
@@ -98,8 +99,10 @@ function getGoalLabel(kr: KeyResult): string {
 }
 
 export function QuickCheckinDrawer({ open, onClose, keyResultId }: QuickCheckinDrawerProps) {
-  const { missions, createCheckIn, checkInHistory } = useMissionsData();
+  const { missions } = useMissionsData();
   const { currentUserId } = usePeopleData();
+  const { data: checkInsData = [] } = useCheckIns({ indicatorId: keyResultId ?? undefined });
+  const createCheckInMutation = useCreateCheckIn();
 
   const match = useMemo(() => {
     if (!keyResultId) return null;
@@ -112,11 +115,7 @@ export function QuickCheckinDrawer({ open, onClose, keyResultId }: QuickCheckinD
   const [confidenceOpen, setConfidenceOpen] = useState(false);
   const confidenceBtnRef = useRef<HTMLButtonElement>(null);
 
-  // Recent check-ins for this KR
-  const recentCheckIns = useMemo<CheckIn[]>(() => {
-    if (!keyResultId) return [];
-    return (checkInHistory[keyResultId] ?? []).slice(0, 5);
-  }, [keyResultId, checkInHistory]);
+  const recentCheckIns = useMemo<CheckIn[]>(() => checkInsData.slice(0, 5), [checkInsData]);
 
   // Reset form when drawer opens
   useEffect(() => {
@@ -153,17 +152,21 @@ export function QuickCheckinDrawer({ open, onClose, keyResultId }: QuickCheckinD
       toast.error("Usuário não identificado");
       return;
     }
-    createCheckIn({
-      keyResultId: kr.id,
-      authorId: currentUserId,
-      value: newValue.trim(),
-      previousValue: currentValue,
-      confidence,
-      note: note.trim() || null,
-      mentions: null,
-    });
-    toast.success("Check-in registrado");
-    onClose();
+    createCheckInMutation.mutate(
+      {
+        indicatorId: kr.id,
+        authorId: currentUserId,
+        value: newValue.trim(),
+        previousValue: currentValue,
+        confidence: confidence ?? "medium",
+        note: note.trim() || null,
+        mentions: null,
+      },
+      {
+        onSuccess: () => { toast.success("Check-in registrado"); onClose(); },
+        onError: () => toast.error("Não foi possível registrar o check-in."),
+      },
+    );
   }
 
   return (

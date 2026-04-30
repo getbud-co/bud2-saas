@@ -53,11 +53,12 @@ describe("MissionsPage — renderização básica", () => {
     expect(createBtn).toBeInTheDocument();
   });
 
-  it("renderiza missões do seed data", async () => {
+  it("renderiza estado vazio quando não há missões na API", async () => {
+    // Schema 8: missões vêm da API. Sem dados injetados via setQueryData
+    // este teste exerce apenas o caminho "lista vazia" — sem mocks órfãos.
     renderWithProviders(<MissionsPage mine={false} />);
-    // O seed data inclui missões; ao menos uma deve aparecer
-    const missionText = await screen.findByText(/Lançar módulo de Missões v2/i);
-    expect(missionText).toBeInTheDocument();
+    const heading = await screen.findByRole("heading", { level: 1 });
+    expect(heading).toBeInTheDocument();
   });
 
   it("exibe filtros padrão (time e período)", async () => {

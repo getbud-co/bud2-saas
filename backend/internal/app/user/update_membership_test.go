@@ -11,7 +11,10 @@ import (
 
 	apptx "github.com/getbud-co/bud2/backend/internal/app/tx"
 	"github.com/getbud-co/bud2/backend/internal/domain"
+	domainindicator "github.com/getbud-co/bud2/backend/internal/domain/indicator"
+	domainmission "github.com/getbud-co/bud2/backend/internal/domain/mission"
 	org "github.com/getbud-co/bud2/backend/internal/domain/organization"
+	domaintask "github.com/getbud-co/bud2/backend/internal/domain/task"
 	"github.com/getbud-co/bud2/backend/internal/domain/team"
 	usr "github.com/getbud-co/bud2/backend/internal/domain/user"
 	"github.com/getbud-co/bud2/backend/internal/test/fixtures"
@@ -33,9 +36,12 @@ type fakeRepositories struct {
 	teams team.Repository
 }
 
-func (r fakeRepositories) Organizations() org.Repository { return r.orgs }
-func (r fakeRepositories) Users() usr.Repository         { return r.users }
-func (r fakeRepositories) Teams() team.Repository        { return r.teams }
+func (r fakeRepositories) Organizations() org.Repository          { return r.orgs }
+func (r fakeRepositories) Users() usr.Repository                  { return r.users }
+func (r fakeRepositories) Teams() team.Repository                 { return r.teams }
+func (r fakeRepositories) Missions() domainmission.Repository     { return nil }
+func (r fakeRepositories) Indicators() domainindicator.Repository { return nil }
+func (r fakeRepositories) Tasks() domaintask.Repository           { return nil }
 
 type fakeTeamRepository struct {
 	softDeleteMemberByUserCalls int

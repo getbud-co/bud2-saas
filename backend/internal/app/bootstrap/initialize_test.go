@@ -9,7 +9,10 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	apptx "github.com/getbud-co/bud2/backend/internal/app/tx"
+	"github.com/getbud-co/bud2/backend/internal/domain/indicator"
+	"github.com/getbud-co/bud2/backend/internal/domain/mission"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
+	"github.com/getbud-co/bud2/backend/internal/domain/task"
 	"github.com/getbud-co/bud2/backend/internal/domain/team"
 	"github.com/getbud-co/bud2/backend/internal/domain/user"
 	"github.com/getbud-co/bud2/backend/internal/test/fixtures"
@@ -30,6 +33,9 @@ type mockTxRepos struct {
 func (m mockTxRepos) Organizations() organization.Repository { return m.orgRepo }
 func (m mockTxRepos) Users() user.Repository                 { return m.userRepo }
 func (m mockTxRepos) Teams() team.Repository                 { return nil }
+func (m mockTxRepos) Missions() mission.Repository           { return nil }
+func (m mockTxRepos) Indicators() indicator.Repository       { return nil }
+func (m mockTxRepos) Tasks() task.Repository                 { return nil }
 
 var _ apptx.Repositories = mockTxRepos{}
 

@@ -15,26 +15,27 @@ func TestToResponse_AllFieldsPopulated_FormatsCorrectly(t *testing.T) {
 	id := uuid.New()
 	orgID := uuid.New()
 	ownerID := uuid.New()
-	cycleID := uuid.New()
 	parentID := uuid.New()
 	teamID := uuid.New()
 	desc := "d"
-	due := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
 	completed := time.Date(2026, 6, 15, 13, 0, 0, 0, time.UTC)
 	created := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	updated := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
 
 	m := &domainmission.Mission{
 		ID: id, OrganizationID: orgID,
-		CycleID: &cycleID, ParentID: &parentID,
-		OwnerID: ownerID, TeamID: &teamID,
+		ParentID:     &parentID,
+		OwnerID:      ownerID,
+		TeamID:       &teamID,
 		Title:        "T",
 		Description:  &desc,
 		Status:       domainmission.StatusActive,
 		Visibility:   domainmission.VisibilityPublic,
 		KanbanStatus: domainmission.KanbanTodo,
-		SortOrder:    3,
-		DueDate:      &due,
+		StartDate:    start,
+		EndDate:      end,
 		CompletedAt:  &completed,
 		CreatedAt:    created,
 		UpdatedAt:    updated,
@@ -44,8 +45,6 @@ func TestToResponse_AllFieldsPopulated_FormatsCorrectly(t *testing.T) {
 
 	assert.Equal(t, id.String(), r.ID)
 	assert.Equal(t, orgID.String(), r.OrgID)
-	require.NotNil(t, r.CycleID)
-	assert.Equal(t, cycleID.String(), *r.CycleID)
 	require.NotNil(t, r.ParentID)
 	assert.Equal(t, parentID.String(), *r.ParentID)
 	assert.Equal(t, ownerID.String(), r.OwnerID)
@@ -57,9 +56,8 @@ func TestToResponse_AllFieldsPopulated_FormatsCorrectly(t *testing.T) {
 	assert.Equal(t, "active", r.Status)
 	assert.Equal(t, "public", r.Visibility)
 	assert.Equal(t, "todo", r.KanbanStatus)
-	assert.Equal(t, 3, r.SortOrder)
-	require.NotNil(t, r.DueDate)
-	assert.Equal(t, "2026-05-01", *r.DueDate)
+	assert.Equal(t, "2026-01-01", r.StartDate)
+	assert.Equal(t, "2026-05-01", r.EndDate)
 	require.NotNil(t, r.CompletedAt)
 	assert.Equal(t, "2026-06-15T13:00:00Z", *r.CompletedAt)
 	assert.Equal(t, "2026-01-01T00:00:00Z", r.CreatedAt)
@@ -67,6 +65,8 @@ func TestToResponse_AllFieldsPopulated_FormatsCorrectly(t *testing.T) {
 }
 
 func TestToResponse_NilOptionals_OmitOrNullify(t *testing.T) {
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)
 	m := &domainmission.Mission{
 		ID:             uuid.New(),
 		OrganizationID: uuid.New(),
@@ -75,16 +75,18 @@ func TestToResponse_NilOptionals_OmitOrNullify(t *testing.T) {
 		Status:         domainmission.StatusDraft,
 		Visibility:     domainmission.VisibilityPublic,
 		KanbanStatus:   domainmission.KanbanUncategorized,
+		StartDate:      start,
+		EndDate:        end,
 	}
 
 	r := toResponse(m)
 
-	assert.Nil(t, r.CycleID)
 	assert.Nil(t, r.ParentID)
 	assert.Nil(t, r.TeamID)
 	assert.Nil(t, r.Description)
-	assert.Nil(t, r.DueDate)
 	assert.Nil(t, r.CompletedAt)
+	assert.Equal(t, "2026-01-01", r.StartDate)
+	assert.Equal(t, "2026-12-31", r.EndDate)
 }
 
 func TestUUIDPtrString_NilInput_ReturnsNil(t *testing.T) {

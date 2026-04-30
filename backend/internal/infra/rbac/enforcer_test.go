@@ -139,3 +139,48 @@ func TestPolicy_MissionsMatrix_MatchesRolePermissions(t *testing.T) {
 		assert.Equalf(t, want.deletable, del, "role %q (missions, delete)", role)
 	}
 }
+
+// Indicators and tasks are sub-resources of missions. The matrix is one step
+// more permissive on the gestor row: gestor can delete an indicator or a
+// task even though they cannot delete a mission. The reasoning is that
+// editing a mission via the page commonly involves removing one of its
+// indicators or tasks (the EDIT FLOW dispatches a per-resource diff), so
+// requiring an admin role to remove a single indicator would block routine
+// edits. Removing the parent mission stays admin-only because the cascade
+// is destructive.
+func TestPolicy_IndicatorsAndTasksMatrix(t *testing.T) {
+	repoRoot, err := filepath.Abs(filepath.Join("..", "..", "..", ".."))
+	require.NoError(t, err)
+	modelPath := filepath.Join(repoRoot, "backend", "policies", "model.conf")
+	policyPath := filepath.Join(repoRoot, "backend", "policies", "policy.csv")
+
+	require.NoError(t, InitEnforcer(modelPath, policyPath))
+	t.Cleanup(func() { e = nil })
+
+	type matrix struct {
+		read, write, deletable bool
+	}
+	expected := map[string]matrix{
+		"super-admin":  {true, true, true},
+		"admin-rh":     {true, true, true},
+		"gestor":       {true, true, true},
+		"colaborador":  {true, false, false},
+		"visualizador": {true, false, false},
+	}
+
+	for _, resource := range []string{"indicators", "tasks"} {
+		for role, want := range expected {
+			read, err := Enforcer().Enforce(role, resource, "read")
+			require.NoError(t, err)
+			assert.Equalf(t, want.read, read, "role %q (%s, read)", role, resource)
+
+			write, err := Enforcer().Enforce(role, resource, "write")
+			require.NoError(t, err)
+			assert.Equalf(t, want.write, write, "role %q (%s, write)", role, resource)
+
+			del, err := Enforcer().Enforce(role, resource, "delete")
+			require.NoError(t, err)
+			assert.Equalf(t, want.deletable, del, "role %q (%s, delete)", role, resource)
+		}
+	}
+}

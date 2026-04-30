@@ -20,20 +20,28 @@ import (
 	"github.com/getbud-co/bud2/backend/internal/api"
 	apiauth "github.com/getbud-co/bud2/backend/internal/api/auth"
 	apibootstrap "github.com/getbud-co/bud2/backend/internal/api/bootstrap"
+	apicheckin "github.com/getbud-co/bud2/backend/internal/api/checkin"
 	apicycle "github.com/getbud-co/bud2/backend/internal/api/cycle"
+	apiindicator "github.com/getbud-co/bud2/backend/internal/api/indicator"
 	apimission "github.com/getbud-co/bud2/backend/internal/api/mission"
 	apiorg "github.com/getbud-co/bud2/backend/internal/api/organization"
 	apiperm "github.com/getbud-co/bud2/backend/internal/api/permission"
 	apirole "github.com/getbud-co/bud2/backend/internal/api/role"
+	apitag "github.com/getbud-co/bud2/backend/internal/api/tag"
+	apitask "github.com/getbud-co/bud2/backend/internal/api/task"
 	apiteam "github.com/getbud-co/bud2/backend/internal/api/team"
 	apiuser "github.com/getbud-co/bud2/backend/internal/api/user"
 	appauth "github.com/getbud-co/bud2/backend/internal/app/auth"
 	appbootstrap "github.com/getbud-co/bud2/backend/internal/app/bootstrap"
+	appcheckin "github.com/getbud-co/bud2/backend/internal/app/checkin"
 	appcycle "github.com/getbud-co/bud2/backend/internal/app/cycle"
+	appindicator "github.com/getbud-co/bud2/backend/internal/app/indicator"
 	appmission "github.com/getbud-co/bud2/backend/internal/app/mission"
 	apporg "github.com/getbud-co/bud2/backend/internal/app/organization"
 	appperm "github.com/getbud-co/bud2/backend/internal/app/permission"
 	approle "github.com/getbud-co/bud2/backend/internal/app/role"
+	apptag "github.com/getbud-co/bud2/backend/internal/app/tag"
+	apptask "github.com/getbud-co/bud2/backend/internal/app/task"
 	appteam "github.com/getbud-co/bud2/backend/internal/app/team"
 	appuser "github.com/getbud-co/bud2/backend/internal/app/user"
 	"github.com/getbud-co/bud2/backend/internal/config"
@@ -100,7 +108,11 @@ func main() {
 	teamRepo := postgres.NewTeamRepository(queries)
 	roleRepo := postgres.NewRoleRepository(queries)
 	cycleRepo := postgres.NewCycleRepository(queries)
+	tagRepo := postgres.NewTagRepository(queries)
 	missionRepo := postgres.NewMissionRepository(queries, pool)
+	indicatorRepo := postgres.NewIndicatorRepository(queries)
+	taskRepo := postgres.NewTaskRepository(queries)
+	checkInRepo := postgres.NewCheckInRepository(queries)
 	refreshTokenRepo := postgres.NewRefreshTokenRepository(queries)
 	txManager := postgres.NewTxManager(pool)
 	tokenIssuer := infraauth.NewTokenIssuer(cfg.JWTSecret)
@@ -136,17 +148,41 @@ func main() {
 	updateCycle := appcycle.NewUpdateUseCase(cycleRepo, logger)
 	deleteCycle := appcycle.NewDeleteUseCase(cycleRepo, logger)
 
-	createMission := appmission.NewCreateUseCase(missionRepo, cycleRepo, teamRepo, userRepo, logger)
+	createTag := apptag.NewCreateUseCase(tagRepo, logger)
+	getTag := apptag.NewGetUseCase(tagRepo, logger)
+	listTag := apptag.NewListUseCase(tagRepo, logger)
+	updateTag := apptag.NewUpdateUseCase(tagRepo, logger)
+	deleteTag := apptag.NewDeleteUseCase(tagRepo, logger)
+
+	createMission := appmission.NewCreateUseCase(missionRepo, tagRepo, teamRepo, userRepo, txManager, logger)
 	getMission := appmission.NewGetUseCase(missionRepo, logger)
 	listMission := appmission.NewListUseCase(missionRepo, logger)
-	updateMission := appmission.NewUpdateUseCase(missionRepo, cycleRepo, teamRepo, userRepo, logger)
+	updateMission := appmission.NewUpdateUseCase(missionRepo, tagRepo, teamRepo, userRepo, logger)
 	deleteMission := appmission.NewDeleteUseCase(missionRepo, logger)
 
+	createIndicator := appindicator.NewCreateUseCase(indicatorRepo, missionRepo, teamRepo, userRepo, logger)
+	getIndicator := appindicator.NewGetUseCase(indicatorRepo, logger)
+	listIndicator := appindicator.NewListUseCase(indicatorRepo, logger)
+	updateIndicator := appindicator.NewUpdateUseCase(indicatorRepo, teamRepo, userRepo, logger)
+	deleteIndicator := appindicator.NewDeleteUseCase(indicatorRepo, logger)
+
+	createTask := apptask.NewCreateUseCase(taskRepo, missionRepo, indicatorRepo, teamRepo, userRepo, logger)
+	getTask := apptask.NewGetUseCase(taskRepo, logger)
+	listTask := apptask.NewListUseCase(taskRepo, logger)
+	updateTask := apptask.NewUpdateUseCase(taskRepo, indicatorRepo, teamRepo, userRepo, logger)
+	deleteTask := apptask.NewDeleteUseCase(taskRepo, logger)
+
+	createCheckIn := appcheckin.NewCreateUseCase(checkInRepo, logger)
+	getCheckIn := appcheckin.NewGetUseCase(checkInRepo, logger)
+	listCheckIn := appcheckin.NewListUseCase(checkInRepo, logger)
+	updateCheckIn := appcheckin.NewUpdateUseCase(checkInRepo, logger)
+	deleteCheckIn := appcheckin.NewDeleteUseCase(checkInRepo, logger)
+
 	bootstrapUC := appbootstrap.NewUseCase(orgRepo, txManager, tokenIssuer, passwordHasher, logger)
-	loginUC := appauth.NewLoginUseCase(userRepo, orgRepo, tokenIssuer, passwordHasher, refreshTokenRepo, tokenHasher, logger)
+	loginUC := appauth.NewLoginUseCase(userRepo, orgRepo, tokenIssuer, passwordHasher, refreshTokenRepo, tokenHasher, logger, cfg.TokenTTL, cfg.RefreshTokenTTL)
 	getSessionUC := appauth.NewGetSessionUseCase(userRepo, orgRepo, tokenIssuer, passwordHasher, logger)
-	switchOrganizationUC := appauth.NewSwitchOrganizationUseCase(userRepo, orgRepo, tokenIssuer, passwordHasher, refreshTokenRepo, tokenHasher, logger)
-	refreshUC := appauth.NewRefreshUseCase(userRepo, orgRepo, tokenIssuer, passwordHasher, refreshTokenRepo, tokenHasher, logger)
+	switchOrganizationUC := appauth.NewSwitchOrganizationUseCase(userRepo, orgRepo, tokenIssuer, passwordHasher, refreshTokenRepo, tokenHasher, logger, cfg.TokenTTL, cfg.RefreshTokenTTL)
+	refreshUC := appauth.NewRefreshUseCase(userRepo, orgRepo, tokenIssuer, passwordHasher, refreshTokenRepo, tokenHasher, logger, cfg.TokenTTL, cfg.RefreshTokenTTL)
 
 	// Handlers + Router
 	bootstrapHandler := apibootstrap.NewHandler(bootstrapUC)
@@ -157,8 +193,12 @@ func main() {
 	roleHandler := apirole.NewHandler(listRole)
 	permissionHandler := apiperm.NewHandler(listPermission)
 	cycleHandler := apicycle.NewHandler(createCycle, getCycle, listCycle, updateCycle, deleteCycle)
+	tagHandler := apitag.NewHandler(createTag, getTag, listTag, updateTag, deleteTag)
 	missionHandler := apimission.NewHandler(createMission, getMission, listMission, updateMission, deleteMission)
-	router := api.NewRouter(bootstrapHandler, authHandler, orgHandler, userHandler, teamHandler, roleHandler, permissionHandler, cycleHandler, missionHandler, api.RouterConfig{
+	indicatorHandler := apiindicator.NewHandler(createIndicator, getIndicator, listIndicator, updateIndicator, deleteIndicator)
+	taskHandler := apitask.NewHandler(createTask, getTask, listTask, updateTask, deleteTask)
+	checkInHandler := apicheckin.NewHandler(createCheckIn, getCheckIn, listCheckIn, updateCheckIn, deleteCheckIn)
+	router := api.NewRouter(bootstrapHandler, authHandler, orgHandler, userHandler, teamHandler, roleHandler, permissionHandler, cycleHandler, tagHandler, missionHandler, indicatorHandler, taskHandler, checkInHandler, api.RouterConfig{
 		Env:            cfg.Env,
 		AllowedOrigins: strings.Split(cfg.AllowedOrigins, ","),
 		OpenAPISpec:    apispec.Spec,

@@ -32,6 +32,9 @@ type fakeMissionQuerier struct {
 	updateRow    sqlc.UpdateMissionRow
 	updateErr    error
 	updateParams sqlc.UpdateMissionParams
+	// member support
+	memberRows    []sqlc.MissionMember
+	memberListErr error
 }
 
 func (f *fakeMissionQuerier) CreateMission(_ context.Context, arg sqlc.CreateMissionParams) (sqlc.CreateMissionRow, error) {
@@ -58,21 +61,52 @@ func (f *fakeMissionQuerier) UpdateMission(_ context.Context, arg sqlc.UpdateMis
 	return f.updateRow, f.updateErr
 }
 
+func (f *fakeMissionQuerier) ListMissionMembers(_ context.Context, _ sqlc.ListMissionMembersParams) ([]sqlc.MissionMember, error) {
+	return f.memberRows, f.memberListErr
+}
+
+func (f *fakeMissionQuerier) DeleteMissionMembers(_ context.Context, _ sqlc.DeleteMissionMembersParams) error {
+	return nil
+}
+
+func (f *fakeMissionQuerier) DeleteMissionMemberByUser(_ context.Context, _ sqlc.DeleteMissionMemberByUserParams) error {
+	return nil
+}
+
+func (f *fakeMissionQuerier) InsertMissionMember(_ context.Context, _ sqlc.InsertMissionMemberParams) error {
+	return nil
+}
+
+func (f *fakeMissionQuerier) ListMissionTagIDs(_ context.Context, _ sqlc.ListMissionTagIDsParams) ([]uuid.UUID, error) {
+	return nil, nil
+}
+
+func (f *fakeMissionQuerier) InsertMissionTag(_ context.Context, _ sqlc.InsertMissionTagParams) error {
+	return nil
+}
+
+func (f *fakeMissionQuerier) DeleteMissionTagByTag(_ context.Context, _ sqlc.DeleteMissionTagByTagParams) error {
+	return nil
+}
+
+func (f *fakeMissionQuerier) DeleteMissionTags(_ context.Context, _ sqlc.DeleteMissionTagsParams) error {
+	return nil
+}
+
 func TestMissionRepository_Create_TranslatesNullableFieldsAndMapsRow(t *testing.T) {
 	now := time.Now().UTC()
 	id := uuid.New()
 	orgID := uuid.New()
 	ownerID := uuid.New()
-	cycleID := uuid.New()
 	parentID := uuid.New()
 	teamID := uuid.New()
-	due := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
 	desc := "Reduzir churn em 20%"
 
 	q := &fakeMissionQuerier{
 		createRow: sqlc.CreateMissionRow{
 			ID: id, OrganizationID: orgID,
-			CycleID:      pgtype.UUID{Bytes: cycleID, Valid: true},
 			ParentID:     pgtype.UUID{Bytes: parentID, Valid: true},
 			OwnerID:      ownerID,
 			TeamID:       pgtype.UUID{Bytes: teamID, Valid: true},
@@ -81,8 +115,8 @@ func TestMissionRepository_Create_TranslatesNullableFieldsAndMapsRow(t *testing.
 			Status:       string(mission.StatusActive),
 			Visibility:   string(mission.VisibilityPublic),
 			KanbanStatus: string(mission.KanbanTodo),
-			SortOrder:    3,
-			DueDate:      pgtype.Date{Time: due, Valid: true},
+			StartDate:    pgtype.Date{Time: start, Valid: true},
+			EndDate:      pgtype.Date{Time: end, Valid: true},
 			CompletedAt:  pgtype.Timestamptz{Valid: false},
 			CreatedAt:    now, UpdatedAt: now,
 		},
@@ -90,59 +124,63 @@ func TestMissionRepository_Create_TranslatesNullableFieldsAndMapsRow(t *testing.
 	repo := NewMissionRepository(q, nil)
 
 	got, err := repo.Create(context.Background(), &mission.Mission{
-		ID: id, OrganizationID: orgID, CycleID: &cycleID, ParentID: &parentID,
+		ID: id, OrganizationID: orgID, ParentID: &parentID,
 		OwnerID: ownerID, TeamID: &teamID, Title: "Reduzir churn",
 		Description: &desc, Status: mission.StatusActive,
 		Visibility: mission.VisibilityPublic, KanbanStatus: mission.KanbanTodo,
-		SortOrder: 3, DueDate: &due,
+		StartDate: start, EndDate: end,
 	})
 
 	require.NoError(t, err)
 	assert.Equal(t, id, got.ID)
 	assert.Equal(t, "Reduzir churn", got.Title)
-	require.NotNil(t, got.CycleID)
-	assert.Equal(t, cycleID, *got.CycleID)
 	require.NotNil(t, got.ParentID)
 	assert.Equal(t, parentID, *got.ParentID)
 	require.NotNil(t, got.TeamID)
 	assert.Equal(t, teamID, *got.TeamID)
 	require.NotNil(t, got.Description)
 	assert.Equal(t, desc, *got.Description)
-	require.NotNil(t, got.DueDate)
-	assert.Equal(t, due, *got.DueDate)
+	assert.True(t, got.StartDate.Equal(start))
+	assert.True(t, got.EndDate.Equal(end))
 	assert.Nil(t, got.CompletedAt)
 
-	// Querier received the right pgtype-converted params
-	assert.True(t, q.createParams.CycleID.Valid)
+	// Querier received the right pgtype-converted params.
 	assert.True(t, q.createParams.ParentID.Valid)
 	assert.True(t, q.createParams.TeamID.Valid)
 	assert.True(t, q.createParams.Description.Valid)
+	assert.True(t, q.createParams.StartDate.Valid)
+	assert.True(t, q.createParams.EndDate.Valid)
 	assert.False(t, q.createParams.CompletedAt.Valid)
-	assert.Equal(t, int32(3), q.createParams.SortOrder)
 }
 
 func TestMissionRepository_Create_NilOptionalFieldsBecomeInvalidPgtype(t *testing.T) {
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)
 	q := &fakeMissionQuerier{
 		createRow: sqlc.CreateMissionRow{
 			ID: uuid.New(), Title: "x",
 			Status: string(mission.StatusDraft), Visibility: string(mission.VisibilityPublic),
 			KanbanStatus: string(mission.KanbanUncategorized),
+			StartDate:    pgtype.Date{Time: start, Valid: true},
+			EndDate:      pgtype.Date{Time: end, Valid: true},
 		},
 	}
 	repo := NewMissionRepository(q, nil)
 
 	_, err := repo.Create(context.Background(), &mission.Mission{
 		ID: uuid.New(), OrganizationID: uuid.New(), OwnerID: uuid.New(),
-		Title: "x", Status: mission.StatusDraft, Visibility: mission.VisibilityPublic, KanbanStatus: mission.KanbanUncategorized,
+		Title: "x", Status: mission.StatusDraft, Visibility: mission.VisibilityPublic,
+		KanbanStatus: mission.KanbanUncategorized, StartDate: start, EndDate: end,
 	})
 
 	require.NoError(t, err)
-	assert.False(t, q.createParams.CycleID.Valid)
 	assert.False(t, q.createParams.ParentID.Valid)
 	assert.False(t, q.createParams.TeamID.Valid)
 	assert.False(t, q.createParams.Description.Valid)
-	assert.False(t, q.createParams.DueDate.Valid)
 	assert.False(t, q.createParams.CompletedAt.Valid)
+	// Dates are always valid — they're non-optional on the domain model.
+	assert.True(t, q.createParams.StartDate.Valid)
+	assert.True(t, q.createParams.EndDate.Valid)
 }
 
 func TestMissionRepository_Create_PropagatesQuerierError(t *testing.T) {
@@ -190,7 +228,6 @@ func TestMissionRepository_GetByID_PropagatesOtherErrors(t *testing.T) {
 }
 
 func TestMissionRepository_List_AppliesPaginationDefaultsAndFilters(t *testing.T) {
-	cycleID := uuid.New()
 	ownerID := uuid.New()
 	teamID := uuid.New()
 	parentID := uuid.New()
@@ -204,7 +241,6 @@ func TestMissionRepository_List_AppliesPaginationDefaultsAndFilters(t *testing.T
 
 	res, err := repo.List(context.Background(), mission.ListFilter{
 		OrganizationID: uuid.New(),
-		CycleID:        &cycleID,
 		OwnerID:        &ownerID,
 		TeamID:         &teamID,
 		Status:         &status,
@@ -219,15 +255,13 @@ func TestMissionRepository_List_AppliesPaginationDefaultsAndFilters(t *testing.T
 	assert.Equal(t, int64(7), res.Total)
 	assert.Equal(t, int32(20), q.listParams.Limit)
 	assert.Equal(t, int32(0), q.listParams.Offset)
-	assert.True(t, q.listParams.CycleID.Valid)
 	assert.True(t, q.listParams.OwnerID.Valid)
 	assert.True(t, q.listParams.TeamID.Valid)
 	assert.True(t, q.listParams.ParentID.Valid)
 	assert.True(t, q.listParams.FilterByParent)
 	require.True(t, q.listParams.Status.Valid)
 	assert.Equal(t, string(status), q.listParams.Status.String)
-	// Count was called with the same filters
-	assert.Equal(t, q.listParams.CycleID, q.countParams.CycleID)
+	// Count was called with the same filters.
 	assert.Equal(t, q.listParams.Status, q.countParams.Status)
 	assert.Equal(t, q.listParams.FilterByParent, q.countParams.FilterByParent)
 }
@@ -260,10 +294,16 @@ func TestMissionRepository_Update_NotFound_MapsToDomainError(t *testing.T) {
 
 func TestMissionRepository_Update_PassesNullableParent(t *testing.T) {
 	parentID := uuid.New()
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)
 	q := &fakeMissionQuerier{
 		updateRow: sqlc.UpdateMissionRow{
 			ID: uuid.New(), Title: "x",
-			Status: string(mission.StatusActive), Visibility: string(mission.VisibilityPublic), KanbanStatus: string(mission.KanbanTodo),
+			Status:       string(mission.StatusActive),
+			Visibility:   string(mission.VisibilityPublic),
+			KanbanStatus: string(mission.KanbanTodo),
+			StartDate:    pgtype.Date{Time: start, Valid: true},
+			EndDate:      pgtype.Date{Time: end, Valid: true},
 		},
 	}
 	repo := NewMissionRepository(q, nil)
@@ -271,7 +311,8 @@ func TestMissionRepository_Update_PassesNullableParent(t *testing.T) {
 	// to a parent
 	_, err := repo.Update(context.Background(), &mission.Mission{
 		ID: uuid.New(), Title: "x", ParentID: &parentID,
-		Status: mission.StatusActive, Visibility: mission.VisibilityPublic, KanbanStatus: mission.KanbanTodo,
+		Status: mission.StatusActive, Visibility: mission.VisibilityPublic,
+		KanbanStatus: mission.KanbanTodo, StartDate: start, EndDate: end,
 	})
 	require.NoError(t, err)
 	assert.True(t, q.updateParams.ParentID.Valid)
@@ -279,7 +320,8 @@ func TestMissionRepository_Update_PassesNullableParent(t *testing.T) {
 	// to root (nil)
 	_, err = repo.Update(context.Background(), &mission.Mission{
 		ID: uuid.New(), Title: "x",
-		Status: mission.StatusActive, Visibility: mission.VisibilityPublic, KanbanStatus: mission.KanbanTodo,
+		Status: mission.StatusActive, Visibility: mission.VisibilityPublic,
+		KanbanStatus: mission.KanbanTodo, StartDate: start, EndDate: end,
 	})
 	require.NoError(t, err)
 	assert.False(t, q.updateParams.ParentID.Valid)
@@ -290,15 +332,14 @@ func TestMissionRowToDomain_MapsAllFields(t *testing.T) {
 	id := uuid.New()
 	orgID := uuid.New()
 	ownerID := uuid.New()
-	cycleID := uuid.New()
 	parentID := uuid.New()
 	teamID := uuid.New()
-	due := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
 	completed := now.Add(-time.Hour)
 
 	got := missionRowToDomain(missionRowData{
 		ID: id, OrganizationID: orgID,
-		CycleID:      pgtype.UUID{Bytes: cycleID, Valid: true},
 		ParentID:     pgtype.UUID{Bytes: parentID, Valid: true},
 		OwnerID:      ownerID,
 		TeamID:       pgtype.UUID{Bytes: teamID, Valid: true},
@@ -307,16 +348,14 @@ func TestMissionRowToDomain_MapsAllFields(t *testing.T) {
 		Status:       string(mission.StatusCompleted),
 		Visibility:   string(mission.VisibilityTeamOnly),
 		KanbanStatus: string(mission.KanbanDone),
-		SortOrder:    9,
-		DueDate:      pgtype.Date{Time: due, Valid: true},
+		StartDate:    pgtype.Date{Time: start, Valid: true},
+		EndDate:      pgtype.Date{Time: end, Valid: true},
 		CompletedAt:  pgtype.Timestamptz{Time: completed, Valid: true},
 		CreatedAt:    now, UpdatedAt: now,
 	})
 
 	assert.Equal(t, id, got.ID)
 	assert.Equal(t, orgID, got.OrganizationID)
-	require.NotNil(t, got.CycleID)
-	assert.Equal(t, cycleID, *got.CycleID)
 	require.NotNil(t, got.ParentID)
 	assert.Equal(t, parentID, *got.ParentID)
 	assert.Equal(t, ownerID, got.OwnerID)
@@ -327,9 +366,8 @@ func TestMissionRowToDomain_MapsAllFields(t *testing.T) {
 	assert.Equal(t, mission.StatusCompleted, got.Status)
 	assert.Equal(t, mission.VisibilityTeamOnly, got.Visibility)
 	assert.Equal(t, mission.KanbanDone, got.KanbanStatus)
-	assert.Equal(t, 9, got.SortOrder)
-	require.NotNil(t, got.DueDate)
-	assert.Equal(t, due, *got.DueDate)
+	assert.True(t, got.StartDate.Equal(start))
+	assert.True(t, got.EndDate.Equal(end))
 	require.NotNil(t, got.CompletedAt)
 	assert.Equal(t, completed, *got.CompletedAt)
 }
@@ -341,11 +379,9 @@ func TestMissionRowToDomain_NullPgtypesMapToNil(t *testing.T) {
 		Visibility: string(mission.VisibilityPublic), KanbanStatus: string(mission.KanbanUncategorized),
 	})
 
-	assert.Nil(t, got.CycleID)
 	assert.Nil(t, got.ParentID)
 	assert.Nil(t, got.TeamID)
 	assert.Nil(t, got.Description)
-	assert.Nil(t, got.DueDate)
 	assert.Nil(t, got.CompletedAt)
 }
 

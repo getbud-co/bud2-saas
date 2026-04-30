@@ -38,7 +38,6 @@ import { useTeamOverviewData, type PeriodFilter } from "@/hooks/useTeamOverviewD
 import { TeamHealthTable } from "@/pages/my-team/modules/components/TeamHealthTable";
 import { CollaboratorProfileModal } from "@/pages/my-team/modules/components/CollaboratorProfileModal";
 import type { HealthStatus, UserEngagementSummary } from "@/types/engagement";
-import { useMissionsData } from "@/contexts/MissionsDataContext";
 import { generateWeeklyEngagementData } from "@/lib/engagement-utils";
 import styles from "./EngagementDetailPage.module.css";
 
@@ -220,11 +219,12 @@ export function EngagementDetailPage() {
   }, [filteredMembers]);
 
   // ── Weekly chart data filtered by selected members ──────────────────────
-  const { checkInHistory } = useMissionsData();
   const weeklyData = useMemo(() => {
     const filteredUserIds = new Set(filteredMembers.map((m) => m.userId));
-    return generateWeeklyEngagementData(checkInHistory, filteredUserIds, activePeriod);
-  }, [checkInHistory, filteredMembers, activePeriod]);
+    // Phase 5: wire per-indicator check-in queries here once team overview
+    // drives its own fetches. For now pass an empty map so the chart degrades.
+    return generateWeeklyEngagementData({}, filteredUserIds, activePeriod);
+  }, [filteredMembers, activePeriod]);
 
   // ── Profile modal ───────────────────────────────────────────────────────
   const [selectedMember, setSelectedMember] = useState<UserEngagementSummary | null>(null);

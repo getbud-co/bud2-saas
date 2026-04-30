@@ -12,8 +12,10 @@ import (
 
 type Querier interface {
 	ActivateInvitedMemberships(ctx context.Context, userID uuid.UUID) error
+	CountCheckInsByIndicator(ctx context.Context, arg CountCheckInsByIndicatorParams) (int64, error)
 	CountCycles(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	CountCyclesByStatus(ctx context.Context, arg CountCyclesByStatusParams) (int64, error)
+	CountIndicators(ctx context.Context, arg CountIndicatorsParams) (int64, error)
 	CountMissions(ctx context.Context, arg CountMissionsParams) (int64, error)
 	CountOrganizationMemberships(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	CountOrganizationUsers(ctx context.Context, organizationID uuid.UUID) (int64, error)
@@ -22,32 +24,56 @@ type Querier interface {
 	CountOrganizationsByStatus(ctx context.Context, status string) (int64, error)
 	CountOrganizationsByUser(ctx context.Context, userID uuid.UUID) (int64, error)
 	CountOrganizationsByUserAndStatus(ctx context.Context, arg CountOrganizationsByUserAndStatusParams) (int64, error)
+	CountTags(ctx context.Context, organizationID uuid.UUID) (int64, error)
+	CountTasks(ctx context.Context, arg CountTasksParams) (int64, error)
 	CountTeams(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	CountTeamsByStatus(ctx context.Context, arg CountTeamsByStatusParams) (int64, error)
+	CreateCheckIn(ctx context.Context, arg CreateCheckInParams) (CreateCheckInRow, error)
 	CreateCycle(ctx context.Context, arg CreateCycleParams) (CreateCycleRow, error)
+	CreateIndicator(ctx context.Context, arg CreateIndicatorParams) (CreateIndicatorRow, error)
 	CreateMission(ctx context.Context, arg CreateMissionParams) (CreateMissionRow, error)
 	CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (CreateOrganizationRow, error)
 	CreateOrganizationMembership(ctx context.Context, arg CreateOrganizationMembershipParams) (CreateOrganizationMembershipRow, error)
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (CreateRefreshTokenRow, error)
+	CreateTag(ctx context.Context, arg CreateTagParams) (CreateTagRow, error)
+	CreateTask(ctx context.Context, arg CreateTaskParams) (CreateTaskRow, error)
 	CreateTeam(ctx context.Context, arg CreateTeamParams) (CreateTeamRow, error)
 	CreateTeamMember(ctx context.Context, arg CreateTeamMemberParams) (CreateTeamMemberRow, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
+	DeleteMissionMemberByUser(ctx context.Context, arg DeleteMissionMemberByUserParams) error
+	DeleteMissionMembers(ctx context.Context, arg DeleteMissionMembersParams) error
+	DeleteMissionTagByTag(ctx context.Context, arg DeleteMissionTagByTagParams) error
+	DeleteMissionTags(ctx context.Context, arg DeleteMissionTagsParams) error
 	GetActiveOrganizationMembership(ctx context.Context, arg GetActiveOrganizationMembershipParams) (GetActiveOrganizationMembershipRow, error)
+	GetCheckInByID(ctx context.Context, arg GetCheckInByIDParams) (GetCheckInByIDRow, error)
 	GetCycleByID(ctx context.Context, arg GetCycleByIDParams) (GetCycleByIDRow, error)
 	GetCycleByName(ctx context.Context, arg GetCycleByNameParams) (GetCycleByNameRow, error)
+	GetIndicatorByID(ctx context.Context, arg GetIndicatorByIDParams) (GetIndicatorByIDRow, error)
 	GetMissionByID(ctx context.Context, arg GetMissionByIDParams) (GetMissionByIDRow, error)
 	GetOrganizationByDomain(ctx context.Context, lower string) (GetOrganizationByDomainRow, error)
 	GetOrganizationByID(ctx context.Context, id uuid.UUID) (GetOrganizationByIDRow, error)
 	GetOrganizationByIDForUser(ctx context.Context, arg GetOrganizationByIDForUserParams) (GetOrganizationByIDForUserRow, error)
 	GetOrganizationByWorkspace(ctx context.Context, workspace string) (GetOrganizationByWorkspaceRow, error)
 	GetRefreshTokenByTokenHash(ctx context.Context, tokenHash string) (GetRefreshTokenByTokenHashRow, error)
+	GetTagByID(ctx context.Context, arg GetTagByIDParams) (GetTagByIDRow, error)
+	GetTagByName(ctx context.Context, arg GetTagByNameParams) (GetTagByNameRow, error)
+	GetTaskByID(ctx context.Context, arg GetTaskByIDParams) (GetTaskByIDRow, error)
 	GetTeamByID(ctx context.Context, arg GetTeamByIDParams) (GetTeamByIDRow, error)
 	GetTeamByName(ctx context.Context, arg GetTeamByNameParams) (GetTeamByNameRow, error)
 	GetTeamMemberByTeamAndUser(ctx context.Context, arg GetTeamMemberByTeamAndUserParams) (GetTeamMemberByTeamAndUserRow, error)
 	GetUserByEmail(ctx context.Context, lower string) (GetUserByEmailRow, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)
+	InsertMissionMember(ctx context.Context, arg InsertMissionMemberParams) error
+	InsertMissionTag(ctx context.Context, arg InsertMissionTagParams) error
+	ListCheckInsByIndicator(ctx context.Context, arg ListCheckInsByIndicatorParams) ([]ListCheckInsByIndicatorRow, error)
 	ListCycles(ctx context.Context, arg ListCyclesParams) ([]ListCyclesRow, error)
 	ListCyclesByStatus(ctx context.Context, arg ListCyclesByStatusParams) ([]ListCyclesByStatusRow, error)
+	ListIndicators(ctx context.Context, arg ListIndicatorsParams) ([]ListIndicatorsRow, error)
+	ListMissionMembers(ctx context.Context, arg ListMissionMembersParams) ([]MissionMember, error)
+	// IsMissionDescendant and SoftDeleteMissionSubtree use recursive CTEs and are
+	// implemented as raw pgx queries in the repository (sqlc parser does not
+	// handle recursive CTE column aliasing reliably).
+	ListMissionTagIDs(ctx context.Context, arg ListMissionTagIDsParams) ([]uuid.UUID, error)
 	ListMissions(ctx context.Context, arg ListMissionsParams) ([]ListMissionsRow, error)
 	ListOrganizationMemberships(ctx context.Context, arg ListOrganizationMembershipsParams) ([]ListOrganizationMembershipsRow, error)
 	ListOrganizationUsers(ctx context.Context, arg ListOrganizationUsersParams) ([]ListOrganizationUsersRow, error)
@@ -57,6 +83,8 @@ type Querier interface {
 	ListOrganizationsByUser(ctx context.Context, arg ListOrganizationsByUserParams) ([]ListOrganizationsByUserRow, error)
 	ListOrganizationsByUserAndStatus(ctx context.Context, arg ListOrganizationsByUserAndStatusParams) ([]ListOrganizationsByUserAndStatusRow, error)
 	ListRoles(ctx context.Context, organizationID uuid.UUID) ([]ListRolesRow, error)
+	ListTags(ctx context.Context, arg ListTagsParams) ([]ListTagsRow, error)
+	ListTasks(ctx context.Context, arg ListTasksParams) ([]ListTasksRow, error)
 	ListTeamMembers(ctx context.Context, arg ListTeamMembersParams) ([]ListTeamMembersRow, error)
 	ListTeamMembersByOrganizationUser(ctx context.Context, arg ListTeamMembersByOrganizationUserParams) ([]ListTeamMembersByOrganizationUserRow, error)
 	ListTeamMembersByOrganizationUsers(ctx context.Context, arg ListTeamMembersByOrganizationUsersParams) ([]ListTeamMembersByOrganizationUsersRow, error)
@@ -67,18 +95,26 @@ type Querier interface {
 	ListUserMembershipsForOrganization(ctx context.Context, arg ListUserMembershipsForOrganizationParams) ([]ListUserMembershipsForOrganizationRow, error)
 	RevokeAllRefreshTokensByUserID(ctx context.Context, userID uuid.UUID) error
 	RevokeRefreshToken(ctx context.Context, id uuid.UUID) error
+	SoftDeleteCheckIn(ctx context.Context, arg SoftDeleteCheckInParams) error
 	SoftDeleteCycle(ctx context.Context, arg SoftDeleteCycleParams) error
+	SoftDeleteIndicator(ctx context.Context, arg SoftDeleteIndicatorParams) (int64, error)
 	SoftDeleteOrganization(ctx context.Context, id uuid.UUID) error
 	SoftDeleteOrganizationMembership(ctx context.Context, arg SoftDeleteOrganizationMembershipParams) error
 	SoftDeleteOrganizationMembershipsByOrganization(ctx context.Context, organizationID uuid.UUID) error
+	SoftDeleteTag(ctx context.Context, arg SoftDeleteTagParams) error
+	SoftDeleteTask(ctx context.Context, arg SoftDeleteTaskParams) (int64, error)
 	SoftDeleteTeam(ctx context.Context, arg SoftDeleteTeamParams) error
 	SoftDeleteTeamMember(ctx context.Context, id uuid.UUID) error
 	SoftDeleteTeamMembersByOrganizationUser(ctx context.Context, arg SoftDeleteTeamMembersByOrganizationUserParams) error
 	SoftDeleteTeamMembersByTeam(ctx context.Context, teamID uuid.UUID) error
+	UpdateCheckIn(ctx context.Context, arg UpdateCheckInParams) (UpdateCheckInRow, error)
 	UpdateCycle(ctx context.Context, arg UpdateCycleParams) (UpdateCycleRow, error)
+	UpdateIndicator(ctx context.Context, arg UpdateIndicatorParams) (UpdateIndicatorRow, error)
 	UpdateMission(ctx context.Context, arg UpdateMissionParams) (UpdateMissionRow, error)
 	UpdateOrganization(ctx context.Context, arg UpdateOrganizationParams) (UpdateOrganizationRow, error)
 	UpdateOrganizationMembership(ctx context.Context, arg UpdateOrganizationMembershipParams) (UpdateOrganizationMembershipRow, error)
+	UpdateTag(ctx context.Context, arg UpdateTagParams) (UpdateTagRow, error)
+	UpdateTask(ctx context.Context, arg UpdateTaskParams) (UpdateTaskRow, error)
 	UpdateTeam(ctx context.Context, arg UpdateTeamParams) (UpdateTeamRow, error)
 	UpdateTeamMember(ctx context.Context, arg UpdateTeamMemberParams) (UpdateTeamMemberRow, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (UpdateUserRow, error)

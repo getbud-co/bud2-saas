@@ -7,7 +7,7 @@ export type MissionStatus =
 
 export type MissionVisibility = "public" | "team_only" | "private";
 
-export type KanbanStatus = "uncategorized" | "todo" | "doing" | "done";
+export type KanbanStatus = "todo" | "doing" | "done";
 
 export type MissionMemberRole = "owner" | "supporter" | "observer";
 
@@ -65,7 +65,6 @@ export interface Mission {
   orgId: string;
   
   // Hierarchy
-  cycleId: string | null;
   parentId: string | null;
   /** Profundidade na árvore: 0 = raiz, 1 = filha, etc. */
   depth: number;
@@ -84,9 +83,8 @@ export interface Mission {
   status: MissionStatus;
   visibility: MissionVisibility;
   progress: number;
-  kanbanStatus: KanbanStatus;
-  sortOrder: number;
-  dueDate: string | null;
+  startDate: string;
+  endDate: string;
   completedAt: string | null;
   
   // Timestamps
@@ -109,6 +107,7 @@ export interface Mission {
   tasks?: import("./mission-task").MissionTask[];
   children?: Mission[];
   tags?: import("./tag").Tag[];
+  tagIds?: string[];
   
   // ─── Future features (not yet implemented) ───
   

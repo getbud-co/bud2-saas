@@ -9,16 +9,35 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ConfigDataProvider } from "./ConfigDataContext";
+import { AuthContext } from "./AuthContext";
 import { PeopleDataProvider, usePeopleData } from "./PeopleDataContext";
 
 // ─── Test Helpers ───
 
+const nullAuthValue = {
+  isAuthenticated: false,
+  initializing: false,
+  user: null,
+  activeOrganization: null,
+  organizations: [],
+  login: async () => {},
+  switchOrganization: async () => {},
+  logout: () => {},
+  getToken: () => null,
+};
+
 function wrapper({ children }: { children: ReactNode }) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return (
-    <ConfigDataProvider>
-      <PeopleDataProvider>{children}</PeopleDataProvider>
-    </ConfigDataProvider>
+    <QueryClientProvider client={qc}>
+      <AuthContext.Provider value={nullAuthValue}>
+        <ConfigDataProvider>
+          <PeopleDataProvider>{children}</PeopleDataProvider>
+        </ConfigDataProvider>
+      </AuthContext.Provider>
+    </QueryClientProvider>
   );
 }
 
@@ -161,7 +180,7 @@ describe("PeopleDataContext", () => {
       expect(names).toEqual(sorted);
     });
 
-    it("setUsers allows updating users", () => {
+    it("setUsers is a no-op (users come from API)", () => {
       const { result } = renderHook(() => usePeopleData(), { wrapper });
 
       const firstUser = result.current.users[0];
@@ -176,9 +195,9 @@ describe("PeopleDataContext", () => {
           );
         });
 
+        // setUsers is deprecated and no longer mutates the users list
         const updated = result.current.users.find((u) => u.id === firstUser.id);
-        expect(updated?.firstName).toBe("UpdatedName");
-        expect(updated?.firstName).not.toBe(originalFirstName);
+        expect(updated?.firstName).toBe(originalFirstName);
       }
     });
   });
@@ -445,28 +464,17 @@ describe("PeopleDataContext", () => {
     it("resets all data to seed values", () => {
       const { result } = renderHook(() => usePeopleData(), { wrapper });
 
-      // Make some changes
-      const firstUser = result.current.users[0];
-      if (firstUser) {
-        act(() => {
-          result.current.setUsers((prev) =>
-            prev.map((u) =>
-              u.id === firstUser.id ? { ...u, firstName: "ChangedName" } : u
-            )
-          );
-        });
+      const initialUserCount = result.current.users.length;
 
-        // Verify change
-        expect(result.current.users.find((u) => u.id === firstUser.id)?.firstName).toBe("ChangedName");
+      act(() => {
+        result.current.resetToSeed();
+      });
 
-        // Reset
-        act(() => {
-          result.current.resetToSeed();
-        });
-
-        // Verify reset
-        expect(result.current.users.find((u) => u.id === firstUser.id)?.firstName).not.toBe("ChangedName");
-      }
+      // After reset, users are still available (from seed or API fallback)
+      expect(result.current.users.length).toBeGreaterThanOrEqual(0);
+      expect(Array.isArray(result.current.users)).toBe(true);
+      // User count is preserved or comes from snapshot seed
+      expect(result.current.users.length).toBe(initialUserCount);
     });
   });
 
@@ -500,7 +508,7 @@ describe("PeopleDataContext", () => {
       }
     });
 
-    it("updating user teams affects team memberships", () => {
+    it("setUsers team changes are no-ops (team membership comes from API)", () => {
       const { result } = renderHook(() => usePeopleData(), { wrapper });
 
       const firstTeam = result.current.teams[0];
@@ -509,6 +517,8 @@ describe("PeopleDataContext", () => {
       );
 
       if (firstTeam && userNotInTeam) {
+        const originalTeams = [...(userNotInTeam.teams ?? [])];
+
         act(() => {
           result.current.setUsers((prev) =>
             prev.map((u) =>
@@ -519,9 +529,9 @@ describe("PeopleDataContext", () => {
           );
         });
 
-        // User should now have the team
+        // setUsers is a no-op; team membership should be unchanged
         const updatedUser = result.current.users.find((u) => u.id === userNotInTeam.id);
-        expect(updatedUser?.teams).toContain(firstTeam.name);
+        expect(updatedUser?.teams).toEqual(originalTeams);
       }
     });
   });

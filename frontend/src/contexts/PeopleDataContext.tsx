@@ -11,6 +11,8 @@ import {
 } from "react";
 import type { Team, TeamMember, UserStatus } from "@/types";
 import { useConfigData } from "@/contexts/ConfigDataContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useUsers, type User as ApiUser } from "@/hooks/use-users";
 import {
   createTeamIdFromName,
   loadPeopleSnapshot,
@@ -223,55 +225,75 @@ function createOwnerOption(user: PeopleUserView): OwnerOption {
   };
 }
 
+function apiUserToPeopleUserView(
+  api: ApiUser,
+  orgId: string,
+  teamsById: Record<string, Team>,
+): PeopleUserView {
+  const firstName = api.first_name;
+  const lastName = api.last_name;
+  const teams = api.team_ids
+    .map((id) => teamsById[id]?.name)
+    .filter((name): name is string => name != null);
+  const effectiveStatus = (api.membership_status ?? api.status) as UserStatus;
+  return {
+    id: api.id,
+    orgId,
+    email: api.email,
+    firstName,
+    lastName,
+    initials: `${firstName[0] ?? ""}${lastName[0] ?? ""}`.toUpperCase() || null,
+    jobTitle: api.job_title ?? null,
+    managerId: null,
+    avatarUrl: null,
+    nickname: api.nickname ?? null,
+    birthDate: api.birth_date ?? null,
+    gender: api.gender ?? null,
+    phone: api.phone ?? null,
+    language: api.language,
+    status: effectiveStatus,
+    invitedAt: null,
+    activatedAt: null,
+    lastLoginAt: null,
+    authProvider: "email",
+    authProviderId: null,
+    createdAt: api.created_at,
+    updatedAt: api.updated_at,
+    deletedAt: null,
+    roleId: null,
+    roleType: api.role ?? "colaborador",
+    teams,
+  };
+}
+
+const EMPTY_API_USERS: ApiUser[] = [];
+
 export function PeopleDataProvider({ children }: { children: ReactNode }) {
   const { activeOrgId } = useConfigData();
+  const { user: authUser } = useAuth();
+  const { data: _apiUsersRaw } = useUsers();
+  // Stable reference when no API data yet — prevents unnecessary recomputes
+  const apiUsers = _apiUsersRaw.length > 0 ? _apiUsersRaw : EMPTY_API_USERS;
   const [snapshot, setSnapshot] = useState<PeopleStoreSnapshot>(() => loadPeopleSnapshot(activeOrgId));
 
   useEffect(() => {
     setSnapshot(loadPeopleSnapshot(activeOrgId));
   }, [activeOrgId]);
 
-  const users = useMemo(() => buildUsersView(snapshot), [snapshot]);
+  const users = useMemo(() => {
+    if (apiUsers.length > 0) {
+      return apiUsers
+        .map((u) => apiUserToPeopleUserView(u, activeOrgId, snapshot.teamsById))
+        .sort((a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`, "pt-BR"));
+    }
+    return buildUsersView(snapshot);
+  }, [apiUsers, activeOrgId, snapshot]);
   const teams = useMemo(() => buildTeamsView(snapshot), [snapshot]);
 
-  const setUsers = useCallback<Dispatch<SetStateAction<PeopleUserView[]>>>((updater) => {
-    setSnapshot((prev) => {
-      const prevUsers = buildUsersView(prev);
-      const nextUsers = typeof updater === "function"
-        ? (updater as (value: PeopleUserView[]) => PeopleUserView[])(prevUsers)
-        : updater;
-
-      const nextUsersById: Record<string, PeopleUserRecord> = Object.fromEntries(
-        nextUsers.map((user) => {
-          const previous = prev.usersById[user.id];
-          const userRecord: PeopleUserRecord = {
-            ...cloneDeep(previous ?? user),
-            ...cloneDeep(user),
-            roleType: user.roleType,
-            teams: undefined,
-          } as unknown as PeopleUserRecord;
-
-          const { teams: _, ...withoutTeams } = userRecord as PeopleUserView;
-          return [user.id, withoutTeams as PeopleUserRecord];
-        }),
-      );
-
-      const memberships = buildTeamMembersFromUsers(nextUsers, prev.teamsById, prev.teamMembers);
-
-      const nextCurrentUserId = nextUsersById[prev.currentUserId]
-        ? prev.currentUserId
-        : nextUsers[0]?.id ?? "";
-
-      return savePeopleSnapshot({
-        currentUserId: nextCurrentUserId,
-        usersById: nextUsersById,
-        teamsById: memberships.teamsById,
-        teamMembers: memberships.teamMembers,
-        legacyUserIdAliases: prev.legacyUserIdAliases,
-        legacyTeamIdAliases: prev.legacyTeamIdAliases,
-      }, activeOrgId);
-    });
-  }, [activeOrgId]);
+  // deprecated: users now come from the API via useUsers(); callers that still
+  // write through setUsers are operating on stale localStorage state that will
+  // be dropped once their pages are migrated.
+  const setUsers = useCallback<Dispatch<SetStateAction<PeopleUserView[]>>>((_updater) => {}, []);
 
   const setTeams = useCallback<Dispatch<SetStateAction<Team[]>>>((updater) => {
     setSnapshot((prev) => {
@@ -455,9 +477,10 @@ export function PeopleDataProvider({ children }: { children: ReactNode }) {
   }, [resolveUserId, snapshot.usersById]);
 
   const currentUserId = useMemo(() => {
+    if (authUser?.id && users.some((u) => u.id === authUser.id)) return authUser.id;
     const ensured = ensureCurrentUser(snapshot);
     return ensured || null;
-  }, [snapshot]);
+  }, [authUser, users, snapshot]);
 
   const currentUser = useMemo(() => {
     if (!currentUserId) return null;

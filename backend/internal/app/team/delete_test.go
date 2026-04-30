@@ -9,7 +9,10 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	apptx "github.com/getbud-co/bud2/backend/internal/app/tx"
+	domainindicator "github.com/getbud-co/bud2/backend/internal/domain/indicator"
+	domainmission "github.com/getbud-co/bud2/backend/internal/domain/mission"
 	domainorg "github.com/getbud-co/bud2/backend/internal/domain/organization"
+	domaintask "github.com/getbud-co/bud2/backend/internal/domain/task"
 	domainteam "github.com/getbud-co/bud2/backend/internal/domain/team"
 	domainuser "github.com/getbud-co/bud2/backend/internal/domain/user"
 	"github.com/getbud-co/bud2/backend/internal/test/fixtures"
@@ -21,9 +24,12 @@ type deleteTeamTxRepos struct {
 	teamRepo domainteam.Repository
 }
 
-func (r deleteTeamTxRepos) Organizations() domainorg.Repository { return nil }
-func (r deleteTeamTxRepos) Users() domainuser.Repository        { return nil }
-func (r deleteTeamTxRepos) Teams() domainteam.Repository        { return r.teamRepo }
+func (r deleteTeamTxRepos) Organizations() domainorg.Repository    { return nil }
+func (r deleteTeamTxRepos) Users() domainuser.Repository           { return nil }
+func (r deleteTeamTxRepos) Teams() domainteam.Repository           { return r.teamRepo }
+func (r deleteTeamTxRepos) Missions() domainmission.Repository     { return nil }
+func (r deleteTeamTxRepos) Indicators() domainindicator.Repository { return nil }
+func (r deleteTeamTxRepos) Tasks() domaintask.Repository           { return nil }
 
 type deleteTeamTxManager struct {
 	repos apptx.Repositories

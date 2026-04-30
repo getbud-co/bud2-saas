@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { formatDateBR } from "@/lib/date-format";
+import { apiErrorToMessage } from "@/lib/api-error";
 import {
   Table,
   TableCardHeader,
@@ -23,13 +24,14 @@ import {
 } from "@getbud-co/buds";
 import type { PopoverItem } from "@getbud-co/buds";
 import { Plus, PencilSimple, Trash, Tag as TagIcon, MagnifyingGlass } from "@phosphor-icons/react";
-import type { Tag } from "@/types";
-import { useConfigData } from "@/contexts/ConfigDataContext";
+import { useTags, useCreateTag, useUpdateTag, useDeleteTag } from "@/hooks/use-tags";
+import type { Tag } from "@/hooks/use-tags";
 import styles from "./TagsModule.module.css";
 
-/** Tag with linkedItems guaranteed for UI display */
+/** Tag with linkedItems and formatted date for UI display */
 interface TagView extends Tag {
   linkedItems: number;
+  createdAtFormatted: string;
 }
 
 const COLOR_OPTIONS = [
@@ -42,8 +44,17 @@ const COLOR_OPTIONS = [
   { value: "error", label: "Vermelho" },
 ];
 
+const TAG_ERROR_OVERRIDES: Record<number, string> = {
+  409: "Já existe uma tag com esse nome",
+  422: "Verifique os dados informados",
+};
+
 export function TagsModule() {
-  const { tags, createTag, updateTag, deleteTag } = useConfigData();
+  const { data: tags = [], isLoading, error } = useTags();
+  const createTagMut = useCreateTag();
+  const updateTagMut = useUpdateTag();
+  const deleteTagMut = useDeleteTag();
+
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTag, setEditingTag] = useState<TagView | null>(null);
@@ -63,19 +74,14 @@ export function TagsModule() {
     handleSelectAll,
   } = useDataTable<SortKey>();
 
-  function parseDate(str: string): number {
-    const [d = 1, m = 1, y = 1970] = str.split("/").map(Number);
-    return new Date(y, m - 1, d).getTime();
-  }
-
-  const tagsView = useMemo<TagView[]>(() => (
+  const tagsView = useMemo<TagView[]>(() =>
     tags.map((tag) => ({
       ...tag,
-      linkedItems: 0,
-      createdAt: formatDateBR(tag.createdAt),
-      updatedAt: formatDateBR(tag.updatedAt),
-    }))
-  ), [tags]);
+      linkedItems: tag.usage_count ?? 0,
+      createdAtFormatted: formatDateBR(tag.created_at),
+    })),
+    [tags],
+  );
 
   const filtered = useMemo(() =>
     tagsView
@@ -86,7 +92,7 @@ export function TagsModule() {
         switch (sortKey) {
           case "name": return dir * a.name.localeCompare(b.name);
           case "linkedItems": return dir * (a.linkedItems - b.linkedItems);
-          case "createdAt": return dir * (parseDate(a.createdAt) - parseDate(b.createdAt));
+          case "createdAt": return dir * a.created_at.localeCompare(b.created_at);
           default: return 0;
         }
       }),
@@ -95,11 +101,13 @@ export function TagsModule() {
 
   const rowIds = useMemo(() => filtered.map((t) => t.id), [filtered]);
 
-  function handleBulkDelete() {
-    for (const tagId of selectedRows) {
-      deleteTag(tagId);
-    }
-    toast.success(`${selectedRows.size} tag(s) excluída(s)`);
+  async function handleBulkDelete() {
+    const results = await Promise.allSettled(
+      [...selectedRows].map((id) => deleteTagMut.mutateAsync(id)),
+    );
+    const failed = results.filter((r) => r.status === "rejected");
+    if (failed.length > 0) toast.error(`${failed.length} tag(s) não puderam ser excluídas`);
+    else toast.success(`${selectedRows.size} tag(s) excluída(s)`);
     clearSelection();
   }
 
@@ -121,22 +129,30 @@ export function TagsModule() {
     setModalOpen(true);
   }
 
-  function handleSave() {
-    if (editingTag) {
-      updateTag(editingTag.id, { name: formName, color: formColor });
-      toast.success("Tag atualizada");
-    } else {
-      createTag({ name: formName, color: formColor });
-      toast.success("Tag criada");
+  async function handleSave() {
+    try {
+      if (editingTag) {
+        await updateTagMut.mutateAsync({ id: editingTag.id, body: { name: formName, color: formColor as Tag["color"] } });
+        toast.success("Tag atualizada");
+      } else {
+        await createTagMut.mutateAsync({ name: formName, color: formColor as Tag["color"] });
+        toast.success("Tag criada");
+      }
+      setModalOpen(false);
+    } catch (err) {
+      toast.error(apiErrorToMessage(err, TAG_ERROR_OVERRIDES));
     }
-    setModalOpen(false);
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!deletingTag) return;
-    deleteTag(deletingTag.id);
-    setDeletingTag(null);
-    toast.success("Tag excluída");
+    try {
+      await deleteTagMut.mutateAsync(deletingTag.id);
+      setDeletingTag(null);
+      toast.success("Tag excluída");
+    } catch (err) {
+      toast.error(apiErrorToMessage(err, TAG_ERROR_OVERRIDES));
+    }
   }
 
   function getRowActions(tag: TagView): PopoverItem[] {
@@ -146,8 +162,15 @@ export function TagsModule() {
     ];
   }
 
+  const isPending = createTagMut.isPending || updateTagMut.isPending || deleteTagMut.isPending;
+
   return (
     <>
+      {error && (
+        <div style={{ marginBottom: 16 }}>
+          {apiErrorToMessage(error, TAG_ERROR_OVERRIDES)}
+        </div>
+      )}
       <Table
         variant="divider"
         elevated={false}
@@ -170,7 +193,7 @@ export function TagsModule() {
                   leftIcon={MagnifyingGlass}
                 />
               </div>
-              <Button variant="primary" size="md" leftIcon={Plus} onClick={openCreate}>
+              <Button variant="primary" size="md" leftIcon={Plus} disabled={isLoading} onClick={openCreate}>
                 Nova tag
               </Button>
             </div>
@@ -194,7 +217,7 @@ export function TagsModule() {
                   <Badge color={t.color as "neutral"} leftIcon={TagIcon}>{t.name}</Badge>
                 </TableCell>
                 <TableCell>{t.linkedItems}</TableCell>
-                <TableCell>{t.createdAt}</TableCell>
+                <TableCell>{t.createdAtFormatted}</TableCell>
                 <TableCell>
                   <RowActionsPopover
                     className={styles.actionsField}
@@ -210,7 +233,7 @@ export function TagsModule() {
           </TableBody>
         </TableContent>
         <TableBulkActions count={selectedRows.size} onClear={clearSelection}>
-          <Button variant="danger" size="md" leftIcon={Trash} onClick={handleBulkDelete}>
+          <Button variant="danger" size="md" leftIcon={Trash} disabled={isPending} onClick={handleBulkDelete}>
             Excluir
           </Button>
         </TableBulkActions>
@@ -243,7 +266,7 @@ export function TagsModule() {
         </ModalBody>
         <ModalFooter>
           <Button variant="tertiary" size="md" onClick={() => setModalOpen(false)}>Cancelar</Button>
-          <Button variant="primary" size="md" disabled={!formName.trim()} onClick={handleSave}>
+          <Button variant="primary" size="md" disabled={isPending || !formName.trim()} onClick={handleSave}>
             {editingTag ? "Salvar" : "Criar tag"}
           </Button>
         </ModalFooter>
@@ -262,7 +285,7 @@ export function TagsModule() {
         </ModalBody>
         <ModalFooter>
           <Button variant="tertiary" size="md" onClick={() => setDeletingTag(null)}>Cancelar</Button>
-          <Button variant="danger" size="md" leftIcon={Trash} onClick={handleDelete}>Excluir</Button>
+          <Button variant="danger" size="md" leftIcon={Trash} disabled={isPending} onClick={handleDelete}>Excluir</Button>
         </ModalFooter>
       </Modal>
     </>

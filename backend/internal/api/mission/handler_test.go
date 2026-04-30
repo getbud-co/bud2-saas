@@ -25,12 +25,12 @@ import (
 
 type mockCreateUC struct{ mock.Mock }
 
-func (m *mockCreateUC) Execute(ctx context.Context, cmd appmission.CreateCommand) (*domainmission.Mission, error) {
+func (m *mockCreateUC) Execute(ctx context.Context, cmd appmission.CreateCommand) (*appmission.CreateResult, error) {
 	args := m.Called(ctx, cmd)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*domainmission.Mission), args.Error(1)
+	return args.Get(0).(*appmission.CreateResult), args.Error(1)
 }
 
 type mockUpdateUC struct{ mock.Mock }
@@ -96,12 +96,14 @@ func TestHandler_Create_Success(t *testing.T) {
 	handler := NewHandler(createUC, nil, nil, nil, nil)
 
 	expected := sampleMission(uuid.New(), tenantID.UUID())
-	createUC.On("Execute", mock.Anything, mock.Anything).Return(expected, nil)
+	createUC.On("Execute", mock.Anything, mock.Anything).Return(&appmission.CreateResult{Mission: expected}, nil)
 
 	ownerID := uuid.New()
 	body, _ := json.Marshal(map[string]any{
-		"title":    "Reduzir churn",
-		"owner_id": ownerID.String(),
+		"title":      "Reduzir churn",
+		"owner_id":   ownerID.String(),
+		"start_date": "2026-01-01",
+		"end_date":   "2026-12-31",
 	})
 	req := httptest.NewRequest(http.MethodPost, "/missions", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -124,8 +126,10 @@ func TestHandler_Create_InvalidReference_Returns422(t *testing.T) {
 	handler := NewHandler(createUC, nil, nil, nil, nil)
 
 	body, _ := json.Marshal(map[string]any{
-		"title":    "x",
-		"owner_id": uuid.New().String(),
+		"title":      "x",
+		"owner_id":   uuid.New().String(),
+		"start_date": "2026-01-01",
+		"end_date":   "2026-12-31",
 	})
 	req := httptest.NewRequest(http.MethodPost, "/missions", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -186,14 +190,13 @@ func TestHandler_Patch_OnlyTitle_PreservesOtherFieldsAtBoundary(t *testing.T) {
 	patchUC.On("Execute", mock.Anything, mock.MatchedBy(func(cmd appmission.UpdateCommand) bool {
 		return cmd.Title != nil && *cmd.Title == "new title" &&
 			cmd.Description == nil &&
-			cmd.CycleID == nil &&
 			cmd.OwnerID == nil &&
 			cmd.TeamID == nil &&
 			cmd.Status == nil &&
 			cmd.Visibility == nil &&
 			cmd.KanbanStatus == nil &&
-			cmd.SortOrder == nil &&
-			cmd.DueDate == nil
+			cmd.StartDate == nil &&
+			cmd.EndDate == nil
 	})).Return(expected, nil)
 
 	body := []byte(`{"title":"new title"}`)
@@ -375,19 +378,6 @@ func TestHandler_List_InvalidParentID_Returns400(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, rr.Code)
 }
 
-func TestHandler_List_InvalidCycleID_Returns400(t *testing.T) {
-	tenantID := fixtures.NewTestTenantID()
-	handler := NewHandler(nil, nil, new(mockListUC), nil, nil)
-
-	req := httptest.NewRequest(http.MethodGet, "/missions?cycle_id=bogus", nil)
-	req = req.WithContext(domain.TenantIDToContext(req.Context(), tenantID))
-	rr := httptest.NewRecorder()
-
-	handler.List(rr, req)
-
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-}
-
 func TestHandler_List_InvalidStatusEnum_Returns400(t *testing.T) {
 	tenantID := fixtures.NewTestTenantID()
 	handler := NewHandler(nil, nil, new(mockListUC), nil, nil)
@@ -420,18 +410,16 @@ func TestHandler_List_StatusFilterPropagated(t *testing.T) {
 
 func TestHandler_List_AllUUIDFiltersPropagated(t *testing.T) {
 	tenantID := fixtures.NewTestTenantID()
-	cycleID := uuid.New()
 	ownerID := uuid.New()
 	teamID := uuid.New()
 	listUC := new(mockListUC)
 	listUC.On("Execute", mock.Anything, mock.MatchedBy(func(cmd appmission.ListCommand) bool {
-		return cmd.CycleID != nil && *cmd.CycleID == cycleID &&
-			cmd.OwnerID != nil && *cmd.OwnerID == ownerID &&
+		return cmd.OwnerID != nil && *cmd.OwnerID == ownerID &&
 			cmd.TeamID != nil && *cmd.TeamID == teamID
 	})).Return(domainmission.ListResult{}, nil)
 	handler := NewHandler(nil, nil, listUC, nil, nil)
 
-	url := "/missions?cycle_id=" + cycleID.String() + "&owner_id=" + ownerID.String() + "&team_id=" + teamID.String()
+	url := "/missions?owner_id=" + ownerID.String() + "&team_id=" + teamID.String()
 	req := httptest.NewRequest(http.MethodGet, url, nil)
 	req = req.WithContext(domain.TenantIDToContext(req.Context(), tenantID))
 	rr := httptest.NewRecorder()

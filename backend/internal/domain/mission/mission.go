@@ -11,6 +11,40 @@ import (
 	"github.com/getbud-co/bud2/backend/internal/domain"
 )
 
+type MemberRole string
+
+const (
+	MemberRoleOwner     MemberRole = "owner"
+	MemberRoleSupporter MemberRole = "supporter"
+	MemberRoleObserver  MemberRole = "observer"
+)
+
+func (r MemberRole) IsValid() bool {
+	switch r {
+	case MemberRoleOwner, MemberRoleSupporter, MemberRoleObserver:
+		return true
+	}
+	return false
+}
+
+type Member struct {
+	OrganizationID uuid.UUID
+	MissionID      uuid.UUID
+	UserID         uuid.UUID
+	Role           MemberRole
+	JoinedAt       time.Time
+}
+
+func (m *Member) Validate() error {
+	if m.UserID == uuid.Nil {
+		return fmt.Errorf("%w: member user_id is required", domain.ErrValidation)
+	}
+	if !m.Role.IsValid() {
+		return fmt.Errorf("%w: member role must be one of: owner, supporter, observer", domain.ErrValidation)
+	}
+	return nil
+}
+
 type Status string
 
 const (
@@ -65,7 +99,6 @@ func (k KanbanStatus) IsValid() bool {
 type Mission struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID
-	CycleID        *uuid.UUID
 	ParentID       *uuid.UUID
 	OwnerID        uuid.UUID
 	TeamID         *uuid.UUID
@@ -74,9 +107,11 @@ type Mission struct {
 	Status         Status
 	Visibility     Visibility
 	KanbanStatus   KanbanStatus
-	SortOrder      int
-	DueDate        *time.Time
+	StartDate      time.Time
+	EndDate        time.Time
 	CompletedAt    *time.Time
+	Members        []Member
+	TagIDs         []uuid.UUID
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }
@@ -100,15 +135,28 @@ func (m *Mission) Validate() error {
 	if !m.KanbanStatus.IsValid() {
 		return fmt.Errorf("%w: kanban_status must be one of: uncategorized, todo, doing, done", domain.ErrValidation)
 	}
+	if m.StartDate.IsZero() {
+		return fmt.Errorf("%w: start_date is required", domain.ErrValidation)
+	}
+	if m.EndDate.IsZero() {
+		return fmt.Errorf("%w: end_date is required", domain.ErrValidation)
+	}
+	if m.EndDate.Before(m.StartDate) {
+		return fmt.Errorf("%w: end_date must be on or after start_date", domain.ErrValidation)
+	}
 	if m.CompletedAt != nil && m.Status != StatusCompleted {
 		return fmt.Errorf("%w: completed_at is only allowed when status is 'completed'", domain.ErrValidation)
+	}
+	for i := range m.Members {
+		if err := m.Members[i].Validate(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 type ListFilter struct {
 	OrganizationID uuid.UUID
-	CycleID        *uuid.UUID
 	ParentID       *uuid.UUID
 	FilterByParent bool // true = filter by ParentID (nil means root only); false = no parent filter
 	Status         *Status
@@ -129,12 +177,6 @@ type Repository interface {
 	Create(ctx context.Context, mission *Mission) (*Mission, error)
 	GetByID(ctx context.Context, id, organizationID uuid.UUID) (*Mission, error)
 	List(ctx context.Context, filter ListFilter) (ListResult, error)
-	// IsDescendant reports whether candidateID is in the subtree rooted at
-	// ancestorID within the organization. Used by tree-mutation use cases
-	// that need cycle prevention before changing parent_id. Currently unused
-	// at the app layer; kept because the recursive CTE backing it is
-	// integration-tested and will be needed when a reparent use case lands.
-	IsDescendant(ctx context.Context, organizationID, ancestorID, candidateID uuid.UUID) (bool, error)
 	Update(ctx context.Context, mission *Mission) (*Mission, error)
 	SoftDeleteSubtree(ctx context.Context, id, organizationID uuid.UUID) error
 }
@@ -142,9 +184,9 @@ type Repository interface {
 var (
 	ErrNotFound      = errors.New("mission not found")
 	ErrInvalidParent = errors.New("invalid parent mission")
-	// ErrInvalidReference indicates that cycle_id, team_id, or owner_id
-	// references a resource that does not exist in the active tenant. Use case
-	// layer validates this explicitly before persistence; repositories also
-	// map FK violations (SQLSTATE 23503) to this error as a defense-in-depth.
+	// ErrInvalidReference indicates that team_id or owner_id references a
+	// resource that does not exist in the active tenant. Use case layer
+	// validates this explicitly before persistence; repositories also map FK
+	// violations (SQLSTATE 23503) to this error as a defense-in-depth.
 	ErrInvalidReference = errors.New("invalid mission reference")
 )
