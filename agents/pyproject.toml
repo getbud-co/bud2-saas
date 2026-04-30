@@ -19,7 +19,7 @@ dependencies = [
 
 [project.scripts]
 bud2-agents = "bud2.main:main"
-bud2-agents-migrate = "bud2.db.migrate:main"
+bud2-agents-migrate = "bud2.infra.postgres.migrate:main"
 
 [dependency-groups]
 dev = [
@@ -46,7 +46,7 @@ asyncio_mode = "auto"
 target-version = "py312"
 line-length = 100
 src = ["src", "tests"]
-extend-exclude = ["src/bud2/clients/bud2/generated"]
+extend-exclude = ["src/bud2/infra/bud2/generated"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
@@ -58,12 +58,12 @@ strict = true
 warn_unused_ignores = true
 warn_return_any = true
 disallow_untyped_defs = true
-exclude = ["src/bud2/clients/bud2/generated"]
+exclude = ["src/bud2/infra/bud2/generated"]
 
 [[tool.mypy.overrides]]
 module = ["google.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = ["bud2.clients.bud2.generated.*"]
+module = ["bud2.infra.bud2.generated.*"]
 ignore_errors = true

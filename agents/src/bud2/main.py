@@ -4,7 +4,7 @@ import uvicorn
 
 from bud2.api.server import create_app
 from bud2.config import Settings
-from bud2.observability.logging import configure_logging
+from bud2.infra.observability.logging import configure_logging
 
 
 def main() -> None:

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request
 from psycopg_pool import AsyncConnectionPool
 
 from bud2.config import Settings
-from bud2.db.pool import ping
+from bud2.infra.postgres.pool import ping
 
 router = APIRouter(tags=["Health"])
 

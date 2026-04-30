@@ -75,7 +75,7 @@ api-types:
 	npx openapi-typescript backend/api/openapi.yml -o frontend/src/lib/types.ts
 
 agents-api-client:
-	cd agents && uv run openapi-python-client generate --path ../backend/api/openapi.yml --config openapi-python-client.yml --output-path src/bud2/clients/bud2/generated --overwrite
+	cd agents && uv run openapi-python-client generate --path ../backend/api/openapi.yml --config openapi-python-client.yml --output-path src/bud2/infra/bud2/generated --overwrite
 
 migrate-agents:
 	cd agents && uv run bud2-agents-migrate

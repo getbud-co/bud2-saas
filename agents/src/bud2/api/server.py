@@ -7,9 +7,9 @@ from fastapi import FastAPI
 
 from bud2 import __version__
 from bud2.api.health import router as health_router
-from bud2.api.whatsapp_webhook import router as whatsapp_router
+from bud2.api.whatsapp.webhook import router as whatsapp_router
 from bud2.config import Settings
-from bud2.db.pool import create_pool
+from bud2.infra.postgres.pool import create_pool
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:

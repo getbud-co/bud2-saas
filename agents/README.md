@@ -29,13 +29,10 @@ make migrate-agents
 
 ## Architecture
 
-- `api/`: FastAPI HTTP boundary for health, WhatsApp webhooks, and future auth callbacks.
-- `app/`: ADK root agent and runtime orchestration.
-- `channels/`: provider-specific adapters. WhatsApp is the first supported channel.
-- `clients/bud2/`: bud2 API client integration. Generated OpenAPI client lives under `generated/`.
-- `tools/`: explicit allowlisted tools exposed to the agent.
-- `db/`: agents-owned database connectivity, migrations, and repositories.
-- `domain/`: agents runtime domain models.
+- `api/`: FastAPI HTTP boundary, organized by capability such as health and WhatsApp webhooks.
+- `app/`: application orchestration, including ADK root agent and runtime code.
+- `domain/`: agents runtime domain models, organized by domain concept.
+- `infra/`: external adapters and technical infrastructure, including Postgres, WhatsApp, bud2 API client/tools, auth providers, and observability.
 
 ## Authentication Scope
 
