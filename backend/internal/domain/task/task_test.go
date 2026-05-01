@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/getbud-co/bud2/backend/internal/domain"
 )
@@ -57,4 +58,43 @@ func newValid() *Task {
 		Title:          "Pesquisar churn drivers",
 		Status:         StatusTodo,
 	}
+}
+
+func TestNewTask_AppliesDefaultStatus(t *testing.T) {
+	orgID := uuid.New()
+	missionID := uuid.New()
+	assigneeID := uuid.New()
+	tk, err := NewTask(orgID, missionID, assigneeID, "Pesquisar churn drivers")
+	require.NoError(t, err)
+	assert.NotEqual(t, uuid.Nil, tk.ID)
+	assert.Equal(t, StatusTodo, tk.Status)
+	assert.Equal(t, orgID, tk.OrganizationID)
+	assert.Equal(t, missionID, tk.MissionID)
+	assert.Equal(t, assigneeID, tk.AssigneeID)
+}
+
+func TestNewTask_WithStatus_OverridesDefault(t *testing.T) {
+	tk, err := NewTask(uuid.New(), uuid.New(), uuid.New(), "T", WithStatus(StatusInProgress))
+	require.NoError(t, err)
+	assert.Equal(t, StatusInProgress, tk.Status)
+}
+
+func TestNewTask_WithIndicator_SetsIndicatorID(t *testing.T) {
+	indicatorID := uuid.New()
+	tk, err := NewTask(uuid.New(), uuid.New(), uuid.New(), "T", WithIndicator(indicatorID))
+	require.NoError(t, err)
+	require.NotNil(t, tk.IndicatorID)
+	assert.Equal(t, indicatorID, *tk.IndicatorID)
+}
+
+func TestNewTask_EmptyTitle_ReturnsValidationError(t *testing.T) {
+	_, err := NewTask(uuid.New(), uuid.New(), uuid.New(), "")
+	assert.ErrorIs(t, err, domain.ErrValidation)
+}
+
+func TestNewTask_IDIsAlwaysGenerated(t *testing.T) {
+	t1, _ := NewTask(uuid.New(), uuid.New(), uuid.New(), "A")
+	t2, _ := NewTask(uuid.New(), uuid.New(), uuid.New(), "B")
+	assert.NotEqual(t, uuid.Nil, t1.ID)
+	assert.NotEqual(t, t1.ID, t2.ID)
 }

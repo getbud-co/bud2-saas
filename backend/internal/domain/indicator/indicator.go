@@ -89,7 +89,7 @@ type Indicator struct {
 	UpdatedAt       time.Time
 }
 
-func (i *Indicator) Validate() error {
+func (i *Indicator) validateInvariants() error {
 	if i.Title == "" {
 		return fmt.Errorf("%w: title is required", domain.ErrValidation)
 	}
@@ -118,6 +118,50 @@ func (i *Indicator) Validate() error {
 		return fmt.Errorf("%w: period_start must be ≤ period_end", domain.ErrValidation)
 	}
 	return nil
+}
+
+// Validate is the public invariant check used by update use cases that mutate
+// fields after construction. New aggregates are created via NewIndicator.
+func (i *Indicator) Validate() error {
+	return i.validateInvariants()
+}
+
+// IndicatorOption configures optional fields on an Indicator during construction.
+type IndicatorOption func(*Indicator)
+
+func WithDescription(d *string) IndicatorOption      { return func(i *Indicator) { i.Description = d } }
+func WithTargetValue(v *float64) IndicatorOption     { return func(i *Indicator) { i.TargetValue = v } }
+func WithCurrentValue(v *float64) IndicatorOption    { return func(i *Indicator) { i.CurrentValue = v } }
+func WithUnit(u *string) IndicatorOption             { return func(i *Indicator) { i.Unit = u } }
+func WithStatus(s Status) IndicatorOption            { return func(i *Indicator) { i.Status = s } }
+func WithDueDate(d *time.Time) IndicatorOption       { return func(i *Indicator) { i.DueDate = d } }
+func WithMeasurementMode(m MeasurementMode) IndicatorOption {
+	return func(i *Indicator) { i.MeasurementMode = m }
+}
+func WithGoalType(g GoalType) IndicatorOption { return func(i *Indicator) { i.GoalType = g } }
+
+// NewIndicator constructs an always-valid Indicator. Generates ID, applies
+// default status (StatusDraft), and enforces invariants before returning.
+func NewIndicator(
+	orgID, missionID, ownerID uuid.UUID,
+	title string,
+	opts ...IndicatorOption,
+) (*Indicator, error) {
+	i := &Indicator{
+		ID:             uuid.New(),
+		OrganizationID: orgID,
+		MissionID:      missionID,
+		OwnerID:        ownerID,
+		Title:          title,
+		Status:         StatusDraft,
+	}
+	for _, opt := range opts {
+		opt(i)
+	}
+	if err := i.validateInvariants(); err != nil {
+		return nil, err
+	}
+	return i, nil
 }
 
 type ListFilter struct {

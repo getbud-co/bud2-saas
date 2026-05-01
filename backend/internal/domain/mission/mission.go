@@ -36,6 +36,12 @@ type Member struct {
 }
 
 func (m *Member) Validate() error {
+	if m.OrganizationID == uuid.Nil {
+		return fmt.Errorf("%w: member organization_id is required", domain.ErrValidation)
+	}
+	if m.MissionID == uuid.Nil {
+		return fmt.Errorf("%w: member mission_id is required", domain.ErrValidation)
+	}
 	if m.UserID == uuid.Nil {
 		return fmt.Errorf("%w: member user_id is required", domain.ErrValidation)
 	}
@@ -116,7 +122,22 @@ type Mission struct {
 	UpdatedAt      time.Time
 }
 
-func (m *Mission) Validate() error {
+func (m *Mission) validateInvariants() error {
+	if m.ID == uuid.Nil {
+		return fmt.Errorf("%w: id is required", domain.ErrValidation)
+	}
+	if m.OrganizationID == uuid.Nil {
+		return fmt.Errorf("%w: organization_id is required", domain.ErrValidation)
+	}
+	if m.OwnerID == uuid.Nil {
+		return fmt.Errorf("%w: owner_id is required", domain.ErrValidation)
+	}
+	if m.ParentID != nil && *m.ParentID == m.ID {
+		return fmt.Errorf("%w: mission cannot be its own parent", domain.ErrValidation)
+	}
+	if m.TeamID != nil && *m.TeamID == uuid.Nil {
+		return fmt.Errorf("%w: team_id is required when provided", domain.ErrValidation)
+	}
 	if m.Title == "" {
 		return fmt.Errorf("%w: title is required", domain.ErrValidation)
 	}
@@ -153,6 +174,210 @@ func (m *Mission) Validate() error {
 		}
 	}
 	return nil
+}
+
+// Validate is the public invariant check used by update use cases that mutate
+// fields after construction. New aggregates are created via NewMission.
+func (m *Mission) Validate() error {
+	return m.validateInvariants()
+}
+
+func (m *Mission) Rename(title string) error {
+	next := *m
+	next.Title = title
+	if err := next.validateInvariants(); err != nil {
+		return err
+	}
+	m.Title = title
+	return nil
+}
+
+func (m *Mission) ChangeDescription(description *string) error {
+	next := *m
+	next.Description = description
+	if err := next.validateInvariants(); err != nil {
+		return err
+	}
+	m.Description = description
+	return nil
+}
+
+func (m *Mission) ChangeOwner(ownerID uuid.UUID) error {
+	next := *m
+	next.OwnerID = ownerID
+	if err := next.validateInvariants(); err != nil {
+		return err
+	}
+	m.OwnerID = ownerID
+	return nil
+}
+
+func (m *Mission) AssignTeam(teamID uuid.UUID) error {
+	next := *m
+	next.TeamID = &teamID
+	if err := next.validateInvariants(); err != nil {
+		return err
+	}
+	m.TeamID = &teamID
+	return nil
+}
+
+func (m *Mission) ChangeStatus(status Status, now time.Time) error {
+	next := *m
+	next.Status = status
+	if status == StatusCompleted {
+		if next.CompletedAt == nil {
+			completedAt := now.UTC()
+			next.CompletedAt = &completedAt
+		}
+	} else {
+		next.CompletedAt = nil
+	}
+	if err := next.validateInvariants(); err != nil {
+		return err
+	}
+	m.Status = next.Status
+	m.CompletedAt = next.CompletedAt
+	return nil
+}
+
+func (m *Mission) ChangeVisibility(visibility Visibility) error {
+	next := *m
+	next.Visibility = visibility
+	if err := next.validateInvariants(); err != nil {
+		return err
+	}
+	m.Visibility = visibility
+	return nil
+}
+
+func (m *Mission) ChangeKanbanStatus(status KanbanStatus) error {
+	next := *m
+	next.KanbanStatus = status
+	if err := next.validateInvariants(); err != nil {
+		return err
+	}
+	m.KanbanStatus = status
+	return nil
+}
+
+func (m *Mission) Reschedule(period domain.TimeRange) error {
+	next := *m
+	next.StartDate = period.Start
+	next.EndDate = period.End
+	if err := next.validateInvariants(); err != nil {
+		return err
+	}
+	m.StartDate = period.Start
+	m.EndDate = period.End
+	return nil
+}
+
+func (m *Mission) ReplaceMembers(members []Member) error {
+	normalized, err := normalizeMembers(m.OrganizationID, m.ID, members)
+	if err != nil {
+		return err
+	}
+	next := *m
+	next.Members = normalized
+	if err := next.validateInvariants(); err != nil {
+		return err
+	}
+	m.Members = normalized
+	return nil
+}
+
+func (m *Mission) ReplaceTagIDs(ids []uuid.UUID) error {
+	deduped := deduplicateUUIDs(ids)
+	next := *m
+	next.TagIDs = deduped
+	if err := next.validateInvariants(); err != nil {
+		return err
+	}
+	m.TagIDs = deduped
+	return nil
+}
+
+// MissionOption configures optional fields on a Mission during construction.
+type MissionOption func(*Mission)
+
+func WithDescription(d *string) MissionOption       { return func(m *Mission) { m.Description = d } }
+func WithParent(id uuid.UUID) MissionOption         { return func(m *Mission) { m.ParentID = &id } }
+func WithTeam(id uuid.UUID) MissionOption           { return func(m *Mission) { m.TeamID = &id } }
+func WithStatus(s Status) MissionOption             { return func(m *Mission) { m.Status = s } }
+func WithVisibility(v Visibility) MissionOption     { return func(m *Mission) { m.Visibility = v } }
+func WithKanbanStatus(k KanbanStatus) MissionOption { return func(m *Mission) { m.KanbanStatus = k } }
+func WithMembers(ms []Member) MissionOption         { return func(m *Mission) { m.Members = ms } }
+func WithTagIDs(ids []uuid.UUID) MissionOption      { return func(m *Mission) { m.TagIDs = ids } }
+
+// NewMission constructs an always-valid Mission. Generates ID, applies
+// defaults (StatusDraft, VisibilityPublic, KanbanUncategorized), deduplicates
+// tag IDs, propagates MissionID/OrganizationID to members, and enforces
+// invariants before returning.
+func NewMission(
+	orgID, ownerID uuid.UUID,
+	title string,
+	period domain.TimeRange,
+	opts ...MissionOption,
+) (*Mission, error) {
+	m := &Mission{
+		ID:             uuid.New(),
+		OrganizationID: orgID,
+		OwnerID:        ownerID,
+		Title:          title,
+		StartDate:      period.Start,
+		EndDate:        period.End,
+		Status:         StatusDraft,
+		Visibility:     VisibilityPublic,
+		KanbanStatus:   KanbanUncategorized,
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	m.TagIDs = deduplicateUUIDs(m.TagIDs)
+	members, err := normalizeMembers(m.OrganizationID, m.ID, m.Members)
+	if err != nil {
+		return nil, err
+	}
+	m.Members = members
+	if err := m.validateInvariants(); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func normalizeMembers(orgID, missionID uuid.UUID, members []Member) ([]Member, error) {
+	seen := make(map[uuid.UUID]struct{}, len(members))
+	out := make([]Member, 0, len(members))
+	for _, member := range members {
+		if _, dup := seen[member.UserID]; dup {
+			continue
+		}
+		seen[member.UserID] = struct{}{}
+		member.OrganizationID = orgID
+		member.MissionID = missionID
+		if !member.Role.IsValid() {
+			member.Role = MemberRoleSupporter
+		}
+		if err := member.Validate(); err != nil {
+			return nil, err
+		}
+		out = append(out, member)
+	}
+	return out, nil
+}
+
+func deduplicateUUIDs(ids []uuid.UUID) []uuid.UUID {
+	seen := make(map[uuid.UUID]struct{}, len(ids))
+	out := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if _, dup := seen[id]; dup {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	return out
 }
 
 type ListFilter struct {

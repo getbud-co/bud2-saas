@@ -31,6 +31,9 @@ import (
 // to assert that validation rejects before the manager is touched.
 type nopTxManager struct {
 	missions   domainmission.Repository
+	tags       domaintag.Repository
+	teams      domainteam.Repository
+	users      domainuser.Repository
 	indicators domainindicator.Repository
 	tasks      domaintask.Repository
 	calls      int
@@ -44,20 +47,24 @@ type nopTxManager struct {
 // nothing pointing at the cause.
 type nopTxRepos struct {
 	missions   domainmission.Repository
+	tags       domaintag.Repository
+	teams      domainteam.Repository
+	users      domainuser.Repository
 	indicators domainindicator.Repository
 	tasks      domaintask.Repository
 }
 
 func (r nopTxRepos) Organizations() domainorg.Repository    { return new(mocks.OrganizationRepository) }
-func (r nopTxRepos) Users() domainuser.Repository           { return new(mocks.UserRepository) }
-func (r nopTxRepos) Teams() domainteam.Repository           { return new(mocks.TeamRepository) }
+func (r nopTxRepos) Users() domainuser.Repository           { return r.users }
+func (r nopTxRepos) Teams() domainteam.Repository           { return r.teams }
+func (r nopTxRepos) Tags() domaintag.Repository             { return r.tags }
 func (r nopTxRepos) Missions() domainmission.Repository     { return r.missions }
 func (r nopTxRepos) Indicators() domainindicator.Repository { return r.indicators }
 func (r nopTxRepos) Tasks() domaintask.Repository           { return r.tasks }
 
 func (m *nopTxManager) WithTx(_ context.Context, fn func(repos apptx.Repositories) error) error {
 	m.calls++
-	return fn(nopTxRepos{missions: m.missions, indicators: m.indicators, tasks: m.tasks})
+	return fn(nopTxRepos{missions: m.missions, tags: m.tags, teams: m.teams, users: m.users, indicators: m.indicators, tasks: m.tasks})
 }
 
 // missionDeps is a tiny holder for the repos a mission Create/Update
@@ -86,7 +93,7 @@ func newMissionDeps() missionDeps {
 		users:      new(mocks.UserRepository),
 		indicators: indicators,
 		tasks:      tasks,
-		txm:        &nopTxManager{missions: missions, indicators: indicators, tasks: tasks},
+		txm:        &nopTxManager{missions: missions, tags: new(mocks.TagRepository), teams: new(mocks.TeamRepository), users: new(mocks.UserRepository), indicators: indicators, tasks: tasks},
 	}
 }
 
@@ -99,6 +106,9 @@ func (d missionDeps) allowOwner() missionDeps {
 }
 
 func (d missionDeps) newCreateUseCase() *CreateUseCase {
+	d.txm.tags = d.tags
+	d.txm.teams = d.teams
+	d.txm.users = d.users
 	return NewCreateUseCase(d.missions, d.tags, d.teams, d.users, d.txm, testutil.NewDiscardLogger())
 }
 
@@ -112,17 +122,18 @@ func TestCreateUseCase_Execute_Success_AppliesDefaults(t *testing.T) {
 
 	res, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
-		Title:          "Reduzir churn",
-		OwnerID:        uuid.New(),
-		StartDate:      time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
-		EndDate:        time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+		Root: MissionInput{
+			Title:     "Reduzir churn",
+			OwnerID:   uuidPtr(uuid.New()),
+			StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			EndDate:   time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+		},
 	})
 
 	require.NoError(t, err)
-	require.NotNil(t, res.Mission)
-	assert.NotEqual(t, uuid.Nil, res.Mission.ID)
-	assert.Empty(t, res.Indicators)
-	assert.Empty(t, res.Tasks)
+	require.NotNil(t, res)
+	assert.NotEqual(t, uuid.Nil, res.ID)
+	assert.Equal(t, 0, d.txm.calls, "simple mission without relations should use fast path")
 	d.missions.AssertExpectations(t)
 	d.missions.AssertNotCalled(t, "GetByID")
 }
@@ -132,10 +143,29 @@ func TestCreateUseCase_Execute_EmptyTitle_ReturnsValidationError(t *testing.T) {
 
 	_, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
-		OwnerID:        uuid.New(),
+		Root: MissionInput{
+			OwnerID: uuidPtr(uuid.New()),
+		},
 	})
 
 	assert.ErrorIs(t, err, domain.ErrValidation)
+	d.missions.AssertNotCalled(t, "Create")
+}
+
+func TestCreateUseCase_Execute_RootWithoutOwner_ReturnsValidationErrorBeforePersisting(t *testing.T) {
+	d := newMissionDeps()
+
+	_, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
+		OrganizationID: fixtures.NewTestTenantID(),
+		Root: MissionInput{
+			Title:     "x",
+			StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			EndDate:   time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+		},
+	})
+
+	assert.ErrorIs(t, err, domain.ErrValidation)
+	d.users.AssertNotCalled(t, "GetActiveMemberByID")
 	d.missions.AssertNotCalled(t, "Create")
 }
 
@@ -147,9 +177,11 @@ func TestCreateUseCase_Execute_ParentInDifferentOrg_ReturnsInvalidParent(t *test
 
 	_, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
-		OwnerID:        uuid.New(),
-		Title:          "Child",
 		ParentID:       &parentID,
+		Root: MissionInput{
+			OwnerID: uuidPtr(uuid.New()),
+			Title:   "Child",
+		},
 	})
 
 	assert.ErrorIs(t, err, domainmission.ErrInvalidParent)
@@ -164,9 +196,11 @@ func TestCreateUseCase_Execute_ParentGetByIDError_PropagatesNonDomainError(t *te
 
 	_, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
-		OwnerID:        uuid.New(),
-		Title:          "x",
 		ParentID:       &parentID,
+		Root: MissionInput{
+			OwnerID: uuidPtr(uuid.New()),
+			Title:   "x",
+		},
 	})
 
 	assert.ErrorIs(t, err, repoErr)
@@ -181,8 +215,10 @@ func TestCreateUseCase_Execute_OwnerNotActiveMember_ReturnsInvalidReference(t *t
 
 	_, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
-		OwnerID:        uuid.New(),
-		Title:          "x",
+		Root: MissionInput{
+			OwnerID: uuidPtr(uuid.New()),
+			Title:   "x",
+		},
 	})
 
 	assert.ErrorIs(t, err, domainmission.ErrInvalidReference)
@@ -197,8 +233,10 @@ func TestCreateUseCase_Execute_OwnerLookupGenericError_Propagates(t *testing.T) 
 
 	_, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
-		OwnerID:        uuid.New(),
-		Title:          "x",
+		Root: MissionInput{
+			OwnerID: uuidPtr(uuid.New()),
+			Title:   "x",
+		},
 	})
 
 	assert.ErrorIs(t, err, dbErr)
@@ -213,9 +251,11 @@ func TestCreateUseCase_Execute_TeamInDifferentOrg_ReturnsInvalidReference(t *tes
 
 	_, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
-		OwnerID:        uuid.New(),
-		Title:          "x",
-		TeamID:         &teamID,
+		Root: MissionInput{
+			OwnerID: uuidPtr(uuid.New()),
+			Title:   "x",
+			TeamID:  &teamID,
+		},
 	})
 
 	assert.ErrorIs(t, err, domainmission.ErrInvalidReference)
@@ -229,10 +269,12 @@ func TestCreateUseCase_Execute_RepoError_PropagatesError(t *testing.T) {
 
 	_, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
-		OwnerID:        uuid.New(),
-		Title:          "ok",
-		StartDate:      time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
-		EndDate:        time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+		Root: MissionInput{
+			OwnerID:   uuidPtr(uuid.New()),
+			Title:     "ok",
+			StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			EndDate:   time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+		},
 	})
 
 	assert.ErrorIs(t, err, repoErr)
@@ -262,24 +304,24 @@ func TestCreateUseCase_Execute_Nested_CallsTxAndCreatesAllChildren(t *testing.T)
 
 	res, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
-		OwnerID:        uuid.New(),
-		Title:          "Q4 OKRs",
-		StartDate:      time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
-		EndDate:        time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
-		Indicators: []CreateIndicatorInput{
-			{Title: "Churn"},
-			{Title: "NPS"},
-		},
-		Tasks: []CreateTaskInput{
-			{Title: "Kickoff"},
+		Root: MissionInput{
+			OwnerID:   uuidPtr(uuid.New()),
+			Title:     "Q4 OKRs",
+			StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			EndDate:   time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+			Indicators: []IndicatorInput{
+				{Title: "Churn"},
+				{Title: "NPS"},
+			},
+			Tasks: []TaskInput{
+				{Title: "Kickoff"},
+			},
 		},
 	})
 
 	require.NoError(t, err)
-	require.NotNil(t, res.Mission)
+	require.NotNil(t, res)
 	assert.NotEqual(t, uuid.Nil, capturedMissionID, "missions.Create must have been called")
-	assert.Len(t, res.Indicators, 2)
-	assert.Len(t, res.Tasks, 1)
 	assert.Equal(t, 1, d.txm.calls, "nested create must run inside a single transaction")
 	d.missions.AssertExpectations(t)
 	d.indicators.AssertExpectations(t)
@@ -298,13 +340,15 @@ func TestCreateUseCase_Execute_NestedInvalidIndicatorOwner_RejectsBeforeOpeningT
 
 	_, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
-		OwnerID:        missionOwner,
-		Title:          "Should reject",
-		StartDate:      time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
-		EndDate:        time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
-		Indicators: []CreateIndicatorInput{
-			{Title: "valid"},
-			{OwnerID: &bogusOwner, Title: "bogus owner — must reject before tx opens"},
+		Root: MissionInput{
+			OwnerID:   &missionOwner,
+			Title:     "Should reject",
+			StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			EndDate:   time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+			Indicators: []IndicatorInput{
+				{Title: "valid"},
+				{OwnerID: &bogusOwner, Title: "bogus owner — must reject before tx opens"},
+			},
 		},
 	})
 
@@ -328,16 +372,19 @@ func TestCreateUseCase_Execute_TagIDs_ValidTag_AttachedToMission(t *testing.T) {
 
 	res, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
-		Title:          "T",
-		OwnerID:        uuid.New(),
-		StartDate:      time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
-		EndDate:        time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
-		TagIDs:         []uuid.UUID{tagID},
+		Root: MissionInput{
+			Title:     "T",
+			OwnerID:   uuidPtr(uuid.New()),
+			StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			EndDate:   time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+			TagIDs:    []uuid.UUID{tagID},
+		},
 	})
 
 	require.NoError(t, err)
-	require.Len(t, res.Mission.TagIDs, 1)
-	assert.Equal(t, tagID, res.Mission.TagIDs[0])
+	require.Len(t, res.TagIDs, 1)
+	assert.Equal(t, tagID, res.TagIDs[0])
+	assert.Equal(t, 1, d.txm.calls, "mission tags must be persisted transactionally")
 }
 
 func TestCreateUseCase_Execute_TagIDs_DuplicatesDeduped(t *testing.T) {
@@ -353,15 +400,46 @@ func TestCreateUseCase_Execute_TagIDs_DuplicatesDeduped(t *testing.T) {
 
 	_, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
-		Title:          "T",
-		OwnerID:        uuid.New(),
-		StartDate:      time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
-		EndDate:        time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
-		TagIDs:         []uuid.UUID{tagID, tagID},
+		Root: MissionInput{
+			Title:     "T",
+			OwnerID:   uuidPtr(uuid.New()),
+			StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			EndDate:   time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+			TagIDs:    []uuid.UUID{tagID, tagID},
+		},
 	})
 
 	require.NoError(t, err)
 	d.tags.AssertNumberOfCalls(t, "GetByID", 1)
+	assert.Equal(t, 1, d.txm.calls, "mission tags must be persisted transactionally")
+}
+
+func TestCreateUseCase_Execute_Members_UsesTransactionAndDomainRoleDefault(t *testing.T) {
+	memberID := uuid.New()
+	d := newMissionDeps().allowOwner()
+	d.users.On("GetActiveMemberByID", mock.Anything, memberID, mock.AnythingOfType("uuid.UUID")).
+		Return(&domainuser.User{ID: memberID}, nil)
+	d.missions.On("Create", mock.Anything, mock.MatchedBy(func(m *domainmission.Mission) bool {
+		return len(m.Members) == 1 &&
+			m.Members[0].UserID == memberID &&
+			m.Members[0].Role == domainmission.MemberRoleSupporter
+	})).Return(&domainmission.Mission{ID: uuid.New(), Title: "T", Status: domainmission.StatusDraft,
+		Visibility: domainmission.VisibilityPublic, KanbanStatus: domainmission.KanbanUncategorized,
+		Members: []domainmission.Member{{UserID: memberID, Role: domainmission.MemberRoleSupporter}}}, nil)
+
+	_, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
+		OrganizationID: fixtures.NewTestTenantID(),
+		Root: MissionInput{
+			Title:     "T",
+			OwnerID:   uuidPtr(uuid.New()),
+			StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			EndDate:   time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+			Members:   []MemberInput{{UserID: memberID}},
+		},
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, 1, d.txm.calls, "mission members must be persisted transactionally")
 }
 
 func TestCreateUseCase_Execute_TagIDs_UnknownTag_ReturnsInvalidReference(t *testing.T) {
@@ -372,13 +450,172 @@ func TestCreateUseCase_Execute_TagIDs_UnknownTag_ReturnsInvalidReference(t *test
 
 	_, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
 		OrganizationID: fixtures.NewTestTenantID(),
-		Title:          "T",
-		OwnerID:        uuid.New(),
-		StartDate:      time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
-		EndDate:        time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
-		TagIDs:         []uuid.UUID{tagID},
+		Root: MissionInput{
+			Title:     "T",
+			OwnerID:   uuidPtr(uuid.New()),
+			StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			EndDate:   time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+			TagIDs:    []uuid.UUID{tagID},
+		},
 	})
 
 	assert.ErrorIs(t, err, domainmission.ErrInvalidReference)
 	d.missions.AssertNotCalled(t, "Create")
+}
+
+// Regression: a mission with a sub-mission carrying its own indicator and
+// task must persist the entire tree atomically. Previously the API
+// dropped `children`, so the parent saved while the sub-mission, its
+// indicator, and its task were silently lost.
+func TestCreateUseCase_Execute_Nested_Children_PersistsFullTree(t *testing.T) {
+	d := newMissionDeps().allowOwner()
+
+	// Capture inputs (use case-built missions/indicators/tasks); the mock's
+	// returned value is irrelevant to the assertions, which inspect the
+	// objects passed *into* repo.Create.
+	createdMissions := []*domainmission.Mission{}
+	d.missions.On("Create", mock.Anything, mock.AnythingOfType("*mission.Mission")).
+		Run(func(args mock.Arguments) {
+			createdMissions = append(createdMissions, args.Get(1).(*domainmission.Mission))
+		}).
+		Return(&domainmission.Mission{ID: uuid.New()}, nil)
+
+	createdIndicators := []*domainindicator.Indicator{}
+	d.indicators.On("Create", mock.Anything, mock.AnythingOfType("*indicator.Indicator")).
+		Run(func(args mock.Arguments) {
+			createdIndicators = append(createdIndicators, args.Get(1).(*domainindicator.Indicator))
+		}).
+		Return(&domainindicator.Indicator{ID: uuid.New()}, nil).Once()
+
+	createdTasks := []*domaintask.Task{}
+	d.tasks.On("Create", mock.Anything, mock.AnythingOfType("*task.Task")).
+		Run(func(args mock.Arguments) {
+			createdTasks = append(createdTasks, args.Get(1).(*domaintask.Task))
+		}).
+		Return(&domaintask.Task{ID: uuid.New()}, nil).Once()
+
+	parentOwner := uuid.New()
+	res, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
+		OrganizationID: fixtures.NewTestTenantID(),
+		Root: MissionInput{
+			OwnerID:   &parentOwner,
+			Title:     "Parent",
+			StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			EndDate:   time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+			Children: []MissionInput{
+				{
+					Title:     "Sub",
+					StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+					EndDate:   time.Date(2026, 6, 30, 0, 0, 0, 0, time.UTC),
+					Indicators: []IndicatorInput{
+						{Title: "Sub indicator"},
+					},
+					Tasks: []TaskInput{
+						{Title: "Sub task"},
+					},
+				},
+			},
+		},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	require.Len(t, createdMissions, 2, "parent + 1 sub-mission must be created")
+	require.Len(t, createdIndicators, 1)
+	require.Len(t, createdTasks, 1)
+
+	parent := createdMissions[0]
+	child := createdMissions[1]
+	assert.Nil(t, parent.ParentID, "root parent_id must be nil")
+	require.NotNil(t, child.ParentID, "child must reference its parent")
+	assert.Equal(t, parent.ID, *child.ParentID, "child.parent_id must match parent.id")
+	assert.Equal(t, parentOwner, child.OwnerID, "child must inherit parent owner when not provided")
+
+	assert.Equal(t, child.ID, createdIndicators[0].MissionID, "sub indicator must belong to the sub-mission, not the parent")
+	assert.Equal(t, child.ID, createdTasks[0].MissionID, "sub task must belong to the sub-mission, not the parent")
+
+	assert.Equal(t, 1, d.txm.calls, "nested tree must persist inside a single transaction")
+}
+
+// Reference validation must run for each child too. A bad owner deep in
+// the tree must reject the whole request before the transaction opens.
+func TestCreateUseCase_Execute_Nested_Children_InvalidOwner_RejectsBeforeOpeningTx(t *testing.T) {
+	parentOwner := uuid.New()
+	childOwner := uuid.New()
+
+	d := newMissionDeps()
+	d.users.On("GetActiveMemberByID", mock.Anything, parentOwner, mock.Anything).
+		Return(&domainuser.User{ID: parentOwner}, nil)
+	d.users.On("GetActiveMemberByID", mock.Anything, childOwner, mock.Anything).
+		Return(nil, domainuser.ErrNotFound)
+
+	_, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
+		OrganizationID: fixtures.NewTestTenantID(),
+		Root: MissionInput{
+			OwnerID:   &parentOwner,
+			Title:     "Parent",
+			StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			EndDate:   time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+			Children: []MissionInput{
+				{
+					Title:     "Sub",
+					OwnerID:   &childOwner,
+					StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+					EndDate:   time.Date(2026, 6, 30, 0, 0, 0, 0, time.UTC),
+				},
+			},
+		},
+	})
+
+	assert.ErrorIs(t, err, domainmission.ErrInvalidReference)
+	assert.Equal(t, 0, d.txm.calls, "validation must reject before tx opens")
+	d.missions.AssertNotCalled(t, "Create")
+}
+
+// Grandchildren must persist too: parent → child → grandchild.
+func TestCreateUseCase_Execute_Nested_Grandchildren_PersistsRecursively(t *testing.T) {
+	d := newMissionDeps().allowOwner()
+
+	createdMissions := []*domainmission.Mission{}
+	d.missions.On("Create", mock.Anything, mock.AnythingOfType("*mission.Mission")).
+		Run(func(args mock.Arguments) {
+			createdMissions = append(createdMissions, args.Get(1).(*domainmission.Mission))
+		}).
+		Return(&domainmission.Mission{ID: uuid.New()}, nil)
+
+	res, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
+		OrganizationID: fixtures.NewTestTenantID(),
+		Root: MissionInput{
+			OwnerID:   uuidPtr(uuid.New()),
+			Title:     "L0",
+			StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			EndDate:   time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+			Children: []MissionInput{
+				{
+					Title:     "L1",
+					StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+					EndDate:   time.Date(2026, 6, 30, 0, 0, 0, 0, time.UTC),
+					Children: []MissionInput{
+						{
+							Title:     "L2",
+							StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+							EndDate:   time.Date(2026, 3, 31, 0, 0, 0, 0, time.UTC),
+						},
+					},
+				},
+			},
+		},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	require.Len(t, createdMissions, 3, "L0 + L1 + L2 must all be created")
+	parent := createdMissions[0]
+	l1 := createdMissions[1]
+	l2 := createdMissions[2]
+	require.NotNil(t, l1.ParentID)
+	require.NotNil(t, l2.ParentID)
+	assert.Equal(t, parent.ID, *l1.ParentID, "L1 must point to L0")
+	assert.Equal(t, l1.ID, *l2.ParentID, "L2 must point to L1, not L0")
+	assert.Equal(t, 1, d.txm.calls, "tree must persist inside a single transaction")
 }

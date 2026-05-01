@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/getbud-co/bud2/backend/internal/domain"
 )
@@ -120,4 +121,35 @@ func mustParseDate(s string) time.Time {
 		panic(err)
 	}
 	return t
+}
+
+func TestNewIndicator_AppliesDefaultStatus(t *testing.T) {
+	orgID := uuid.New()
+	missionID := uuid.New()
+	ownerID := uuid.New()
+	i, err := NewIndicator(orgID, missionID, ownerID, "Reduzir churn")
+	require.NoError(t, err)
+	assert.NotEqual(t, uuid.Nil, i.ID)
+	assert.Equal(t, StatusDraft, i.Status)
+	assert.Equal(t, orgID, i.OrganizationID)
+	assert.Equal(t, missionID, i.MissionID)
+	assert.Equal(t, ownerID, i.OwnerID)
+}
+
+func TestNewIndicator_WithStatus_OverridesDefault(t *testing.T) {
+	i, err := NewIndicator(uuid.New(), uuid.New(), uuid.New(), "T", WithStatus(StatusActive))
+	require.NoError(t, err)
+	assert.Equal(t, StatusActive, i.Status)
+}
+
+func TestNewIndicator_EmptyTitle_ReturnsValidationError(t *testing.T) {
+	_, err := NewIndicator(uuid.New(), uuid.New(), uuid.New(), "")
+	assert.ErrorIs(t, err, domain.ErrValidation)
+}
+
+func TestNewIndicator_IDIsAlwaysGenerated(t *testing.T) {
+	i1, _ := NewIndicator(uuid.New(), uuid.New(), uuid.New(), "A")
+	i2, _ := NewIndicator(uuid.New(), uuid.New(), uuid.New(), "B")
+	assert.NotEqual(t, uuid.Nil, i1.ID)
+	assert.NotEqual(t, i1.ID, i2.ID)
 }

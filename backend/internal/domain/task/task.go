@@ -53,7 +53,7 @@ type Task struct {
 	UpdatedAt               time.Time
 }
 
-func (t *Task) Validate() error {
+func (t *Task) validateInvariants() error {
 	if t.Title == "" {
 		return fmt.Errorf("%w: title is required", domain.ErrValidation)
 	}
@@ -73,6 +73,45 @@ func (t *Task) Validate() error {
 		return fmt.Errorf("%w: task cannot be its own parent", domain.ErrValidation)
 	}
 	return nil
+}
+
+// Validate is the public invariant check used by update use cases that mutate
+// fields after construction. New aggregates are created via NewTask.
+func (t *Task) Validate() error {
+	return t.validateInvariants()
+}
+
+// TaskOption configures optional fields on a Task during construction.
+type TaskOption func(*Task)
+
+func WithDescription(d *string) TaskOption     { return func(t *Task) { t.Description = d } }
+func WithStatus(s Status) TaskOption           { return func(t *Task) { t.Status = s } }
+func WithDueDate(d *time.Time) TaskOption      { return func(t *Task) { t.DueDate = d } }
+func WithIndicator(id uuid.UUID) TaskOption    { return func(t *Task) { t.IndicatorID = &id } }
+func WithParentTask(id uuid.UUID) TaskOption   { return func(t *Task) { t.ParentTaskID = &id } }
+
+// NewTask constructs an always-valid Task. Generates ID, applies default
+// status (StatusTodo), and enforces invariants before returning.
+func NewTask(
+	orgID, missionID, assigneeID uuid.UUID,
+	title string,
+	opts ...TaskOption,
+) (*Task, error) {
+	t := &Task{
+		ID:             uuid.New(),
+		OrganizationID: orgID,
+		MissionID:      missionID,
+		AssigneeID:     assigneeID,
+		Title:          title,
+		Status:         StatusTodo,
+	}
+	for _, opt := range opts {
+		opt(t)
+	}
+	if err := t.validateInvariants(); err != nil {
+		return nil, err
+	}
+	return t, nil
 }
 
 type ListFilter struct {

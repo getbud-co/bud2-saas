@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	domainmission "github.com/getbud-co/bud2/backend/internal/domain/mission"
+	domaintag "github.com/getbud-co/bud2/backend/internal/domain/tag"
 	domainuser "github.com/getbud-co/bud2/backend/internal/domain/user"
 	"github.com/getbud-co/bud2/backend/internal/test/fixtures"
 	"github.com/getbud-co/bud2/backend/internal/test/testutil"
@@ -41,7 +42,10 @@ func existingMission(id, orgID uuid.UUID) *domainmission.Mission {
 }
 
 func (d missionDeps) newUpdateUseCase() *UpdateUseCase {
-	return NewUpdateUseCase(d.missions, d.tags, d.teams, d.users, testutil.NewDiscardLogger())
+	d.txm.tags = d.tags
+	d.txm.teams = d.teams
+	d.txm.users = d.users
+	return NewUpdateUseCase(d.missions, d.tags, d.teams, d.users, d.txm, testutil.NewDiscardLogger())
 }
 
 func TestPatch_OnlyTitle_PreservesAllOtherFields(t *testing.T) {
@@ -69,6 +73,7 @@ func TestPatch_OnlyTitle_PreservesAllOtherFields(t *testing.T) {
 	})
 
 	require.NoError(t, err)
+	assert.Equal(t, 1, d.txm.calls)
 	d.missions.AssertExpectations(t)
 	d.users.AssertNotCalled(t, "GetActiveMemberByID")
 }
@@ -207,6 +212,7 @@ func TestPatch_OwnerNotActiveMember_ReturnsInvalidReference(t *testing.T) {
 	})
 
 	assert.ErrorIs(t, err, domainmission.ErrInvalidReference)
+	assert.Equal(t, 1, d.txm.calls)
 	d.missions.AssertNotCalled(t, "Update")
 }
 
@@ -251,6 +257,70 @@ func TestPatch_TransitionAwayFromCompleted_ClearsCompletedAt(t *testing.T) {
 	})
 
 	require.NoError(t, err)
+}
+
+func TestPatch_MembersProvided_ReplacesWithDedupedNormalizedMembers(t *testing.T) {
+	id := uuid.New()
+	tenantID := fixtures.NewTestTenantID()
+	prev := existingMission(id, tenantID.UUID())
+	userID := uuid.New()
+	otherUserID := uuid.New()
+	d := newMissionDeps()
+	d.missions.On("GetByID", mock.Anything, id, tenantID.UUID()).Return(prev, nil)
+	d.users.On("GetActiveMemberByID", mock.Anything, userID, tenantID.UUID()).
+		Return(&domainuser.User{ID: userID}, nil)
+	d.users.On("GetActiveMemberByID", mock.Anything, otherUserID, tenantID.UUID()).
+		Return(&domainuser.User{ID: otherUserID}, nil)
+	d.missions.On("Update", mock.Anything, mock.MatchedBy(func(m *domainmission.Mission) bool {
+		return len(m.Members) == 2 &&
+			m.Members[0].UserID == userID &&
+			m.Members[0].Role == domainmission.MemberRoleSupporter &&
+			m.Members[0].OrganizationID == tenantID.UUID() &&
+			m.Members[0].MissionID == id &&
+			m.Members[1].UserID == otherUserID &&
+			m.Members[1].Role == domainmission.MemberRoleObserver &&
+			m.Members[1].OrganizationID == tenantID.UUID() &&
+			m.Members[1].MissionID == id
+	})).Return(prev, nil)
+
+	members := []MemberInput{
+		{UserID: userID},
+		{UserID: userID, Role: domainmission.MemberRoleOwner},
+		{UserID: otherUserID, Role: domainmission.MemberRoleObserver},
+	}
+	_, err := d.newUpdateUseCase().Execute(context.Background(), UpdateCommand{
+		OrganizationID: tenantID,
+		ID:             id,
+		Members:        &members,
+	})
+
+	require.NoError(t, err)
+	d.users.AssertExpectations(t)
+}
+
+func TestPatch_TagIDsProvided_ReplacesWithDedupedTags(t *testing.T) {
+	id := uuid.New()
+	tenantID := fixtures.NewTestTenantID()
+	prev := existingMission(id, tenantID.UUID())
+	tagID := uuid.New()
+	otherTagID := uuid.New()
+	d := newMissionDeps()
+	d.missions.On("GetByID", mock.Anything, id, tenantID.UUID()).Return(prev, nil)
+	d.tags.On("GetByID", mock.Anything, tagID, tenantID.UUID()).Return(&domaintag.Tag{ID: tagID}, nil)
+	d.tags.On("GetByID", mock.Anything, otherTagID, tenantID.UUID()).Return(&domaintag.Tag{ID: otherTagID}, nil)
+	d.missions.On("Update", mock.Anything, mock.MatchedBy(func(m *domainmission.Mission) bool {
+		return len(m.TagIDs) == 2 && m.TagIDs[0] == tagID && m.TagIDs[1] == otherTagID
+	})).Return(prev, nil)
+
+	tagIDs := []uuid.UUID{tagID, tagID, otherTagID}
+	_, err := d.newUpdateUseCase().Execute(context.Background(), UpdateCommand{
+		OrganizationID: tenantID,
+		ID:             id,
+		TagIDs:         &tagIDs,
+	})
+
+	require.NoError(t, err)
+	d.tags.AssertExpectations(t)
 }
 
 func TestPatch_NotFound_PropagatesError(t *testing.T) {

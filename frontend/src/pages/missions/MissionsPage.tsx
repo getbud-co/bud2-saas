@@ -1618,43 +1618,57 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
   }
 
   // ── API body adapters ─────────────────────────────────────────────────
-  // POST /missions accepts inline indicators[] and tasks[] so the whole tree
-  // is created atomically. The page builds a local Mission with KRs/tasks/
-  // members/tags from the form; we project only the API-aware subset here.
-  // Tags do not have APIs yet and stay client-side.
-  // depth/path/progress stay client-side as well.
-  function toCreateMissionBody(m: Mission) {
-    const body: {
+  // POST /missions accepts inline indicators[], tasks[], and children[] so
+  // the whole tree is created atomically (one request, one transaction).
+  // The page builds a local Mission with KRs/tasks/members/tags + a
+  // recursive `children` of sub-Missions; we project only the API-aware
+  // subset here. Tags do not have APIs yet and stay client-side. The
+  // depth/path/progress fields stay client-side as well.
+  type CreateMissionInline = {
+    title: string;
+    owner_id?: string;
+    start_date: string;
+    end_date: string;
+    description?: string;
+    parent_id?: string;
+    team_id?: string;
+    status?: Mission["status"];
+    visibility?: Mission["visibility"];
+    tag_ids?: string[];
+    indicators?: Array<{
+      owner_id?: string;
       title: string;
-      owner_id: string;
-      start_date: string;
-      end_date: string;
       description?: string;
-      parent_id?: string;
-      team_id?: string;
-      status?: typeof m.status;
-      visibility?: typeof m.visibility;
-      indicators?: Array<{
-        owner_id?: string;
-        title: string;
-        description?: string;
-        target_value?: number;
-        current_value?: number;
-        unit?: string;
-        due_date?: string;
-      }>;
-      tasks?: Array<{
-        assignee_id?: string;
-        indicator_index?: number;
-        title: string;
-        description?: string;
-        status?: "todo" | "in_progress" | "done" | "cancelled";
-        due_date?: string;
-      }>;
-      tag_ids?: string[];
-    } = { title: m.title, owner_id: m.ownerId, start_date: m.startDate, end_date: m.endDate };
+      target_value?: number;
+      current_value?: number;
+      unit?: string;
+      due_date?: string;
+    }>;
+    tasks?: Array<{
+      assignee_id?: string;
+      indicator_index?: number;
+      title: string;
+      description?: string;
+      status?: "todo" | "in_progress" | "done" | "cancelled";
+      due_date?: string;
+    }>;
+    children?: CreateMissionInline[];
+  };
+
+  // serializeMissionForCreate builds the API body for one mission node and
+  // recurses for children. parentOwnerId is the enclosing mission's owner;
+  // a child whose ownerId equals it omits owner_id (the backend defaults
+  // to parent owner). isRoot toggles parent_id (only applies to the root)
+  // and forces owner_id (the root requires it; children may inherit).
+  function serializeMissionForCreate(m: Mission, isRoot: boolean, parentOwnerId: string): CreateMissionInline {
+    const body: CreateMissionInline = {
+      title: m.title,
+      start_date: m.startDate,
+      end_date: m.endDate,
+    };
+    if (isRoot || m.ownerId !== parentOwnerId) body.owner_id = m.ownerId;
     if (m.description) body.description = m.description;
-    if (m.parentId) body.parent_id = m.parentId;
+    if (isRoot && m.parentId) body.parent_id = m.parentId;
     if (m.teamId) body.team_id = m.teamId;
     if (m.status) body.status = m.status;
     if (m.visibility) body.visibility = m.visibility;
@@ -1663,7 +1677,7 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
 
     if (m.keyResults && m.keyResults.length > 0) {
       body.indicators = m.keyResults.map((kr) => {
-        const inline: NonNullable<typeof body.indicators>[number] = { title: kr.title };
+        const inline: NonNullable<CreateMissionInline["indicators"]>[number] = { title: kr.title };
         if (kr.ownerId && kr.ownerId !== m.ownerId) inline.owner_id = kr.ownerId;
         if (kr.description) inline.description = kr.description;
         const target = parseNumberOrUndefined(kr.targetValue);
@@ -1675,14 +1689,13 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
       });
     }
 
-    // Inline tasks come from two places in the form: directly under the
-    // mission (m.tasks) and nested under each indicator (kr.tasks). The
-    // second group needs indicator_index so the backend can wire each
-    // task to the correct inline indicator that is being created in the
-    // same transaction.
-    const inlineTasks: NonNullable<typeof body.tasks> = [];
+    // Inline tasks come from two places: directly under the mission
+    // (m.tasks) and nested under each indicator (kr.tasks). The second
+    // group needs indicator_index so the backend can wire each task to
+    // the correct inline indicator created in the same transaction.
+    const inlineTasks: NonNullable<CreateMissionInline["tasks"]> = [];
     const pushTask = (t: MissionTask, indicatorIndex?: number) => {
-      const inline: NonNullable<typeof body.tasks>[number] = { title: t.title };
+      const inline: NonNullable<CreateMissionInline["tasks"]>[number] = { title: t.title };
       if (t.ownerId && t.ownerId !== m.ownerId) inline.assignee_id = t.ownerId;
       if (t.description) inline.description = t.description;
       if (t.isDone) inline.status = "done";
@@ -1695,7 +1708,19 @@ export function MissionsPage({ mine = false, customTitle, initialPeriod, focusMi
       for (const t of kr.tasks ?? []) pushTask(t, idx);
     });
     if (inlineTasks.length > 0) body.tasks = inlineTasks;
+
+    if (m.children && m.children.length > 0) {
+      body.children = m.children.map((child) => serializeMissionForCreate(child, false, m.ownerId));
+    }
     return body;
+  }
+
+  function toCreateMissionBody(m: Mission) {
+    const root = serializeMissionForCreate(m, true, m.ownerId);
+    // Root requires owner_id; serializeMissionForCreate sets it when
+    // isRoot=true. Reassert the type to match the openapi-generated
+    // CreateMissionRequest shape (where owner_id is required at the root).
+    return root as CreateMissionInline & { owner_id: string };
   }
 
 

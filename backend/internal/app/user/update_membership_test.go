@@ -14,6 +14,7 @@ import (
 	domainindicator "github.com/getbud-co/bud2/backend/internal/domain/indicator"
 	domainmission "github.com/getbud-co/bud2/backend/internal/domain/mission"
 	org "github.com/getbud-co/bud2/backend/internal/domain/organization"
+	domaintag "github.com/getbud-co/bud2/backend/internal/domain/tag"
 	domaintask "github.com/getbud-co/bud2/backend/internal/domain/task"
 	"github.com/getbud-co/bud2/backend/internal/domain/team"
 	usr "github.com/getbud-co/bud2/backend/internal/domain/user"
@@ -39,6 +40,7 @@ type fakeRepositories struct {
 func (r fakeRepositories) Organizations() org.Repository          { return r.orgs }
 func (r fakeRepositories) Users() usr.Repository                  { return r.users }
 func (r fakeRepositories) Teams() team.Repository                 { return r.teams }
+func (r fakeRepositories) Tags() domaintag.Repository             { return nil }
 func (r fakeRepositories) Missions() domainmission.Repository     { return nil }
 func (r fakeRepositories) Indicators() domainindicator.Repository { return nil }
 func (r fakeRepositories) Tasks() domaintask.Repository           { return nil }

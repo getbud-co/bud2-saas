@@ -19,18 +19,20 @@ import (
 	apispec "github.com/getbud-co/bud2/backend/api"
 	appmission "github.com/getbud-co/bud2/backend/internal/app/mission"
 	"github.com/getbud-co/bud2/backend/internal/domain"
+	domainindicator "github.com/getbud-co/bud2/backend/internal/domain/indicator"
 	domainmission "github.com/getbud-co/bud2/backend/internal/domain/mission"
+	domaintask "github.com/getbud-co/bud2/backend/internal/domain/task"
 	"github.com/getbud-co/bud2/backend/internal/test/fixtures"
 )
 
 type mockCreateUC struct{ mock.Mock }
 
-func (m *mockCreateUC) Execute(ctx context.Context, cmd appmission.CreateCommand) (*appmission.CreateResult, error) {
+func (m *mockCreateUC) Execute(ctx context.Context, cmd appmission.CreateCommand) (*domainmission.Mission, error) {
 	args := m.Called(ctx, cmd)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*appmission.CreateResult), args.Error(1)
+	return args.Get(0).(*domainmission.Mission), args.Error(1)
 }
 
 type mockUpdateUC struct{ mock.Mock }
@@ -96,7 +98,7 @@ func TestHandler_Create_Success(t *testing.T) {
 	handler := NewHandler(createUC, nil, nil, nil, nil)
 
 	expected := sampleMission(uuid.New(), tenantID.UUID())
-	createUC.On("Execute", mock.Anything, mock.Anything).Return(&appmission.CreateResult{Mission: expected}, nil)
+	createUC.On("Execute", mock.Anything, mock.Anything).Return(expected, nil)
 
 	ownerID := uuid.New()
 	body, _ := json.Marshal(map[string]any{
@@ -139,6 +141,57 @@ func TestHandler_Create_InvalidReference_Returns422(t *testing.T) {
 	handler.Create(rr, req)
 
 	assert.Equal(t, http.StatusUnprocessableEntity, rr.Code, "FK / cross-tenant references must surface as 422, not 500")
+}
+
+func TestHandler_Create_IndicatorInvalidReference_Returns422(t *testing.T) {
+	// Nested-tree refs (indicator owners) must reach the client as 422,
+	// not 500. The indicator package has its own ErrInvalidReference sentinel
+	// that the boundary must recognise alongside the mission one.
+	tenantID := fixtures.NewTestTenantID()
+	createUC := new(mockCreateUC)
+	createUC.On("Execute", mock.Anything, mock.Anything).Return(nil, domainindicator.ErrInvalidReference)
+	handler := NewHandler(createUC, nil, nil, nil, nil)
+
+	body, _ := json.Marshal(map[string]any{
+		"title":      "x",
+		"owner_id":   uuid.New().String(),
+		"start_date": "2026-01-01",
+		"end_date":   "2026-12-31",
+	})
+	req := httptest.NewRequest(http.MethodPost, "/missions", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req = req.WithContext(domain.TenantIDToContext(req.Context(), tenantID))
+	rr := httptest.NewRecorder()
+
+	handler.Create(rr, req)
+
+	assert.Equal(t, http.StatusUnprocessableEntity, rr.Code)
+	assert.Equal(t, "application/problem+json", rr.Header().Get("Content-Type"))
+}
+
+func TestHandler_Create_TaskInvalidReference_Returns422(t *testing.T) {
+	// Task-level invalid references (assignee out of org, indicator_index
+	// out of range) must also map to 422 at the boundary.
+	tenantID := fixtures.NewTestTenantID()
+	createUC := new(mockCreateUC)
+	createUC.On("Execute", mock.Anything, mock.Anything).Return(nil, domaintask.ErrInvalidReference)
+	handler := NewHandler(createUC, nil, nil, nil, nil)
+
+	body, _ := json.Marshal(map[string]any{
+		"title":      "x",
+		"owner_id":   uuid.New().String(),
+		"start_date": "2026-01-01",
+		"end_date":   "2026-12-31",
+	})
+	req := httptest.NewRequest(http.MethodPost, "/missions", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req = req.WithContext(domain.TenantIDToContext(req.Context(), tenantID))
+	rr := httptest.NewRecorder()
+
+	handler.Create(rr, req)
+
+	assert.Equal(t, http.StatusUnprocessableEntity, rr.Code)
+	assert.Equal(t, "application/problem+json", rr.Header().Get("Content-Type"))
 }
 
 func TestHandler_Create_MissingTitle_ReturnsValidationError(t *testing.T) {
@@ -463,7 +516,6 @@ func TestHandler_OpenAPIDocuments400(t *testing.T) {
 	}
 	type pathItem struct {
 		Get    *op `yaml:"get"`
-		Put    *op `yaml:"put"`
 		Patch  *op `yaml:"patch"`
 		Post   *op `yaml:"post"`
 		Delete *op `yaml:"delete"`
@@ -480,7 +532,6 @@ func TestHandler_OpenAPIDocuments400(t *testing.T) {
 	}{
 		{"/missions", "GET"},
 		{"/missions/{id}", "GET"},
-		{"/missions/{id}", "PUT"},
 		{"/missions/{id}", "PATCH"},
 		{"/missions/{id}", "DELETE"},
 	}
@@ -493,8 +544,6 @@ func TestHandler_OpenAPIDocuments400(t *testing.T) {
 		switch entry.method {
 		case "GET":
 			operation = item.Get
-		case "PUT":
-			operation = item.Put
 		case "PATCH":
 			operation = item.Patch
 		case "POST":
@@ -502,11 +551,7 @@ func TestHandler_OpenAPIDocuments400(t *testing.T) {
 		case "DELETE":
 			operation = item.Delete
 		}
-		// The mission update endpoint is currently bound to PATCH; PUT may
-		// not exist in the spec. Skip silently — the other variant covers it.
-		if operation == nil {
-			continue
-		}
+		require.NotNilf(t, operation, "spec missing %s on %s", entry.method, entry.path)
 		_, has400 := operation.Responses["400"]
 		require.Truef(t, has400, "%s %s must document a 400 response", entry.method, entry.path)
 	}

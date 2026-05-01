@@ -12,6 +12,7 @@ import (
 	domainindicator "github.com/getbud-co/bud2/backend/internal/domain/indicator"
 	domainmission "github.com/getbud-co/bud2/backend/internal/domain/mission"
 	domainorg "github.com/getbud-co/bud2/backend/internal/domain/organization"
+	domaintag "github.com/getbud-co/bud2/backend/internal/domain/tag"
 	domaintask "github.com/getbud-co/bud2/backend/internal/domain/task"
 	domainteam "github.com/getbud-co/bud2/backend/internal/domain/team"
 	domainuser "github.com/getbud-co/bud2/backend/internal/domain/user"
@@ -27,6 +28,7 @@ type deleteTeamTxRepos struct {
 func (r deleteTeamTxRepos) Organizations() domainorg.Repository    { return nil }
 func (r deleteTeamTxRepos) Users() domainuser.Repository           { return nil }
 func (r deleteTeamTxRepos) Teams() domainteam.Repository           { return r.teamRepo }
+func (r deleteTeamTxRepos) Tags() domaintag.Repository             { return nil }
 func (r deleteTeamTxRepos) Missions() domainmission.Repository     { return nil }
 func (r deleteTeamTxRepos) Indicators() domainindicator.Repository { return nil }
 func (r deleteTeamTxRepos) Tasks() domaintask.Repository           { return nil }

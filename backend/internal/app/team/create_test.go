@@ -14,6 +14,7 @@ import (
 	domainindicator "github.com/getbud-co/bud2/backend/internal/domain/indicator"
 	domainmission "github.com/getbud-co/bud2/backend/internal/domain/mission"
 	domainorg "github.com/getbud-co/bud2/backend/internal/domain/organization"
+	domaintag "github.com/getbud-co/bud2/backend/internal/domain/tag"
 	domaintask "github.com/getbud-co/bud2/backend/internal/domain/task"
 	domainteam "github.com/getbud-co/bud2/backend/internal/domain/team"
 	domainuser "github.com/getbud-co/bud2/backend/internal/domain/user"
@@ -30,6 +31,7 @@ type createTeamTxRepos struct {
 func (r createTeamTxRepos) Organizations() domainorg.Repository    { return nil }
 func (r createTeamTxRepos) Users() domainuser.Repository           { return r.userRepo }
 func (r createTeamTxRepos) Teams() domainteam.Repository           { return r.teamRepo }
+func (r createTeamTxRepos) Tags() domaintag.Repository             { return nil }
 func (r createTeamTxRepos) Missions() domainmission.Repository     { return nil }
 func (r createTeamTxRepos) Indicators() domainindicator.Repository { return nil }
 func (r createTeamTxRepos) Tasks() domaintask.Repository           { return nil }

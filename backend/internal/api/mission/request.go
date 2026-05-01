@@ -9,6 +9,7 @@ import (
 	"github.com/getbud-co/bud2/backend/internal/api/httputil"
 	appmission "github.com/getbud-co/bud2/backend/internal/app/mission"
 	"github.com/getbud-co/bud2/backend/internal/domain"
+	domainmission "github.com/getbud-co/bud2/backend/internal/domain/mission"
 )
 
 type memberInline struct {
@@ -17,20 +18,42 @@ type memberInline struct {
 }
 
 type createRequest struct {
-	Title        string                  `json:"title" validate:"required,min=1,max=200"`
-	Description  *string                 `json:"description" validate:"omitempty,max=5000"`
-	ParentID     *uuid.UUID              `json:"parent_id" validate:"omitempty"`
-	OwnerID      uuid.UUID               `json:"owner_id" validate:"required"`
-	TeamID       *uuid.UUID              `json:"team_id" validate:"omitempty"`
-	Status       string                  `json:"status" validate:"omitempty,oneof=draft active paused completed cancelled"`
-	Visibility   string                  `json:"visibility" validate:"omitempty,oneof=public team_only private"`
-	KanbanStatus string                  `json:"kanban_status" validate:"omitempty,oneof=uncategorized todo doing done"`
-	StartDate    string                  `json:"start_date" validate:"required,datetime=2006-01-02"`
-	EndDate      string                  `json:"end_date" validate:"required,datetime=2006-01-02"`
-	Members      []memberInline          `json:"members" validate:"omitempty,dive"`
-	TagIDs       []uuid.UUID             `json:"tag_ids" validate:"omitempty"`
-	Indicators   []createIndicatorInline `json:"indicators" validate:"omitempty,dive"`
-	Tasks        []createTaskInline      `json:"tasks" validate:"omitempty,dive"`
+	Title        string                     `json:"title" validate:"required,min=1,max=200"`
+	Description  *string                    `json:"description" validate:"omitempty,max=5000"`
+	ParentID     *uuid.UUID                 `json:"parent_id" validate:"omitempty"`
+	OwnerID      uuid.UUID                  `json:"owner_id" validate:"required"`
+	TeamID       *uuid.UUID                 `json:"team_id" validate:"omitempty"`
+	Status       string                     `json:"status" validate:"omitempty,oneof=draft active paused completed cancelled"`
+	Visibility   string                     `json:"visibility" validate:"omitempty,oneof=public team_only private"`
+	KanbanStatus string                     `json:"kanban_status" validate:"omitempty,oneof=uncategorized todo doing done"`
+	StartDate    string                     `json:"start_date" validate:"required,datetime=2006-01-02"`
+	EndDate      string                     `json:"end_date" validate:"required,datetime=2006-01-02"`
+	Members      []memberInline             `json:"members" validate:"omitempty,dive"`
+	TagIDs       []uuid.UUID                `json:"tag_ids" validate:"omitempty"`
+	Indicators   []createIndicatorInline    `json:"indicators" validate:"omitempty,dive"`
+	Tasks        []createTaskInline         `json:"tasks" validate:"omitempty,dive"`
+	Children     []createMissionChildInline `json:"children" validate:"omitempty,dive"`
+}
+
+// createMissionChildInline mirrors CreateMissionRequest minus parent_id (the
+// parent is the enclosing mission). owner_id is optional and defaults to the
+// parent mission owner when omitted. Children recurse: a child may carry its
+// own indicators, tasks, and grandchildren.
+type createMissionChildInline struct {
+	Title        string                     `json:"title" validate:"required,min=1,max=200"`
+	Description  *string                    `json:"description" validate:"omitempty,max=5000"`
+	OwnerID      *uuid.UUID                 `json:"owner_id" validate:"omitempty"`
+	TeamID       *uuid.UUID                 `json:"team_id" validate:"omitempty"`
+	Status       string                     `json:"status" validate:"omitempty,oneof=draft active paused completed cancelled"`
+	Visibility   string                     `json:"visibility" validate:"omitempty,oneof=public team_only private"`
+	KanbanStatus string                     `json:"kanban_status" validate:"omitempty,oneof=uncategorized todo doing done"`
+	StartDate    string                     `json:"start_date" validate:"required,datetime=2006-01-02"`
+	EndDate      string                     `json:"end_date" validate:"required,datetime=2006-01-02"`
+	Members      []memberInline             `json:"members" validate:"omitempty,dive"`
+	TagIDs       []uuid.UUID                `json:"tag_ids" validate:"omitempty"`
+	Indicators   []createIndicatorInline    `json:"indicators" validate:"omitempty,dive"`
+	Tasks        []createTaskInline         `json:"tasks" validate:"omitempty,dive"`
+	Children     []createMissionChildInline `json:"children" validate:"omitempty,dive"`
 }
 
 // createIndicatorInline mirrors CreateIndicatorRequest minus mission_id, which
@@ -112,54 +135,117 @@ func (r createRequest) toCommand(organizationID domain.TenantID) (appmission.Cre
 
 	cmd := appmission.CreateCommand{
 		OrganizationID: organizationID,
-		Title:          r.Title,
-		Description:    r.Description,
 		ParentID:       r.ParentID,
-		OwnerID:        r.OwnerID,
-		TeamID:         r.TeamID,
-		Status:         r.Status,
-		Visibility:     r.Visibility,
-		KanbanStatus:   r.KanbanStatus,
-		StartDate:      startDate,
-		EndDate:        endDate,
-		TagIDs:         r.TagIDs,
+		Root: appmission.MissionInput{
+			Title:        r.Title,
+			Description:  r.Description,
+			OwnerID:      &r.OwnerID,
+			TeamID:       r.TeamID,
+			Status:       r.Status,
+			Visibility:   r.Visibility,
+			KanbanStatus: r.KanbanStatus,
+			StartDate:    startDate,
+			EndDate:      endDate,
+			TagIDs:       r.TagIDs,
+		},
 	}
-	if len(r.Members) > 0 {
-		cmd.Members = make([]appmission.MemberInput, len(r.Members))
-		for i, m := range r.Members {
-			cmd.Members[i] = appmission.MemberInput{UserID: m.UserID, Role: m.Role}
-		}
+	cmd.Root.Members = mapMembers(r.Members)
+	cmd.Root.Indicators = mapIndicators(r.Indicators)
+	cmd.Root.Tasks = mapTasks(r.Tasks)
+	children, err := mapChildren(r.Children)
+	if err != nil {
+		return appmission.CreateCommand{}, err
 	}
-	if len(r.Indicators) > 0 {
-		cmd.Indicators = make([]appmission.CreateIndicatorInput, len(r.Indicators))
-		for i, in := range r.Indicators {
-			cmd.Indicators[i] = appmission.CreateIndicatorInput{
-				OwnerID:      in.OwnerID,
-				Title:        in.Title,
-				Description:  in.Description,
-				TargetValue:  in.TargetValue,
-				CurrentValue: in.CurrentValue,
-				Unit:         in.Unit,
-				Status:       in.Status,
-				DueDate:      parseOptionalDate(in.DueDate),
-			}
-		}
-	}
-	if len(r.Tasks) > 0 {
-		cmd.Tasks = make([]appmission.CreateTaskInput, len(r.Tasks))
-		for i, tk := range r.Tasks {
-			cmd.Tasks[i] = appmission.CreateTaskInput{
-				AssigneeID:     tk.AssigneeID,
-				IndicatorID:    tk.IndicatorID,
-				IndicatorIndex: tk.IndicatorIndex,
-				Title:          tk.Title,
-				Description:    tk.Description,
-				Status:         tk.Status,
-				DueDate:        parseOptionalDate(tk.DueDate),
-			}
-		}
-	}
+	cmd.Root.Children = children
 	return cmd, nil
+}
+
+func mapMembers(in []memberInline) []appmission.MemberInput {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]appmission.MemberInput, len(in))
+	for i, m := range in {
+		out[i] = appmission.MemberInput{UserID: m.UserID, Role: domainmission.MemberRole(m.Role)}
+	}
+	return out
+}
+
+func mapIndicators(in []createIndicatorInline) []appmission.IndicatorInput {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]appmission.IndicatorInput, len(in))
+	for i, ind := range in {
+		out[i] = appmission.IndicatorInput{
+			OwnerID:      ind.OwnerID,
+			Title:        ind.Title,
+			Description:  ind.Description,
+			TargetValue:  ind.TargetValue,
+			CurrentValue: ind.CurrentValue,
+			Unit:         ind.Unit,
+			Status:       ind.Status,
+			DueDate:      parseOptionalDate(ind.DueDate),
+		}
+	}
+	return out
+}
+
+func mapTasks(in []createTaskInline) []appmission.TaskInput {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]appmission.TaskInput, len(in))
+	for i, tk := range in {
+		out[i] = appmission.TaskInput{
+			AssigneeID:     tk.AssigneeID,
+			IndicatorID:    tk.IndicatorID,
+			IndicatorIndex: tk.IndicatorIndex,
+			Title:          tk.Title,
+			Description:    tk.Description,
+			Status:         tk.Status,
+			DueDate:        parseOptionalDate(tk.DueDate),
+		}
+	}
+	return out
+}
+
+func mapChildren(in []createMissionChildInline) ([]appmission.MissionInput, error) {
+	if len(in) == 0 {
+		return nil, nil
+	}
+	out := make([]appmission.MissionInput, len(in))
+	for i, c := range in {
+		startDate, err := time.Parse(httputil.DateLayout, c.StartDate)
+		if err != nil {
+			return nil, fmt.Errorf("invalid child start_date: %w", err)
+		}
+		endDate, err := time.Parse(httputil.DateLayout, c.EndDate)
+		if err != nil {
+			return nil, fmt.Errorf("invalid child end_date: %w", err)
+		}
+		grandchildren, err := mapChildren(c.Children)
+		if err != nil {
+			return nil, err
+		}
+		out[i] = appmission.MissionInput{
+			Title:        c.Title,
+			Description:  c.Description,
+			OwnerID:      c.OwnerID,
+			TeamID:       c.TeamID,
+			Status:       c.Status,
+			Visibility:   c.Visibility,
+			KanbanStatus: c.KanbanStatus,
+			StartDate:    startDate,
+			EndDate:      endDate,
+			TagIDs:       c.TagIDs,
+			Members:      mapMembers(c.Members),
+			Indicators:   mapIndicators(c.Indicators),
+			Tasks:        mapTasks(c.Tasks),
+			Children:     grandchildren,
+		}
+	}
+	return out, nil
 }
 
 func (r updateRequest) toCommand(organizationID domain.TenantID, id uuid.UUID) appmission.UpdateCommand {
@@ -178,11 +264,8 @@ func (r updateRequest) toCommand(organizationID domain.TenantID, id uuid.UUID) a
 		TagIDs:         r.TagIDs,
 	}
 	if r.Members != nil {
-		inputs := make([]appmission.MemberInput, len(*r.Members))
-		for i, m := range *r.Members {
-			inputs[i] = appmission.MemberInput{UserID: m.UserID, Role: m.Role}
-		}
-		cmd.Members = &inputs
+		members := mapMembers(*r.Members)
+		cmd.Members = &members
 	}
 	return cmd
 }

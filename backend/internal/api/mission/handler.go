@@ -17,7 +17,7 @@ import (
 )
 
 type createUseCase interface {
-	Execute(ctx context.Context, cmd appmission.CreateCommand) (*appmission.CreateResult, error)
+	Execute(ctx context.Context, cmd appmission.CreateCommand) (*domainmission.Mission, error)
 }
 
 type getUseCase interface {
@@ -69,13 +69,13 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		httputil.WriteProblem(w, http.StatusUnprocessableEntity, "Validation Error", err.Error())
 		return
 	}
-	result, err := h.create.Execute(r.Context(), cmd)
+	mission, err := h.create.Execute(r.Context(), cmd)
 	if err != nil {
 		handleError(w, err)
 		return
 	}
-	w.Header().Set("Location", fmt.Sprintf("/missions/%s", result.Mission.ID))
-	httputil.WriteJSON(w, http.StatusCreated, toCreateResponse(result))
+	w.Header().Set("Location", fmt.Sprintf("/missions/%s", mission.ID))
+	httputil.WriteJSON(w, http.StatusCreated, toResponse(mission))
 }
 
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {

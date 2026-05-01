@@ -10,6 +10,7 @@ import (
 	"github.com/getbud-co/bud2/backend/internal/domain/indicator"
 	"github.com/getbud-co/bud2/backend/internal/domain/mission"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
+	"github.com/getbud-co/bud2/backend/internal/domain/tag"
 	"github.com/getbud-co/bud2/backend/internal/domain/task"
 	"github.com/getbud-co/bud2/backend/internal/domain/team"
 	"github.com/getbud-co/bud2/backend/internal/domain/user"
@@ -36,6 +37,10 @@ func (r txRepositories) Users() user.Repository {
 
 func (r txRepositories) Teams() team.Repository {
 	return NewTeamRepository(r.queries)
+}
+
+func (r txRepositories) Tags() tag.Repository {
+	return NewTagRepository(r.queries)
 }
 
 func (r txRepositories) Missions() mission.Repository {

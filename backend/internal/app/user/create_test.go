@@ -13,6 +13,7 @@ import (
 	"github.com/getbud-co/bud2/backend/internal/domain/indicator"
 	"github.com/getbud-co/bud2/backend/internal/domain/mission"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
+	"github.com/getbud-co/bud2/backend/internal/domain/tag"
 	"github.com/getbud-co/bud2/backend/internal/domain/task"
 	"github.com/getbud-co/bud2/backend/internal/domain/team"
 	usr "github.com/getbud-co/bud2/backend/internal/domain/user"
@@ -35,6 +36,7 @@ func (r testTxRepos) Teams() team.Repository {
 	}
 	return new(mocks.TeamRepository)
 }
+func (r testTxRepos) Tags() tag.Repository             { return nil }
 func (r testTxRepos) Missions() mission.Repository     { return nil }
 func (r testTxRepos) Indicators() indicator.Repository { return nil }
 func (r testTxRepos) Tasks() task.Repository           { return nil }

@@ -3366,17 +3366,6 @@ export interface components {
             created_at: string;
             /** Format: date-time */
             updated_at: string;
-            /**
-             * @description Only populated on the response of POST /missions when the request
-             *     included nested indicators. GET /missions and GET /missions/{id}
-             *     do not return this field — fetch /indicators?mission_id=… instead.
-             */
-            indicators?: components["schemas"]["Indicator"][];
-            /**
-             * @description Same semantics as `indicators`: only present on the POST response
-             *     when the request was nested.
-             */
-            tasks?: components["schemas"]["Task"][];
             members?: components["schemas"]["MissionMember"][];
             tag_ids?: string[];
         };
@@ -3395,12 +3384,12 @@ export interface components {
             size: number;
         };
         /**
-         * @description POST /missions accepts inline `indicators` and `tasks` so the whole
-         *     mission can be created atomically (one request, one transaction). To
-         *     manage indicators/tasks AFTER creation use the `/indicators` and
-         *     `/tasks` endpoints — PATCH /missions/{id} does NOT accept these
-         *     fields. Owner_id of nested children defaults to the mission owner
-         *     when omitted.
+         * @description POST /missions accepts inline `indicators`, `tasks`, and `children` so
+         *     the whole mission tree can be created atomically (one request, one
+         *     transaction). To manage these AFTER creation use the `/indicators`,
+         *     `/tasks`, and `/missions` endpoints — PATCH /missions/{id} does NOT
+         *     accept these fields. Owner_id of nested entities defaults to the
+         *     parent mission owner when omitted.
          */
         CreateMissionRequest: {
             title: string;
@@ -3430,6 +3419,42 @@ export interface components {
             tag_ids?: string[];
             indicators?: components["schemas"]["CreateMissionIndicatorInline"][];
             tasks?: components["schemas"]["CreateMissionTaskInline"][];
+            children?: components["schemas"]["CreateMissionChildInline"][];
+        };
+        /**
+         * @description Sub-mission created inline with its parent. The parent's id is
+         *     supplied by the server; do NOT set parent_id on a child. owner_id is
+         *     optional and defaults to the parent mission owner when omitted.
+         *     Children may themselves carry indicators, tasks, and further
+         *     children — the entire subtree is persisted atomically.
+         */
+        CreateMissionChildInline: {
+            title: string;
+            description?: string | null;
+            /** Format: uuid */
+            owner_id?: string | null;
+            /** Format: uuid */
+            team_id?: string | null;
+            /** @enum {string} */
+            status?: "draft" | "active" | "paused" | "completed" | "cancelled";
+            /** @enum {string} */
+            visibility?: "public" | "team_only" | "private";
+            /** @enum {string} */
+            kanban_status?: "uncategorized" | "todo" | "doing" | "done";
+            /** Format: date */
+            start_date: string;
+            /** Format: date */
+            end_date: string;
+            members?: {
+                /** Format: uuid */
+                user_id: string;
+                /** @enum {string} */
+                role?: "owner" | "supporter" | "observer";
+            }[];
+            tag_ids?: string[];
+            indicators?: components["schemas"]["CreateMissionIndicatorInline"][];
+            tasks?: components["schemas"]["CreateMissionTaskInline"][];
+            children?: components["schemas"]["CreateMissionChildInline"][];
         };
         /** @description Indicator created inline with its parent mission. mission_id is supplied by the parent. */
         CreateMissionIndicatorInline: {

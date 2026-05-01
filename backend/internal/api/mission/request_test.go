@@ -77,17 +77,18 @@ func TestCreateRequest_ToCommand_PropagatesFields(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, tenantID, cmd.OrganizationID)
-	assert.Equal(t, "T", cmd.Title)
-	require.NotNil(t, cmd.Description)
-	assert.Equal(t, "d", *cmd.Description)
+	assert.Equal(t, "T", cmd.Root.Title)
+	require.NotNil(t, cmd.Root.Description)
+	assert.Equal(t, "d", *cmd.Root.Description)
 	require.NotNil(t, cmd.ParentID)
 	assert.Equal(t, parentID, *cmd.ParentID)
-	assert.Equal(t, ownerID, cmd.OwnerID)
-	require.NotNil(t, cmd.TeamID)
-	assert.Equal(t, teamID, *cmd.TeamID)
-	assert.Equal(t, "active", cmd.Status)
-	assert.Equal(t, time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), cmd.StartDate)
-	assert.Equal(t, time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC), cmd.EndDate)
+	require.NotNil(t, cmd.Root.OwnerID)
+	assert.Equal(t, ownerID, *cmd.Root.OwnerID)
+	require.NotNil(t, cmd.Root.TeamID)
+	assert.Equal(t, teamID, *cmd.Root.TeamID)
+	assert.Equal(t, "active", cmd.Root.Status)
+	assert.Equal(t, time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), cmd.Root.StartDate)
+	assert.Equal(t, time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC), cmd.Root.EndDate)
 }
 
 func TestCreateRequest_ToCommand_InvalidStartDate_ReturnsError(t *testing.T) {

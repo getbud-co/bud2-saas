@@ -79,6 +79,9 @@ func (r *MissionRepository) Create(ctx context.Context, m *mission.Mission) (*mi
 	if err := r.loadTagIDs(ctx, created); err != nil {
 		return nil, err
 	}
+	if err := created.Validate(); err != nil {
+		return nil, err
+	}
 	return created, nil
 }
 
@@ -95,6 +98,9 @@ func (r *MissionRepository) GetByID(ctx context.Context, id, organizationID uuid
 		return nil, err
 	}
 	if err := r.loadTagIDs(ctx, m); err != nil {
+		return nil, err
+	}
+	if err := m.Validate(); err != nil {
 		return nil, err
 	}
 	return m, nil
@@ -155,6 +161,9 @@ func (r *MissionRepository) List(ctx context.Context, f mission.ListFilter) (mis
 		if err := r.loadTagIDs(ctx, &missions[i]); err != nil {
 			return mission.ListResult{}, err
 		}
+		if err := missions[i].Validate(); err != nil {
+			return mission.ListResult{}, err
+		}
 	}
 	return mission.ListResult{Missions: missions, Total: total}, nil
 }
@@ -197,6 +206,9 @@ func (r *MissionRepository) Update(ctx context.Context, m *mission.Mission) (*mi
 		return nil, err
 	}
 	if err := r.loadTagIDs(ctx, updated); err != nil {
+		return nil, err
+	}
+	if err := updated.Validate(); err != nil {
 		return nil, err
 	}
 	return updated, nil

@@ -13,6 +13,7 @@ import (
 	domainindicator "github.com/getbud-co/bud2/backend/internal/domain/indicator"
 	domainmission "github.com/getbud-co/bud2/backend/internal/domain/mission"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
+	domaintag "github.com/getbud-co/bud2/backend/internal/domain/tag"
 	domaintask "github.com/getbud-co/bud2/backend/internal/domain/task"
 	"github.com/getbud-co/bud2/backend/internal/domain/team"
 	usr "github.com/getbud-co/bud2/backend/internal/domain/user"
@@ -37,6 +38,7 @@ func (r updateTestTxRepos) Teams() team.Repository {
 	m.On("ListMembersByUser", mock.Anything, mock.Anything, mock.Anything).Return([]team.TeamMember{}, nil)
 	return m
 }
+func (r updateTestTxRepos) Tags() domaintag.Repository             { return nil }
 func (r updateTestTxRepos) Missions() domainmission.Repository     { return nil }
 func (r updateTestTxRepos) Indicators() domainindicator.Repository { return nil }
 func (r updateTestTxRepos) Tasks() domaintask.Repository           { return nil }

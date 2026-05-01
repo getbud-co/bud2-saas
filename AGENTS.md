@@ -22,6 +22,9 @@ Repository-specific guidance for AI agents. Keep this file short and durable: on
 - `api/` handles transport concerns only: routing, request parsing, validation, response mapping, and middleware.
 - `infra/` implements persistence, authentication, authorization, and external integrations.
 - Do not place business rules in handlers, middleware, UI components, SQL, or generated code.
+- Domain aggregates are constructed via factory functions (e.g. `NewMission`); factories generate IDs, apply defaults, and enforce invariants — aggregates are always-valid.
+- Use cases orchestrate (validate cross-aggregate references, persist) but do not apply defaults or generate IDs.
+- Aggregate invariants are private to the aggregate and called only by the factory and mutator methods; callers do not validate aggregates externally.
 - Persistence uses explicit SQL with `sqlc`; do not introduce an ORM.
 
 ## Multi-Tenancy

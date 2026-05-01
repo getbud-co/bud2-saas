@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/getbud-co/bud2/backend/internal/domain"
 	"github.com/getbud-co/bud2/backend/internal/domain/mission"
 	"github.com/getbud-co/bud2/backend/internal/infra/postgres/sqlc"
 )
@@ -35,6 +36,8 @@ type fakeMissionQuerier struct {
 	// member support
 	memberRows    []sqlc.MissionMember
 	memberListErr error
+	tagIDs        []uuid.UUID
+	tagListErr    error
 }
 
 func (f *fakeMissionQuerier) CreateMission(_ context.Context, arg sqlc.CreateMissionParams) (sqlc.CreateMissionRow, error) {
@@ -78,7 +81,7 @@ func (f *fakeMissionQuerier) InsertMissionMember(_ context.Context, _ sqlc.Inser
 }
 
 func (f *fakeMissionQuerier) ListMissionTagIDs(_ context.Context, _ sqlc.ListMissionTagIDsParams) ([]uuid.UUID, error) {
-	return nil, nil
+	return f.tagIDs, f.tagListErr
 }
 
 func (f *fakeMissionQuerier) InsertMissionTag(_ context.Context, _ sqlc.InsertMissionTagParams) error {
@@ -91,6 +94,86 @@ func (f *fakeMissionQuerier) DeleteMissionTagByTag(_ context.Context, _ sqlc.Del
 
 func (f *fakeMissionQuerier) DeleteMissionTags(_ context.Context, _ sqlc.DeleteMissionTagsParams) error {
 	return nil
+}
+
+func validCreateMissionRow() sqlc.CreateMissionRow {
+	now := time.Now().UTC()
+	return sqlc.CreateMissionRow{
+		ID:             uuid.New(),
+		OrganizationID: uuid.New(),
+		OwnerID:        uuid.New(),
+		Title:          "Valid mission",
+		Status:         string(mission.StatusDraft),
+		Visibility:     string(mission.VisibilityPublic),
+		KanbanStatus:   string(mission.KanbanUncategorized),
+		StartDate:      pgtype.Date{Time: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), Valid: true},
+		EndDate:        pgtype.Date{Time: time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC), Valid: true},
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}
+}
+
+func validGetMissionRow() sqlc.GetMissionByIDRow {
+	row := validCreateMissionRow()
+	return sqlc.GetMissionByIDRow{
+		ID:             row.ID,
+		OrganizationID: row.OrganizationID,
+		ParentID:       row.ParentID,
+		OwnerID:        row.OwnerID,
+		TeamID:         row.TeamID,
+		Title:          row.Title,
+		Description:    row.Description,
+		Status:         row.Status,
+		Visibility:     row.Visibility,
+		KanbanStatus:   row.KanbanStatus,
+		StartDate:      row.StartDate,
+		EndDate:        row.EndDate,
+		CompletedAt:    row.CompletedAt,
+		CreatedAt:      row.CreatedAt,
+		UpdatedAt:      row.UpdatedAt,
+	}
+}
+
+func validListMissionRow() sqlc.ListMissionsRow {
+	row := validCreateMissionRow()
+	return sqlc.ListMissionsRow{
+		ID:             row.ID,
+		OrganizationID: row.OrganizationID,
+		ParentID:       row.ParentID,
+		OwnerID:        row.OwnerID,
+		TeamID:         row.TeamID,
+		Title:          row.Title,
+		Description:    row.Description,
+		Status:         row.Status,
+		Visibility:     row.Visibility,
+		KanbanStatus:   row.KanbanStatus,
+		StartDate:      row.StartDate,
+		EndDate:        row.EndDate,
+		CompletedAt:    row.CompletedAt,
+		CreatedAt:      row.CreatedAt,
+		UpdatedAt:      row.UpdatedAt,
+	}
+}
+
+func validUpdateMissionRow() sqlc.UpdateMissionRow {
+	row := validCreateMissionRow()
+	return sqlc.UpdateMissionRow{
+		ID:             row.ID,
+		OrganizationID: row.OrganizationID,
+		ParentID:       row.ParentID,
+		OwnerID:        row.OwnerID,
+		TeamID:         row.TeamID,
+		Title:          row.Title,
+		Description:    row.Description,
+		Status:         row.Status,
+		Visibility:     row.Visibility,
+		KanbanStatus:   row.KanbanStatus,
+		StartDate:      row.StartDate,
+		EndDate:        row.EndDate,
+		CompletedAt:    row.CompletedAt,
+		CreatedAt:      row.CreatedAt,
+		UpdatedAt:      row.UpdatedAt,
+	}
 }
 
 func TestMissionRepository_Create_TranslatesNullableFieldsAndMapsRow(t *testing.T) {
@@ -156,15 +239,11 @@ func TestMissionRepository_Create_TranslatesNullableFieldsAndMapsRow(t *testing.
 func TestMissionRepository_Create_NilOptionalFieldsBecomeInvalidPgtype(t *testing.T) {
 	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)
-	q := &fakeMissionQuerier{
-		createRow: sqlc.CreateMissionRow{
-			ID: uuid.New(), Title: "x",
-			Status: string(mission.StatusDraft), Visibility: string(mission.VisibilityPublic),
-			KanbanStatus: string(mission.KanbanUncategorized),
-			StartDate:    pgtype.Date{Time: start, Valid: true},
-			EndDate:      pgtype.Date{Time: end, Valid: true},
-		},
-	}
+	row := validCreateMissionRow()
+	row.Title = "x"
+	row.StartDate = pgtype.Date{Time: start, Valid: true}
+	row.EndDate = pgtype.Date{Time: end, Valid: true}
+	q := &fakeMissionQuerier{createRow: row}
 	repo := NewMissionRepository(q, nil)
 
 	_, err := repo.Create(context.Background(), &mission.Mission{
@@ -201,6 +280,20 @@ func TestMissionRepository_Create_FKViolation_MapsToInvalidReference(t *testing.
 	assert.ErrorIs(t, err, mission.ErrInvalidReference)
 }
 
+func TestMissionRepository_Create_InvalidLoadedAggregate_ReturnsValidationError(t *testing.T) {
+	row := validCreateMissionRow()
+	row.Title = ""
+	repo := NewMissionRepository(&fakeMissionQuerier{createRow: row}, nil)
+
+	_, err := repo.Create(context.Background(), &mission.Mission{
+		ID: row.ID, OrganizationID: row.OrganizationID, OwnerID: row.OwnerID,
+		Title: "valid input", Status: mission.StatusDraft, Visibility: mission.VisibilityPublic,
+		KanbanStatus: mission.KanbanUncategorized, StartDate: row.StartDate.Time, EndDate: row.EndDate.Time,
+	})
+
+	assert.ErrorIs(t, err, domain.ErrValidation)
+}
+
 func TestMissionRepository_Update_FKViolation_MapsToInvalidReference(t *testing.T) {
 	fkErr := &pgconn.PgError{Code: "23503", Message: "foreign key violation"}
 	repo := NewMissionRepository(&fakeMissionQuerier{updateErr: fkErr}, nil)
@@ -227,16 +320,27 @@ func TestMissionRepository_GetByID_PropagatesOtherErrors(t *testing.T) {
 	assert.ErrorIs(t, err, queryErr)
 }
 
+func TestMissionRepository_GetByID_InvalidLoadedAggregate_ReturnsValidationError(t *testing.T) {
+	row := validGetMissionRow()
+	row.Status = "invalid"
+	repo := NewMissionRepository(&fakeMissionQuerier{getRow: row}, nil)
+
+	_, err := repo.GetByID(context.Background(), row.ID, row.OrganizationID)
+
+	assert.ErrorIs(t, err, domain.ErrValidation)
+}
+
 func TestMissionRepository_List_AppliesPaginationDefaultsAndFilters(t *testing.T) {
 	ownerID := uuid.New()
 	teamID := uuid.New()
 	parentID := uuid.New()
 	status := mission.StatusActive
 
-	q := &fakeMissionQuerier{
-		listRows:   []sqlc.ListMissionsRow{{ID: uuid.New(), Title: "a"}, {ID: uuid.New(), Title: "b"}},
-		countTotal: 7,
-	}
+	rowA := validListMissionRow()
+	rowA.Title = "a"
+	rowB := validListMissionRow()
+	rowB.Title = "b"
+	q := &fakeMissionQuerier{listRows: []sqlc.ListMissionsRow{rowA, rowB}, countTotal: 7}
 	repo := NewMissionRepository(q, nil)
 
 	res, err := repo.List(context.Background(), mission.ListFilter{
@@ -284,6 +388,16 @@ func TestMissionRepository_List_PropagatesCountError(t *testing.T) {
 	assert.ErrorIs(t, err, countErr)
 }
 
+func TestMissionRepository_List_InvalidLoadedAggregate_ReturnsValidationError(t *testing.T) {
+	row := validListMissionRow()
+	row.Visibility = "invalid"
+	repo := NewMissionRepository(&fakeMissionQuerier{listRows: []sqlc.ListMissionsRow{row}}, nil)
+
+	_, err := repo.List(context.Background(), mission.ListFilter{OrganizationID: row.OrganizationID})
+
+	assert.ErrorIs(t, err, domain.ErrValidation)
+}
+
 func TestMissionRepository_Update_NotFound_MapsToDomainError(t *testing.T) {
 	repo := NewMissionRepository(&fakeMissionQuerier{updateErr: pgx.ErrNoRows}, nil)
 
@@ -296,16 +410,13 @@ func TestMissionRepository_Update_PassesNullableParent(t *testing.T) {
 	parentID := uuid.New()
 	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)
-	q := &fakeMissionQuerier{
-		updateRow: sqlc.UpdateMissionRow{
-			ID: uuid.New(), Title: "x",
-			Status:       string(mission.StatusActive),
-			Visibility:   string(mission.VisibilityPublic),
-			KanbanStatus: string(mission.KanbanTodo),
-			StartDate:    pgtype.Date{Time: start, Valid: true},
-			EndDate:      pgtype.Date{Time: end, Valid: true},
-		},
-	}
+	row := validUpdateMissionRow()
+	row.Title = "x"
+	row.Status = string(mission.StatusActive)
+	row.KanbanStatus = string(mission.KanbanTodo)
+	row.StartDate = pgtype.Date{Time: start, Valid: true}
+	row.EndDate = pgtype.Date{Time: end, Valid: true}
+	q := &fakeMissionQuerier{updateRow: row}
 	repo := NewMissionRepository(q, nil)
 
 	// to a parent
@@ -325,6 +436,20 @@ func TestMissionRepository_Update_PassesNullableParent(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.False(t, q.updateParams.ParentID.Valid)
+}
+
+func TestMissionRepository_Update_InvalidLoadedAggregate_ReturnsValidationError(t *testing.T) {
+	row := validUpdateMissionRow()
+	row.KanbanStatus = "invalid"
+	repo := NewMissionRepository(&fakeMissionQuerier{updateRow: row}, nil)
+
+	_, err := repo.Update(context.Background(), &mission.Mission{
+		ID: row.ID, OrganizationID: row.OrganizationID, OwnerID: row.OwnerID,
+		Title: "valid input", Status: mission.StatusDraft, Visibility: mission.VisibilityPublic,
+		KanbanStatus: mission.KanbanUncategorized, StartDate: row.StartDate.Time, EndDate: row.EndDate.Time,
+	})
+
+	assert.ErrorIs(t, err, domain.ErrValidation)
 }
 
 func TestMissionRowToDomain_MapsAllFields(t *testing.T) {
