@@ -58,7 +58,11 @@ func (r *IndicatorRepository) Create(ctx context.Context, i *indicator.Indicator
 		}
 		return nil, err
 	}
-	return indicatorRowToDomain(indicatorRowData(row)), nil
+	i = indicatorRowToDomain(indicatorRowData(row))
+	if err := i.Validate(); err != nil {
+		return nil, err
+	}
+	return i, nil
 }
 
 func (r *IndicatorRepository) GetByID(ctx context.Context, id, organizationID uuid.UUID) (*indicator.Indicator, error) {
@@ -69,7 +73,11 @@ func (r *IndicatorRepository) GetByID(ctx context.Context, id, organizationID uu
 		}
 		return nil, err
 	}
-	return indicatorRowToDomain(indicatorRowData(row)), nil
+	ind := indicatorRowToDomain(indicatorRowData(row))
+	if err := ind.Validate(); err != nil {
+		return nil, err
+	}
+	return ind, nil
 }
 
 func (r *IndicatorRepository) List(ctx context.Context, f indicator.ListFilter) (indicator.ListResult, error) {
@@ -114,7 +122,11 @@ func (r *IndicatorRepository) List(ctx context.Context, f indicator.ListFilter) 
 
 	indicators := make([]indicator.Indicator, 0, len(rows))
 	for _, row := range rows {
-		indicators = append(indicators, *indicatorRowToDomain(indicatorRowData(row)))
+		ind := indicatorRowToDomain(indicatorRowData(row))
+		if err := ind.Validate(); err != nil {
+			return indicator.ListResult{}, err
+		}
+		indicators = append(indicators, *ind)
 	}
 	return indicator.ListResult{Indicators: indicators, Total: total}, nil
 }
@@ -149,7 +161,11 @@ func (r *IndicatorRepository) Update(ctx context.Context, i *indicator.Indicator
 		}
 		return nil, err
 	}
-	return indicatorRowToDomain(indicatorRowData(row)), nil
+	i = indicatorRowToDomain(indicatorRowData(row))
+	if err := i.Validate(); err != nil {
+		return nil, err
+	}
+	return i, nil
 }
 
 func (r *IndicatorRepository) SoftDelete(ctx context.Context, id, organizationID uuid.UUID) error {

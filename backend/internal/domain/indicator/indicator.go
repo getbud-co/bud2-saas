@@ -138,22 +138,33 @@ func WithDueDate(d *time.Time) IndicatorOption    { return func(i *Indicator) { 
 func WithMeasurementMode(m MeasurementMode) IndicatorOption {
 	return func(i *Indicator) { i.MeasurementMode = m }
 }
-func WithGoalType(g GoalType) IndicatorOption { return func(i *Indicator) { i.GoalType = g } }
+func WithGoalType(g GoalType) IndicatorOption      { return func(i *Indicator) { i.GoalType = g } }
+func WithTeam(id uuid.UUID) IndicatorOption        { return func(i *Indicator) { i.TeamID = &id } }
+func WithLowThreshold(v *float64) IndicatorOption  { return func(i *Indicator) { i.LowThreshold = v } }
+func WithHighThreshold(v *float64) IndicatorOption { return func(i *Indicator) { i.HighThreshold = v } }
+func WithPeriodStart(t *time.Time) IndicatorOption { return func(i *Indicator) { i.PeriodStart = t } }
+func WithPeriodEnd(t *time.Time) IndicatorOption   { return func(i *Indicator) { i.PeriodEnd = t } }
+func WithLinkedSurvey(id uuid.UUID) IndicatorOption {
+	return func(i *Indicator) { i.LinkedSurveyID = &id }
+}
 
 // NewIndicator constructs an always-valid Indicator. Generates ID, applies
-// default status (StatusDraft), and enforces invariants before returning.
+// defaults (StatusDraft, MeasurementModeManual, GoalTypeReach), and enforces
+// invariants before returning.
 func NewIndicator(
 	orgID, missionID, ownerID uuid.UUID,
 	title string,
 	opts ...IndicatorOption,
 ) (*Indicator, error) {
 	i := &Indicator{
-		ID:             uuid.New(),
-		OrganizationID: orgID,
-		MissionID:      missionID,
-		OwnerID:        ownerID,
-		Title:          title,
-		Status:         StatusDraft,
+		ID:              uuid.New(),
+		OrganizationID:  orgID,
+		MissionID:       missionID,
+		OwnerID:         ownerID,
+		Title:           title,
+		Status:          StatusDraft,
+		MeasurementMode: MeasurementModeManual,
+		GoalType:        GoalTypeReach,
 	}
 	for _, opt := range opts {
 		opt(i)

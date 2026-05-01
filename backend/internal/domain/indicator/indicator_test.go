@@ -153,3 +153,38 @@ func TestNewIndicator_IDIsAlwaysGenerated(t *testing.T) {
 	assert.NotEqual(t, uuid.Nil, i1.ID)
 	assert.NotEqual(t, i1.ID, i2.ID)
 }
+
+func TestNewIndicator_AppliesDefaultMeasurementModeAndGoalType(t *testing.T) {
+	i, err := NewIndicator(uuid.New(), uuid.New(), uuid.New(), "T")
+	require.NoError(t, err)
+	assert.Equal(t, MeasurementModeManual, i.MeasurementMode)
+	assert.Equal(t, GoalTypeReach, i.GoalType)
+}
+
+func TestNewIndicator_WithMeasurementMode_OverridesDefault(t *testing.T) {
+	i, err := NewIndicator(uuid.New(), uuid.New(), uuid.New(), "T", WithMeasurementMode(MeasurementModeSurvey))
+	require.NoError(t, err)
+	assert.Equal(t, MeasurementModeSurvey, i.MeasurementMode)
+}
+
+func TestNewIndicator_WithGoalType_OverridesDefault(t *testing.T) {
+	i, err := NewIndicator(uuid.New(), uuid.New(), uuid.New(), "T", WithGoalType(GoalTypeAbove))
+	require.NoError(t, err)
+	assert.Equal(t, GoalTypeAbove, i.GoalType)
+}
+
+func TestNewIndicator_WithTeam_SetsTeamID(t *testing.T) {
+	teamID := uuid.New()
+	i, err := NewIndicator(uuid.New(), uuid.New(), uuid.New(), "T", WithTeam(teamID))
+	require.NoError(t, err)
+	require.NotNil(t, i.TeamID)
+	assert.Equal(t, teamID, *i.TeamID)
+}
+
+func TestNewIndicator_WithLinkedSurvey_SetsLinkedSurveyID(t *testing.T) {
+	surveyID := uuid.New()
+	i, err := NewIndicator(uuid.New(), uuid.New(), uuid.New(), "T", WithLinkedSurvey(surveyID))
+	require.NoError(t, err)
+	require.NotNil(t, i.LinkedSurveyID)
+	assert.Equal(t, surveyID, *i.LinkedSurveyID)
+}

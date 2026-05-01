@@ -81,41 +81,35 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*domai
 		}
 	}
 
-	status := domainindicator.Status(cmd.Status)
-	if status == "" {
-		status = domainindicator.StatusDraft
+	opts := []domainindicator.IndicatorOption{
+		domainindicator.WithDescription(cmd.Description),
+		domainindicator.WithTargetValue(cmd.TargetValue),
+		domainindicator.WithCurrentValue(cmd.CurrentValue),
+		domainindicator.WithUnit(cmd.Unit),
+		domainindicator.WithDueDate(cmd.DueDate),
+		domainindicator.WithLowThreshold(cmd.LowThreshold),
+		domainindicator.WithHighThreshold(cmd.HighThreshold),
+		domainindicator.WithPeriodStart(cmd.PeriodStart),
+		domainindicator.WithPeriodEnd(cmd.PeriodEnd),
 	}
-	mode := domainindicator.MeasurementMode(cmd.MeasurementMode)
-	if mode == "" {
-		mode = domainindicator.MeasurementModeManual
+	if cmd.Status != "" {
+		opts = append(opts, domainindicator.WithStatus(domainindicator.Status(cmd.Status)))
 	}
-	goalType := domainindicator.GoalType(cmd.GoalType)
-	if goalType == "" {
-		goalType = domainindicator.GoalTypeReach
+	if cmd.MeasurementMode != "" {
+		opts = append(opts, domainindicator.WithMeasurementMode(domainindicator.MeasurementMode(cmd.MeasurementMode)))
+	}
+	if cmd.GoalType != "" {
+		opts = append(opts, domainindicator.WithGoalType(domainindicator.GoalType(cmd.GoalType)))
+	}
+	if cmd.TeamID != nil {
+		opts = append(opts, domainindicator.WithTeam(*cmd.TeamID))
+	}
+	if cmd.LinkedSurveyID != nil {
+		opts = append(opts, domainindicator.WithLinkedSurvey(*cmd.LinkedSurveyID))
 	}
 
-	i := &domainindicator.Indicator{
-		ID:              uuid.New(),
-		OrganizationID:  orgID,
-		MissionID:       cmd.MissionID,
-		OwnerID:         cmd.OwnerID,
-		TeamID:          cmd.TeamID,
-		Title:           cmd.Title,
-		Description:     cmd.Description,
-		TargetValue:     cmd.TargetValue,
-		CurrentValue:    cmd.CurrentValue,
-		Unit:            cmd.Unit,
-		Status:          status,
-		DueDate:         cmd.DueDate,
-		MeasurementMode: mode,
-		GoalType:        goalType,
-		LowThreshold:    cmd.LowThreshold,
-		HighThreshold:   cmd.HighThreshold,
-		PeriodStart:     cmd.PeriodStart,
-		PeriodEnd:       cmd.PeriodEnd,
-		LinkedSurveyID:  cmd.LinkedSurveyID,
-	}
-	if err := i.Validate(); err != nil {
+	i, err := domainindicator.NewIndicator(orgID, cmd.MissionID, cmd.OwnerID, cmd.Title, opts...)
+	if err != nil {
 		return nil, err
 	}
 
