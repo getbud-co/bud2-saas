@@ -41,7 +41,7 @@ type Tag struct {
 	UpdatedAt      time.Time
 }
 
-func (t *Tag) Validate() error {
+func (t *Tag) validateInvariants() error {
 	if t.Name == "" {
 		return fmt.Errorf("%w: name is required", domain.ErrValidation)
 	}
@@ -51,6 +51,49 @@ func (t *Tag) Validate() error {
 	if !t.Color.IsValid() {
 		return fmt.Errorf("%w: color must be one of: neutral, orange, wine, caramel, success, warning, error", domain.ErrValidation)
 	}
+	return nil
+}
+
+// Validate is the public invariant check used by repositories post-load.
+// New aggregates are created via NewTag.
+func (t *Tag) Validate() error {
+	return t.validateInvariants()
+}
+
+// NewTag constructs an always-valid Tag. Generates ID and enforces invariants
+// before returning.
+func NewTag(orgID uuid.UUID, name string, color Color) (*Tag, error) {
+	t := &Tag{
+		ID:             uuid.New(),
+		OrganizationID: orgID,
+		Name:           name,
+		Color:          color,
+	}
+	if err := t.validateInvariants(); err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
+// Rename changes the tag's name and re-validates invariants.
+func (t *Tag) Rename(name string) error {
+	next := *t
+	next.Name = name
+	if err := next.validateInvariants(); err != nil {
+		return err
+	}
+	t.Name = name
+	return nil
+}
+
+// ChangeColor changes the tag's color and re-validates invariants.
+func (t *Tag) ChangeColor(color Color) error {
+	next := *t
+	next.Color = color
+	if err := next.validateInvariants(); err != nil {
+		return err
+	}
+	t.Color = color
 	return nil
 }
 

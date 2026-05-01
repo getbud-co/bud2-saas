@@ -50,7 +50,11 @@ func (r *TagRepository) Create(ctx context.Context, t *tag.Tag) (*tag.Tag, error
 		}
 		return nil, err
 	}
-	return createTagRowToDomain(row), nil
+	t = createTagRowToDomain(row)
+	if err := t.Validate(); err != nil {
+		return nil, err
+	}
+	return t, nil
 }
 
 func (r *TagRepository) GetByID(ctx context.Context, id, organizationID uuid.UUID) (*tag.Tag, error) {
@@ -61,7 +65,11 @@ func (r *TagRepository) GetByID(ctx context.Context, id, organizationID uuid.UUI
 		}
 		return nil, err
 	}
-	return getTagByIDRowToDomain(row), nil
+	td := getTagByIDRowToDomain(row)
+	if err := td.Validate(); err != nil {
+		return nil, err
+	}
+	return td, nil
 }
 
 func (r *TagRepository) GetByName(ctx context.Context, organizationID uuid.UUID, name string) (*tag.Tag, error) {
@@ -72,7 +80,11 @@ func (r *TagRepository) GetByName(ctx context.Context, organizationID uuid.UUID,
 		}
 		return nil, err
 	}
-	return getTagByNameRowToDomain(row), nil
+	td := getTagByNameRowToDomain(row)
+	if err := td.Validate(); err != nil {
+		return nil, err
+	}
+	return td, nil
 }
 
 func (r *TagRepository) List(ctx context.Context, organizationID uuid.UUID, page, size int) (tag.ListResult, error) {
@@ -100,7 +112,11 @@ func (r *TagRepository) List(ctx context.Context, organizationID uuid.UUID, page
 
 	tags := make([]tag.Tag, 0, len(rows))
 	for _, row := range rows {
-		tags = append(tags, *listTagsRowToDomain(row))
+		td := listTagsRowToDomain(row)
+		if err := td.Validate(); err != nil {
+			return tag.ListResult{}, err
+		}
+		tags = append(tags, *td)
 	}
 	return tag.ListResult{Tags: tags, Total: total}, nil
 }
@@ -121,7 +137,11 @@ func (r *TagRepository) Update(ctx context.Context, t *tag.Tag) (*tag.Tag, error
 		}
 		return nil, err
 	}
-	return updateTagRowToDomain(row), nil
+	t = updateTagRowToDomain(row)
+	if err := t.Validate(); err != nil {
+		return nil, err
+	}
+	return t, nil
 }
 
 func (r *TagRepository) SoftDelete(ctx context.Context, id, organizationID uuid.UUID) error {

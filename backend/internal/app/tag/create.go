@@ -5,8 +5,6 @@ import (
 	"errors"
 	"log/slog"
 
-	"github.com/google/uuid"
-
 	"github.com/getbud-co/bud2/backend/internal/domain"
 	domaintag "github.com/getbud-co/bud2/backend/internal/domain/tag"
 )
@@ -35,13 +33,8 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*domai
 		return nil, err
 	}
 
-	t := &domaintag.Tag{
-		ID:             uuid.New(),
-		OrganizationID: cmd.OrganizationID.UUID(),
-		Name:           cmd.Name,
-		Color:          domaintag.Color(cmd.Color),
-	}
-	if err := t.Validate(); err != nil {
+	t, err := domaintag.NewTag(cmd.OrganizationID.UUID(), cmd.Name, domaintag.Color(cmd.Color))
+	if err != nil {
 		return nil, err
 	}
 

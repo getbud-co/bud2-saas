@@ -42,9 +42,10 @@ func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*domai
 		}
 	}
 
-	existing.Name = cmd.Name
-	existing.Color = domaintag.Color(cmd.Color)
-	if err := existing.Validate(); err != nil {
+	if err := existing.Rename(cmd.Name); err != nil {
+		return nil, err
+	}
+	if err := existing.ChangeColor(domaintag.Color(cmd.Color)); err != nil {
 		return nil, err
 	}
 
