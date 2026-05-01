@@ -89,7 +89,7 @@ type Team struct {
 	UpdatedAt      time.Time
 }
 
-func (t *Team) Validate() error {
+func (t *Team) validateInvariants() error {
 	if t.Name == "" {
 		return fmt.Errorf("%w: name is required", domain.ErrValidation)
 	}
@@ -112,6 +112,38 @@ func (t *Team) Validate() error {
 		return fmt.Errorf("%w: at least one member must have role leader", domain.ErrValidation)
 	}
 	return nil
+}
+
+// Validate is the public invariant check used by repositories post-load and update use cases.
+func (t *Team) Validate() error {
+	return t.validateInvariants()
+}
+
+// TeamOption configures optional fields on a Team during construction.
+type TeamOption func(*Team)
+
+func WithDescription(d *string) TeamOption {
+	return func(t *Team) { t.Description = d }
+}
+
+// NewTeam constructs an always-valid Team. Generates ID, defaults Status to active,
+// and enforces invariants before returning.
+func NewTeam(orgID uuid.UUID, name string, color Color, members []TeamMember, opts ...TeamOption) (*Team, error) {
+	t := &Team{
+		ID:             uuid.New(),
+		OrganizationID: orgID,
+		Name:           name,
+		Color:          color,
+		Status:         StatusActive,
+		Members:        members,
+	}
+	for _, opt := range opts {
+		opt(t)
+	}
+	if err := t.validateInvariants(); err != nil {
+		return nil, err
+	}
+	return t, nil
 }
 
 type ListResult struct {

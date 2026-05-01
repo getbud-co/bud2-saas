@@ -73,3 +73,52 @@ func TestTeamValidate_AcceptsNoMembersAndLeader(t *testing.T) {
 	assert.NoError(t, noMembers.Validate())
 	assert.NoError(t, withLeader.Validate())
 }
+
+func TestNewTeam_GeneratesIDAndDefaultsStatusActive(t *testing.T) {
+	orgID := uuid.New()
+	team, err := NewTeam(orgID, "Engineering", ColorOrange, nil)
+	assert.NoError(t, err)
+	assert.NotEqual(t, uuid.Nil, team.ID)
+	assert.Equal(t, orgID, team.OrganizationID)
+	assert.Equal(t, "Engineering", team.Name)
+	assert.Equal(t, ColorOrange, team.Color)
+	assert.Equal(t, StatusActive, team.Status)
+}
+
+func TestNewTeam_IDIsAlwaysGenerated(t *testing.T) {
+	t1, _ := NewTeam(uuid.New(), "A", ColorNeutral, nil)
+	t2, _ := NewTeam(uuid.New(), "B", ColorNeutral, nil)
+	assert.NotEqual(t, uuid.Nil, t1.ID)
+	assert.NotEqual(t, t1.ID, t2.ID)
+}
+
+func TestNewTeam_WithDescription_AppliesOption(t *testing.T) {
+	desc := "Backend squad"
+	team, err := NewTeam(uuid.New(), "Engineering", ColorNeutral, nil, WithDescription(&desc))
+	assert.NoError(t, err)
+	assert.NotNil(t, team.Description)
+	assert.Equal(t, "Backend squad", *team.Description)
+}
+
+func TestNewTeam_EmptyName_ReturnsValidationError(t *testing.T) {
+	_, err := NewTeam(uuid.New(), "", ColorNeutral, nil)
+	assert.ErrorIs(t, err, domain.ErrValidation)
+}
+
+func TestNewTeam_InvalidColor_ReturnsValidationError(t *testing.T) {
+	_, err := NewTeam(uuid.New(), "Team", Color("blue"), nil)
+	assert.ErrorIs(t, err, domain.ErrValidation)
+}
+
+func TestNewTeam_MembersWithoutLeader_ReturnsValidationError(t *testing.T) {
+	members := []TeamMember{{UserID: uuid.New(), RoleInTeam: RoleMember}}
+	_, err := NewTeam(uuid.New(), "Team", ColorNeutral, members)
+	assert.ErrorIs(t, err, domain.ErrValidation)
+}
+
+func TestNewTeam_WithLeader_Succeeds(t *testing.T) {
+	members := []TeamMember{{UserID: uuid.New(), RoleInTeam: RoleLeader}}
+	team, err := NewTeam(uuid.New(), "Team", ColorNeutral, members)
+	assert.NoError(t, err)
+	assert.Len(t, team.Members, 1)
+}

@@ -84,16 +84,14 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*domai
 			})
 		}
 
-		t := &domainteam.Team{
-			ID:             uuid.New(),
-			OrganizationID: cmd.OrganizationID.UUID(),
-			Name:           cmd.Name,
-			Description:    cmd.Description,
-			Color:          domainteam.Color(cmd.Color),
-			Status:         domainteam.StatusActive,
-			Members:        members,
-		}
-		if err := t.Validate(); err != nil {
+		t, err := domainteam.NewTeam(
+			cmd.OrganizationID.UUID(),
+			cmd.Name,
+			domainteam.Color(cmd.Color),
+			members,
+			domainteam.WithDescription(cmd.Description),
+		)
+		if err != nil {
 			return err
 		}
 

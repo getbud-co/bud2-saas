@@ -63,6 +63,9 @@ func (r *TeamRepository) Create(ctx context.Context, t *team.Team) (*team.Team, 
 	if err := r.loadMembers(ctx, created); err != nil {
 		return nil, err
 	}
+	if err := created.Validate(); err != nil {
+		return nil, err
+	}
 	return created, nil
 }
 
@@ -78,6 +81,9 @@ func (r *TeamRepository) GetByID(ctx context.Context, id, organizationID uuid.UU
 	if err := r.loadMembers(ctx, t); err != nil {
 		return nil, err
 	}
+	if err := t.Validate(); err != nil {
+		return nil, err
+	}
 	return t, nil
 }
 
@@ -89,7 +95,11 @@ func (r *TeamRepository) GetByName(ctx context.Context, organizationID uuid.UUID
 		}
 		return nil, err
 	}
-	return teamRowToDomain(row.ID, row.OrganizationID, row.Name, row.Description, row.Color, row.Status, row.CreatedAt, row.UpdatedAt), nil
+	t := teamRowToDomain(row.ID, row.OrganizationID, row.Name, row.Description, row.Color, row.Status, row.CreatedAt, row.UpdatedAt)
+	if err := t.Validate(); err != nil {
+		return nil, err
+	}
+	return t, nil
 }
 
 func (r *TeamRepository) List(ctx context.Context, organizationID uuid.UUID, status *team.Status, page, size int) (team.ListResult, error) {
@@ -148,6 +158,9 @@ func (r *TeamRepository) List(ctx context.Context, organizationID uuid.UUID, sta
 		if err := r.loadMembers(ctx, &teams[i]); err != nil {
 			return team.ListResult{}, err
 		}
+		if err := teams[i].Validate(); err != nil {
+			return team.ListResult{}, err
+		}
 	}
 
 	return team.ListResult{Teams: teams, Total: total}, nil
@@ -174,6 +187,9 @@ func (r *TeamRepository) Update(ctx context.Context, t *team.Team) (*team.Team, 
 		return nil, err
 	}
 	if err := r.loadMembers(ctx, updated); err != nil {
+		return nil, err
+	}
+	if err := updated.Validate(); err != nil {
 		return nil, err
 	}
 	return updated, nil
