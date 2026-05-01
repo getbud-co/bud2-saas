@@ -5,10 +5,15 @@ from typing import Any
 
 import structlog
 from fastapi import APIRouter, HTTPException, Query, Request, Response, status
-from psycopg_pool import AsyncConnectionPool
 
 from bud2.config import Settings
-from bud2.infra.postgres.repositories import WebhookEventRepository
+from bud2.infra.postgres.repositories import (
+    ChannelConnectionRepository,
+    ConversationRepository,
+    MessageRepository,
+    WebhookEventRepository,
+)
+from bud2.infra.postgres.session import get_session_maker
 from bud2.infra.whatsapp.parser import parse_whatsapp_payload
 from bud2.infra.whatsapp.verifier import verify_meta_signature
 
@@ -59,19 +64,63 @@ async def receive_webhook(request: Request) -> dict[str, object]:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="payload must be a JSON object",
         )
-    pool: AsyncConnectionPool | None = request.app.state.db_pool
-    if pool is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="database not configured",
-        )
 
-    event_id = hashlib.sha256(body).hexdigest()
-    created = await WebhookEventRepository(pool).create_if_new(
-        channel="whatsapp",
-        external_event_id=event_id,
-        payload=payload,
+    session_maker = get_session_maker(settings)
+    async with session_maker() as session:
+        event_id = hashlib.sha256(body).hexdigest()
+        created = await WebhookEventRepository(session).create_if_new(
+            channel="whatsapp",
+            external_event_id=event_id,
+            payload=payload,
+        )
+        if not created:
+            logger.info("whatsapp webhook duplicate event", event_id=event_id)
+            return {"accepted": True, "duplicate": True, "message_count": 0}
+
+        messages = parse_whatsapp_payload(payload)
+        processed_count = 0
+
+        for msg in messages:
+            conn = await ChannelConnectionRepository(session).get_by_external_user(
+                channel="whatsapp",
+                external_account_id=msg.external_user_id,
+            )
+            if conn is None:
+                logger.info(
+                    "whatsapp user not recognized",
+                    external_user_id=msg.external_user_id,
+                )
+                continue
+
+            conversation = await ConversationRepository(session).get_or_create(
+                channel="whatsapp",
+                external_conversation_id=msg.external_conversation_id,
+                external_user_id=msg.external_user_id,
+                organization_id=conn.organization_id,
+            )
+
+            await MessageRepository(session).save(
+                organization_id=conn.organization_id,
+                conversation_id=conversation.id,
+                channel="whatsapp",
+                direction="inbound",
+                text=msg.text,
+                external_message_id=msg.external_message_id,
+                payload=msg.raw_payload,
+            )
+            processed_count += 1
+
+        await session.commit()
+
+    logger.info(
+        "whatsapp webhook accepted",
+        event_id=event_id,
+        message_count=len(messages),
+        processed_count=processed_count,
     )
-    messages = parse_whatsapp_payload(payload)
-    logger.info("whatsapp webhook accepted", duplicate=not created, message_count=len(messages))
-    return {"accepted": True, "duplicate": not created, "message_count": len(messages)}
+    return {
+        "accepted": True,
+        "duplicate": False,
+        "message_count": len(messages),
+        "processed_count": processed_count,
+    }

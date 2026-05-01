@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Request
-from psycopg_pool import AsyncConnectionPool
+from sqlalchemy import text
 
 from bud2.config import Settings
-from bud2.infra.postgres.pool import ping
+from bud2.infra.postgres.session import get_engine
 
 router = APIRouter(tags=["Health"])
 
@@ -17,11 +17,15 @@ async def live() -> dict[str, str]:
 @router.get("/health/ready")
 async def ready(request: Request) -> dict[str, object]:
     settings: Settings = request.app.state.settings
-    pool: AsyncConnectionPool | None = request.app.state.db_pool
     database_ready = False
-    if pool is not None:
-        await ping(pool)
-        database_ready = True
+    if settings.agents_database_url:
+        try:
+            engine = get_engine(settings)
+            async with engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+            database_ready = True
+        except Exception:
+            database_ready = False
     return {
         "status": "ok",
         "bud2_api_base_url": str(settings.bud2_api_base_url),
