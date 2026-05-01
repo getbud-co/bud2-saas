@@ -34,27 +34,20 @@ func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*domai
 		return nil, err
 	}
 
-	mentions := cmd.Mentions
-	if mentions == nil {
-		mentions = []string{}
+	existing.Value = cmd.Value
+	existing.Confidence = domaincheckin.Confidence(cmd.Confidence)
+	existing.Note = cmd.Note
+	if cmd.Mentions == nil {
+		existing.Mentions = []string{}
+	} else {
+		existing.Mentions = cmd.Mentions
 	}
 
-	updated := &domaincheckin.CheckIn{
-		ID:            existing.ID,
-		OrgID:         existing.OrgID,
-		IndicatorID:   existing.IndicatorID,
-		AuthorID:      existing.AuthorID,
-		Value:         cmd.Value,
-		PreviousValue: existing.PreviousValue,
-		Confidence:    domaincheckin.Confidence(cmd.Confidence),
-		Note:          cmd.Note,
-		Mentions:      mentions,
-	}
-	if err := updated.Validate(); err != nil {
+	if err := existing.Validate(); err != nil {
 		return nil, err
 	}
 
-	result, err := uc.repo.Update(ctx, updated)
+	result, err := uc.repo.Update(ctx, existing)
 	if err != nil {
 		uc.logger.WarnContext(ctx, "update check-in failed", "error", err)
 		return nil, err

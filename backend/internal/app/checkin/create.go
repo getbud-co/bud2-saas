@@ -33,23 +33,21 @@ func NewCreateUseCase(repo domaincheckin.Repository, logger *slog.Logger) *Creat
 func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*domaincheckin.CheckIn, error) {
 	uc.logger.DebugContext(ctx, "create check-in", "org_id", cmd.OrgID, "indicator_id", cmd.IndicatorID)
 
-	mentions := cmd.Mentions
-	if mentions == nil {
-		mentions = []string{}
+	opts := []domaincheckin.CheckInOption{
+		domaincheckin.WithPreviousValue(cmd.PreviousValue),
+		domaincheckin.WithNote(cmd.Note),
+		domaincheckin.WithMentions(cmd.Mentions),
 	}
 
-	c := &domaincheckin.CheckIn{
-		ID:            uuid.New(),
-		OrgID:         cmd.OrgID.UUID(),
-		IndicatorID:   cmd.IndicatorID,
-		AuthorID:      cmd.AuthorID,
-		Value:         cmd.Value,
-		PreviousValue: cmd.PreviousValue,
-		Confidence:    domaincheckin.Confidence(cmd.Confidence),
-		Note:          cmd.Note,
-		Mentions:      mentions,
-	}
-	if err := c.Validate(); err != nil {
+	c, err := domaincheckin.NewCheckIn(
+		cmd.OrgID.UUID(),
+		cmd.IndicatorID,
+		cmd.AuthorID,
+		cmd.Value,
+		domaincheckin.Confidence(cmd.Confidence),
+		opts...,
+	)
+	if err != nil {
 		return nil, err
 	}
 

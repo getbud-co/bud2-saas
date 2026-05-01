@@ -49,7 +49,7 @@ type AuthorName struct {
 	LastName  string
 }
 
-func (c *CheckIn) Validate() error {
+func (c *CheckIn) validateInvariants() error {
 	if c.Value == "" {
 		return fmt.Errorf("%w: value is required", domain.ErrValidation)
 	}
@@ -57,6 +57,51 @@ func (c *CheckIn) Validate() error {
 		return fmt.Errorf("%w: confidence must be one of: high, medium, low, barrier, deprioritized", domain.ErrValidation)
 	}
 	return nil
+}
+
+// Validate is the public invariant check used by repositories post-load.
+// New aggregates are created via NewCheckIn.
+func (c *CheckIn) Validate() error {
+	return c.validateInvariants()
+}
+
+// CheckInOption configures optional fields on a CheckIn during construction.
+type CheckInOption func(*CheckIn)
+
+func WithPreviousValue(v *string) CheckInOption { return func(c *CheckIn) { c.PreviousValue = v } }
+func WithNote(n *string) CheckInOption          { return func(c *CheckIn) { c.Note = n } }
+func WithMentions(m []string) CheckInOption {
+	return func(c *CheckIn) {
+		if m == nil {
+			m = []string{}
+		}
+		c.Mentions = m
+	}
+}
+
+// NewCheckIn constructs an always-valid CheckIn. Generates ID and enforces
+// invariants before returning.
+func NewCheckIn(
+	orgID, indicatorID, authorID uuid.UUID,
+	value string,
+	confidence Confidence,
+	opts ...CheckInOption,
+) (*CheckIn, error) {
+	c := &CheckIn{
+		ID:          uuid.New(),
+		OrgID:       orgID,
+		IndicatorID: indicatorID,
+		AuthorID:    authorID,
+		Value:       value,
+		Confidence:  confidence,
+	}
+	for _, opt := range opts {
+		opt(c)
+	}
+	if err := c.validateInvariants(); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 type ListResult struct {

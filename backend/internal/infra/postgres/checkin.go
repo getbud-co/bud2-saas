@@ -44,7 +44,11 @@ func (r *CheckInRepository) Create(ctx context.Context, c *domaincheckin.CheckIn
 	if err != nil {
 		return nil, err
 	}
-	return checkInCreateRowToDomain(row), nil
+	c = checkInCreateRowToDomain(row)
+	if err := c.Validate(); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 func (r *CheckInRepository) GetByID(ctx context.Context, id, orgID uuid.UUID) (*domaincheckin.CheckIn, error) {
@@ -55,7 +59,11 @@ func (r *CheckInRepository) GetByID(ctx context.Context, id, orgID uuid.UUID) (*
 		}
 		return nil, err
 	}
-	return checkInGetRowToDomain(row), nil
+	c := checkInGetRowToDomain(row)
+	if err := c.Validate(); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 func (r *CheckInRepository) ListByIndicator(ctx context.Context, orgID, indicatorID uuid.UUID, page, size int) (domaincheckin.ListResult, error) {
@@ -88,7 +96,11 @@ func (r *CheckInRepository) ListByIndicator(ctx context.Context, orgID, indicato
 
 	items := make([]domaincheckin.CheckIn, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, checkInListRowToDomain(row))
+		c := checkInListRowToDomain(row)
+		if err := c.Validate(); err != nil {
+			return domaincheckin.ListResult{}, err
+		}
+		items = append(items, c)
 	}
 	return domaincheckin.ListResult{CheckIns: items, Total: total, Page: page, Size: size}, nil
 }
@@ -108,7 +120,11 @@ func (r *CheckInRepository) Update(ctx context.Context, c *domaincheckin.CheckIn
 		}
 		return nil, err
 	}
-	return checkInUpdateRowToDomain(row), nil
+	c = checkInUpdateRowToDomain(row)
+	if err := c.Validate(); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 func (r *CheckInRepository) SoftDelete(ctx context.Context, id, orgID uuid.UUID) error {
