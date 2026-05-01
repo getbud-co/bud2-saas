@@ -69,29 +69,23 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*usr.U
 		}
 	}
 
-	lang := cmd.Language
-	if lang == "" {
-		lang = "pt-br"
-	}
-
 	var resultTeamIDs []uuid.UUID
 	err = uc.txm.WithTx(ctx, func(repos apptx.Repositories) error {
 		var txErr error
 		if targetUser == nil {
-			targetUser = &usr.User{
-				ID:            uuid.New(),
-				FirstName:     cmd.FirstName,
-				LastName:      cmd.LastName,
-				Email:         cmd.Email,
-				PasswordHash:  passwordHash,
-				Status:        usr.StatusActive,
-				IsSystemAdmin: false,
-				Nickname:      cmd.Nickname,
-				JobTitle:      cmd.JobTitle,
-				BirthDate:     cmd.BirthDate,
-				Language:      lang,
-				Gender:        cmd.Gender,
-				Phone:         cmd.Phone,
+			opts := []usr.UserOption{
+				usr.WithNickname(cmd.Nickname),
+				usr.WithJobTitle(cmd.JobTitle),
+				usr.WithBirthDate(cmd.BirthDate),
+				usr.WithGender(cmd.Gender),
+				usr.WithPhone(cmd.Phone),
+			}
+			if cmd.Language != "" {
+				opts = append(opts, usr.WithLanguage(cmd.Language))
+			}
+			targetUser, txErr = usr.NewUser(cmd.Email, cmd.FirstName, cmd.LastName, passwordHash, opts...)
+			if txErr != nil {
+				return txErr
 			}
 			if txErr = targetUser.AddMembership(organization.Membership{
 				OrganizationID: cmd.OrganizationID.UUID(),

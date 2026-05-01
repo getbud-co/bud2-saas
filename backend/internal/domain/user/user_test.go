@@ -5,9 +5,58 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/getbud-co/bud2/backend/internal/domain"
 )
+
+func TestNewUser_GeneratesIDAndDefaults(t *testing.T) {
+	u, err := NewUser("a@b.com", "Ana", "Souza", "hash123")
+	require.NoError(t, err)
+	assert.NotEqual(t, [16]byte{}, u.ID)
+	assert.Equal(t, "a@b.com", u.Email)
+	assert.Equal(t, "Ana", u.FirstName)
+	assert.Equal(t, "Souza", u.LastName)
+	assert.Equal(t, StatusActive, u.Status)
+	assert.False(t, u.IsSystemAdmin)
+	assert.Equal(t, "pt-br", u.Language)
+}
+
+func TestNewUser_IDIsUnique(t *testing.T) {
+	u1, _ := NewUser("a@b.com", "Ana", "Souza", "h")
+	u2, _ := NewUser("a@b.com", "Ana", "Souza", "h")
+	assert.NotEqual(t, u1.ID, u2.ID)
+}
+
+func TestNewUser_EmptyFirstName_ReturnsValidationError(t *testing.T) {
+	_, err := NewUser("a@b.com", "", "Souza", "h")
+	assert.ErrorIs(t, err, domain.ErrValidation)
+}
+
+func TestNewUser_EmptyEmail_ReturnsValidationError(t *testing.T) {
+	_, err := NewUser("", "Ana", "Souza", "h")
+	assert.ErrorIs(t, err, domain.ErrValidation)
+}
+
+func TestNewUser_WithLanguage_OverridesDefault(t *testing.T) {
+	u, err := NewUser("a@b.com", "Ana", "Souza", "h", WithLanguage("en"))
+	require.NoError(t, err)
+	assert.Equal(t, "en", u.Language)
+}
+
+func TestNewUser_WithNickname_SetsField(t *testing.T) {
+	nick := "ani"
+	u, err := NewUser("a@b.com", "Ana", "Souza", "h", WithNickname(&nick))
+	require.NoError(t, err)
+	require.NotNil(t, u.Nickname)
+	assert.Equal(t, "ani", *u.Nickname)
+}
+
+func TestNewUser_WithGender_InvalidValue_ReturnsValidationError(t *testing.T) {
+	g := "outro"
+	_, err := NewUser("a@b.com", "Ana", "Souza", "h", WithGender(&g))
+	assert.ErrorIs(t, err, domain.ErrValidation)
+}
 
 func TestStatus_IsValid(t *testing.T) {
 	tests := []struct {

@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
-
 	apptx "github.com/getbud-co/bud2/backend/internal/app/tx"
 	"github.com/getbud-co/bud2/backend/internal/domain"
 	domainauth "github.com/getbud-co/bud2/backend/internal/domain/auth"
@@ -84,36 +82,30 @@ func (uc *UseCase) Execute(ctx context.Context, cmd Command) (*Result, error) {
 
 	err = uc.txm.WithTx(ctx, func(repos apptx.Repositories) error {
 		var txErr error
-		createdOrg, txErr = repos.Organizations().Create(ctx, &organization.Organization{
-			Name:      cmd.OrganizationName,
-			Domain:    strings.ToLower(strings.TrimSpace(cmd.OrganizationDomain)),
-			Workspace: strings.TrimSpace(cmd.OrganizationWorkspace),
-			Status:    organization.StatusActive,
-		})
+		newOrg, newOrgErr := organization.NewOrganization(
+			cmd.OrganizationName,
+			strings.ToLower(strings.TrimSpace(cmd.OrganizationDomain)),
+			strings.TrimSpace(cmd.OrganizationWorkspace),
+		)
+		if newOrgErr != nil {
+			return newOrgErr
+		}
+		createdOrg, txErr = repos.Organizations().Create(ctx, newOrg)
 		if txErr != nil {
 			uc.logger.Error("failed to create organization in transaction", "error", txErr)
 			return txErr
 		}
 
-		admin := &user.User{
-			ID:            uuid.New(),
-			FirstName:     cmd.AdminFirstName,
-			LastName:      cmd.AdminLastName,
-			Email:         cmd.AdminEmail,
-			PasswordHash:  passwordHash,
-			Status:        user.StatusActive,
-			IsSystemAdmin: false,
-			Language:      "pt-br",
+		admin, newAdminErr := user.NewUser(cmd.AdminEmail, cmd.AdminFirstName, cmd.AdminLastName, passwordHash)
+		if newAdminErr != nil {
+			uc.logger.Warn("admin validation failed", "error", newAdminErr, "email", cmd.AdminEmail)
+			return newAdminErr
 		}
 		if txErr = admin.AddMembership(organization.Membership{
 			OrganizationID: createdOrg.ID,
 			Role:           organization.MembershipRoleSuperAdmin,
 			Status:         organization.MembershipStatusActive,
 		}); txErr != nil {
-			return txErr
-		}
-		if txErr = admin.Validate(); txErr != nil {
-			uc.logger.Warn("admin validation failed", "error", txErr, "email", cmd.AdminEmail)
 			return txErr
 		}
 

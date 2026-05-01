@@ -65,6 +65,9 @@ func (r *UserRepository) Create(ctx context.Context, u *user.User) (*user.User, 
 	if err := r.syncMemberships(ctx, created); err != nil {
 		return nil, err
 	}
+	if err := created.Validate(); err != nil {
+		return nil, err
+	}
 	return created, nil
 }
 
@@ -80,6 +83,9 @@ func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*user.User,
 	if err := r.loadMemberships(ctx, result); err != nil {
 		return nil, err
 	}
+	if err := result.Validate(); err != nil {
+		return nil, err
+	}
 	return result, nil
 }
 
@@ -93,6 +99,9 @@ func (r *UserRepository) GetByIDForOrganization(ctx context.Context, id, organiz
 	}
 	result := getUserByIDRowToDomain(row)
 	if err := r.loadMembershipsForOrganization(ctx, result, organizationID); err != nil {
+		return nil, err
+	}
+	if err := result.Validate(); err != nil {
 		return nil, err
 	}
 	if _, err := result.MembershipForOrganization(organizationID); err != nil {
@@ -134,6 +143,9 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*user.Us
 	}
 	result := getUserByEmailRowToDomain(row)
 	if err := r.loadMemberships(ctx, result); err != nil {
+		return nil, err
+	}
+	if err := result.Validate(); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -185,10 +197,18 @@ func (r *UserRepository) ListByOrganization(ctx context.Context, organizationID 
 
 	usersOut := make([]user.User, 0, len(rowsFiltered)+len(rowsUnfiltered))
 	for _, row := range rowsFiltered {
-		usersOut = append(usersOut, *listOrganizationUsersByStatusRowToDomain(row, organizationID))
+		u := listOrganizationUsersByStatusRowToDomain(row, organizationID)
+		if err := u.Validate(); err != nil {
+			return user.ListResult{}, err
+		}
+		usersOut = append(usersOut, *u)
 	}
 	for _, row := range rowsUnfiltered {
-		usersOut = append(usersOut, *listOrganizationUsersRowToDomain(row, organizationID))
+		u := listOrganizationUsersRowToDomain(row, organizationID)
+		if err := u.Validate(); err != nil {
+			return user.ListResult{}, err
+		}
+		usersOut = append(usersOut, *u)
 	}
 	return user.ListResult{Users: usersOut, Total: total}, nil
 }
@@ -218,6 +238,9 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) (*user.User, 
 	updated := updateUserRowToDomain(row)
 	updated.Memberships = u.Memberships
 	if err := r.syncMemberships(ctx, updated); err != nil {
+		return nil, err
+	}
+	if err := updated.Validate(); err != nil {
 		return nil, err
 	}
 	return updated, nil
@@ -291,6 +314,7 @@ func listOrganizationUsersRowToDomain(row sqlc.ListOrganizationUsersRow, orgID u
 		row.IsSystemAdmin, row.Nickname, row.JobTitle, row.BirthDate, row.Language, row.Gender, row.Phone,
 		row.CreatedAt, row.UpdatedAt, []organization.Membership{{
 			OrganizationID: orgID,
+			UserID:         row.ID,
 			Role:           organization.MembershipRole(row.MembershipRole),
 			Status:         organization.MembershipStatus(row.MembershipStatus),
 		}})
@@ -301,6 +325,7 @@ func listOrganizationUsersByStatusRowToDomain(row sqlc.ListOrganizationUsersBySt
 		row.IsSystemAdmin, row.Nickname, row.JobTitle, row.BirthDate, row.Language, row.Gender, row.Phone,
 		row.CreatedAt, row.UpdatedAt, []organization.Membership{{
 			OrganizationID: orgID,
+			UserID:         row.ID,
 			Role:           organization.MembershipRole(row.MembershipRole),
 			Status:         organization.MembershipStatus(row.MembershipStatus),
 		}})

@@ -46,7 +46,7 @@ var validGenders = map[string]bool{
 	"feminino": true, "masculino": true, "nao-binario": true, "prefiro-nao-dizer": true,
 }
 
-func (u *User) Validate() error {
+func (u *User) validateInvariants() error {
 	if u.FirstName == "" {
 		return fmt.Errorf("%w: first_name is required", domain.ErrValidation)
 	}
@@ -75,6 +75,43 @@ func (u *User) Validate() error {
 		}
 	}
 	return nil
+}
+
+// Validate is the public invariant check used by repositories post-load and update use cases.
+func (u *User) Validate() error {
+	return u.validateInvariants()
+}
+
+// UserOption configures optional fields on a User during construction.
+type UserOption func(*User)
+
+func WithNickname(n *string) UserOption     { return func(u *User) { u.Nickname = n } }
+func WithJobTitle(j *string) UserOption     { return func(u *User) { u.JobTitle = j } }
+func WithBirthDate(d *time.Time) UserOption { return func(u *User) { u.BirthDate = d } }
+func WithLanguage(l string) UserOption      { return func(u *User) { u.Language = l } }
+func WithGender(g *string) UserOption       { return func(u *User) { u.Gender = g } }
+func WithPhone(p *string) UserOption        { return func(u *User) { u.Phone = p } }
+
+// NewUser constructs an always-valid User. Generates ID, defaults Status to active,
+// IsSystemAdmin to false, and Language to "pt-br".
+func NewUser(email, firstName, lastName, passwordHash string, opts ...UserOption) (*User, error) {
+	u := &User{
+		ID:            uuid.New(),
+		Email:         email,
+		FirstName:     firstName,
+		LastName:      lastName,
+		PasswordHash:  passwordHash,
+		Status:        StatusActive,
+		IsSystemAdmin: false,
+		Language:      "pt-br",
+	}
+	for _, opt := range opts {
+		opt(u)
+	}
+	if err := u.validateInvariants(); err != nil {
+		return nil, err
+	}
+	return u, nil
 }
 
 type ListResult struct {
