@@ -17,9 +17,10 @@ async def test_list_missions_calls_bud2_api() -> None:
         return_value=Response(200, json={"data": [], "total": 0, "page": 1, "size": 20})
     )
     client = Bud2Client("http://bud2-api.test", StaticTokenCredentialProvider("token"))
-    tools = MissionTools(client, CredentialContext(channel="whatsapp"))
+    tools = MissionTools(client)
+    ctx = CredentialContext(channel="whatsapp")
 
-    result = await tools.list_missions()
+    result = await tools.list_missions(ctx)
 
     assert result == {"data": [], "total": 0, "page": 1, "size": 20}
     assert route.called

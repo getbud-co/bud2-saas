@@ -6,7 +6,9 @@ from typing import Any
 import structlog
 from fastapi import APIRouter, HTTPException, Query, Request, Response, status
 
+from bud2.app.runtime.service import AgentRuntime
 from bud2.config import Settings
+from bud2.infra.auth.credentials import CredentialContext
 from bud2.infra.postgres.repositories import (
     ChannelConnectionRepository,
     ConversationRepository,
@@ -15,6 +17,7 @@ from bud2.infra.postgres.repositories import (
 )
 from bud2.infra.postgres.session import get_session_maker
 from bud2.infra.whatsapp.parser import parse_whatsapp_payload
+from bud2.infra.whatsapp.sender import WhatsAppSender
 from bud2.infra.whatsapp.verifier import verify_meta_signature
 
 router = APIRouter(prefix="/webhooks/whatsapp", tags=["WhatsApp"])
@@ -65,6 +68,11 @@ async def receive_webhook(request: Request) -> dict[str, object]:
             detail="payload must be a JSON object",
         )
 
+    runtime: AgentRuntime | None = request.app.state.runtime
+    if runtime is None:
+        logger.warning("agent runtime not initialized")
+        return {"accepted": True, "runtime_ready": False}
+
     session_maker = get_session_maker(settings)
     async with session_maker() as session:
         event_id = hashlib.sha256(body).hexdigest()
@@ -79,6 +87,7 @@ async def receive_webhook(request: Request) -> dict[str, object]:
 
         messages = parse_whatsapp_payload(payload)
         processed_count = 0
+        responses_sent = 0
 
         for msg in messages:
             conn = await ChannelConnectionRepository(session).get_by_external_user(
@@ -110,17 +119,70 @@ async def receive_webhook(request: Request) -> dict[str, object]:
             )
             processed_count += 1
 
+            # Load conversation history for context
+            history = await MessageRepository(session).list_by_conversation(
+                conversation.id, limit=20
+            )
+            history.reverse()  # oldest first
+
+            credential_context = CredentialContext(
+                external_user_id=msg.external_user_id,
+                organization_id=str(conn.organization_id),
+                channel="whatsapp",
+            )
+
+            result = await runtime.run(
+                text=msg.text,
+                credential_context=credential_context,
+                history=[
+                    {"role": "user" if m.direction == "inbound" else "model", "text": m.text}
+                    for m in history
+                ],
+            )
+
+            await MessageRepository(session).save(
+                organization_id=conn.organization_id,
+                conversation_id=conversation.id,
+                channel="whatsapp",
+                direction="outbound",
+                text=result.text,
+            )
+
+            # Send response via WhatsApp
+            if settings.whatsapp_access_token and settings.whatsapp_phone_number_id:
+                sender = WhatsAppSender(
+                    access_token=settings.whatsapp_access_token,
+                    phone_number_id=settings.whatsapp_phone_number_id,
+                )
+                from bud2.domain.channel.models import OutboundMessage
+                send_result = await sender.send_text(
+                    OutboundMessage(
+                        channel="whatsapp",
+                        external_conversation_id=msg.external_conversation_id,
+                        text=result.text,
+                    )
+                )
+                responses_sent += 1
+                logger.info(
+                    "whatsapp response sent",
+                    external_message_id=send_result.external_message_id,
+                )
+            else:
+                logger.warning("whatsapp sender not configured, response not sent")
+
         await session.commit()
 
     logger.info(
-        "whatsapp webhook accepted",
+        "whatsapp webhook processed",
         event_id=event_id,
         message_count=len(messages),
         processed_count=processed_count,
+        responses_sent=responses_sent,
     )
     return {
         "accepted": True,
         "duplicate": False,
         "message_count": len(messages),
         "processed_count": processed_count,
+        "responses_sent": responses_sent,
     }
