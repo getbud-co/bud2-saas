@@ -60,7 +60,7 @@ type Cycle struct {
 	UpdatedAt             time.Time
 }
 
-func (c *Cycle) Validate() error {
+func (c *Cycle) validateInvariants() error {
 	if c.Name == "" {
 		return fmt.Errorf("%w: name is required", domain.ErrValidation)
 	}
@@ -86,6 +86,49 @@ func (c *Cycle) Validate() error {
 		return fmt.Errorf("%w: mid_review_date must be within the cycle period", domain.ErrValidation)
 	}
 	return nil
+}
+
+// Validate is the public invariant check used by repositories post-load and update use cases.
+func (c *Cycle) Validate() error {
+	return c.validateInvariants()
+}
+
+// CycleOption configures optional fields on a Cycle during construction.
+type CycleOption func(*Cycle)
+
+func WithOKRDefinitionDeadline(d *time.Time) CycleOption {
+	return func(c *Cycle) { c.OKRDefinitionDeadline = d }
+}
+
+func WithMidReviewDate(d *time.Time) CycleOption {
+	return func(c *Cycle) { c.MidReviewDate = d }
+}
+
+// NewCycle constructs an always-valid Cycle. Generates ID and enforces invariants before returning.
+func NewCycle(
+	orgID uuid.UUID,
+	name string,
+	t Type,
+	startDate, endDate time.Time,
+	status Status,
+	opts ...CycleOption,
+) (*Cycle, error) {
+	c := &Cycle{
+		ID:             uuid.New(),
+		OrganizationID: orgID,
+		Name:           name,
+		Type:           t,
+		StartDate:      startDate,
+		EndDate:        endDate,
+		Status:         status,
+	}
+	for _, opt := range opts {
+		opt(c)
+	}
+	if err := c.validateInvariants(); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 type ListResult struct {

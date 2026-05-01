@@ -51,7 +51,11 @@ func (r *CycleRepository) Create(ctx context.Context, c *cycle.Cycle) (*cycle.Cy
 		}
 		return nil, err
 	}
-	return createCycleRowToDomain(row), nil
+	c = createCycleRowToDomain(row)
+	if err := c.Validate(); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 func (r *CycleRepository) GetByID(ctx context.Context, id, organizationID uuid.UUID) (*cycle.Cycle, error) {
@@ -62,7 +66,11 @@ func (r *CycleRepository) GetByID(ctx context.Context, id, organizationID uuid.U
 		}
 		return nil, err
 	}
-	return getCycleByIDRowToDomain(row), nil
+	c := getCycleByIDRowToDomain(row)
+	if err := c.Validate(); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 func (r *CycleRepository) GetByName(ctx context.Context, organizationID uuid.UUID, name string) (*cycle.Cycle, error) {
@@ -73,7 +81,11 @@ func (r *CycleRepository) GetByName(ctx context.Context, organizationID uuid.UUI
 		}
 		return nil, err
 	}
-	return getCycleByNameRowToDomain(row), nil
+	c := getCycleByNameRowToDomain(row)
+	if err := c.Validate(); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 func (r *CycleRepository) List(ctx context.Context, organizationID uuid.UUID, status *cycle.Status, page, size int) (cycle.ListResult, error) {
@@ -105,7 +117,11 @@ func (r *CycleRepository) List(ctx context.Context, organizationID uuid.UUID, st
 		}
 		cycles = make([]cycle.Cycle, 0, len(rows))
 		for _, row := range rows {
-			cycles = append(cycles, *listCyclesByStatusRowToDomain(row))
+			c := listCyclesByStatusRowToDomain(row)
+			if err := c.Validate(); err != nil {
+				return cycle.ListResult{}, err
+			}
+			cycles = append(cycles, *c)
 		}
 	} else {
 		rows, listErr := r.q.ListCycles(ctx, sqlc.ListCyclesParams{OrganizationID: organizationID, Limit: limit, Offset: offset})
@@ -118,7 +134,11 @@ func (r *CycleRepository) List(ctx context.Context, organizationID uuid.UUID, st
 		}
 		cycles = make([]cycle.Cycle, 0, len(rows))
 		for _, row := range rows {
-			cycles = append(cycles, *listCyclesRowToDomain(row))
+			c := listCyclesRowToDomain(row)
+			if err := c.Validate(); err != nil {
+				return cycle.ListResult{}, err
+			}
+			cycles = append(cycles, *c)
 		}
 	}
 
@@ -146,7 +166,11 @@ func (r *CycleRepository) Update(ctx context.Context, c *cycle.Cycle) (*cycle.Cy
 		}
 		return nil, err
 	}
-	return updateCycleRowToDomain(row), nil
+	c = updateCycleRowToDomain(row)
+	if err := c.Validate(); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 func (r *CycleRepository) SoftDelete(ctx context.Context, id, organizationID uuid.UUID) error {

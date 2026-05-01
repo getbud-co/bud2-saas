@@ -6,8 +6,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/getbud-co/bud2/backend/internal/domain"
 	domaincycle "github.com/getbud-co/bud2/backend/internal/domain/cycle"
 )
@@ -41,18 +39,20 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*domai
 		return nil, err
 	}
 
-	c := &domaincycle.Cycle{
-		ID:                    uuid.New(),
-		OrganizationID:        cmd.OrganizationID.UUID(),
-		Name:                  cmd.Name,
-		Type:                  domaincycle.Type(cmd.Type),
-		StartDate:             cmd.StartDate,
-		EndDate:               cmd.EndDate,
-		Status:                domaincycle.Status(cmd.Status),
-		OKRDefinitionDeadline: cmd.OKRDefinitionDeadline,
-		MidReviewDate:         cmd.MidReviewDate,
+	opts := []domaincycle.CycleOption{
+		domaincycle.WithOKRDefinitionDeadline(cmd.OKRDefinitionDeadline),
+		domaincycle.WithMidReviewDate(cmd.MidReviewDate),
 	}
-	if err := c.Validate(); err != nil {
+	c, err := domaincycle.NewCycle(
+		cmd.OrganizationID.UUID(),
+		cmd.Name,
+		domaincycle.Type(cmd.Type),
+		cmd.StartDate,
+		cmd.EndDate,
+		domaincycle.Status(cmd.Status),
+		opts...,
+	)
+	if err != nil {
 		return nil, err
 	}
 
