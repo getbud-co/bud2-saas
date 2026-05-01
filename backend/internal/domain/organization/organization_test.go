@@ -135,6 +135,47 @@ func TestMembership_Validate(t *testing.T) {
 	}
 }
 
+func TestNewOrganization_DefaultsStatusActiveAndValidates(t *testing.T) {
+	o, err := NewOrganization("Bud Inc", "bud.co", "bud")
+	assert.NoError(t, err)
+	assert.Equal(t, "Bud Inc", o.Name)
+	assert.Equal(t, "bud.co", o.Domain)
+	assert.Equal(t, "bud", o.Workspace)
+	assert.Equal(t, StatusActive, o.Status)
+	assert.Equal(t, uuid.Nil, o.ID) // ID is DB-assigned
+}
+
+func TestNewOrganization_WithStatus_AppliesOption(t *testing.T) {
+	o, err := NewOrganization("Bud Inc", "bud.co", "bud", WithStatus(StatusInactive))
+	assert.NoError(t, err)
+	assert.Equal(t, StatusInactive, o.Status)
+}
+
+func TestNewOrganization_EmptyName_ReturnsValidationError(t *testing.T) {
+	_, err := NewOrganization("", "bud.co", "bud")
+	assert.ErrorIs(t, err, domain.ErrValidation)
+}
+
+func TestNewOrganization_EmptyDomain_ReturnsValidationError(t *testing.T) {
+	_, err := NewOrganization("Bud Inc", "", "bud")
+	assert.ErrorIs(t, err, domain.ErrValidation)
+}
+
+func TestNewOrganization_InvalidDomainFormat_ReturnsValidationError(t *testing.T) {
+	_, err := NewOrganization("Bud Inc", "not a domain", "bud")
+	assert.ErrorIs(t, err, domain.ErrValidation)
+}
+
+func TestNewOrganization_EmptyWorkspace_ReturnsValidationError(t *testing.T) {
+	_, err := NewOrganization("Bud Inc", "bud.co", "")
+	assert.ErrorIs(t, err, domain.ErrValidation)
+}
+
+func TestNewOrganization_InvalidStatus_ReturnsValidationError(t *testing.T) {
+	_, err := NewOrganization("Bud Inc", "bud.co", "bud", WithStatus(Status("unknown")))
+	assert.ErrorIs(t, err, domain.ErrValidation)
+}
+
 func TestOrganization_Validate(t *testing.T) {
 	tests := []struct {
 		name        string

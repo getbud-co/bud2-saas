@@ -48,7 +48,7 @@ func (r *OrgRepository) Create(ctx context.Context, org *organization.Organizati
 	if err != nil {
 		return nil, err
 	}
-	return createOrganizationRowToDomain(row), nil
+	return validateOrg(createOrganizationRowToDomain(row))
 }
 
 func (r *OrgRepository) GetByID(ctx context.Context, id uuid.UUID) (*organization.Organization, error) {
@@ -59,7 +59,7 @@ func (r *OrgRepository) GetByID(ctx context.Context, id uuid.UUID) (*organizatio
 		}
 		return nil, err
 	}
-	return getOrganizationByIDRowToDomain(row), nil
+	return validateOrg(getOrganizationByIDRowToDomain(row))
 }
 
 func (r *OrgRepository) GetByIDForUser(ctx context.Context, userID uuid.UUID, id uuid.UUID) (*organization.Organization, error) {
@@ -70,7 +70,7 @@ func (r *OrgRepository) GetByIDForUser(ctx context.Context, userID uuid.UUID, id
 		}
 		return nil, err
 	}
-	return getOrganizationByIDForUserRowToDomain(row), nil
+	return validateOrg(getOrganizationByIDForUserRowToDomain(row))
 }
 
 func (r *OrgRepository) GetByDomain(ctx context.Context, domain string) (*organization.Organization, error) {
@@ -81,7 +81,7 @@ func (r *OrgRepository) GetByDomain(ctx context.Context, domain string) (*organi
 		}
 		return nil, err
 	}
-	return getOrganizationByDomainRowToDomain(row), nil
+	return validateOrg(getOrganizationByDomainRowToDomain(row))
 }
 
 func (r *OrgRepository) GetByWorkspace(ctx context.Context, workspace string) (*organization.Organization, error) {
@@ -92,7 +92,7 @@ func (r *OrgRepository) GetByWorkspace(ctx context.Context, workspace string) (*
 		}
 		return nil, err
 	}
-	return getOrganizationByWorkspaceRowToDomain(row), nil
+	return validateOrg(getOrganizationByWorkspaceRowToDomain(row))
 }
 
 func (r *OrgRepository) List(ctx context.Context, filter organization.ListFilter) (organization.ListResult, error) {
@@ -115,7 +115,11 @@ func (r *OrgRepository) List(ctx context.Context, filter organization.ListFilter
 		}
 		orgs = make([]organization.Organization, len(rows))
 		for i, row := range rows {
-			orgs[i] = *listOrganizationsByStatusRowToDomain(row)
+			o, vErr := validateOrg(listOrganizationsByStatusRowToDomain(row))
+			if vErr != nil {
+				return organization.ListResult{}, vErr
+			}
+			orgs[i] = *o
 		}
 		total, err = r.q.CountOrganizationsByStatus(ctx, status)
 	} else {
@@ -128,7 +132,11 @@ func (r *OrgRepository) List(ctx context.Context, filter organization.ListFilter
 		}
 		orgs = make([]organization.Organization, len(rows))
 		for i, row := range rows {
-			orgs[i] = *listOrganizationsRowToDomain(row)
+			o, vErr := validateOrg(listOrganizationsRowToDomain(row))
+			if vErr != nil {
+				return organization.ListResult{}, vErr
+			}
+			orgs[i] = *o
 		}
 		total, err = r.q.CountOrganizations(ctx)
 	}
@@ -164,7 +172,11 @@ func (r *OrgRepository) ListByUser(ctx context.Context, userID uuid.UUID, filter
 		}
 		orgs = make([]organization.Organization, len(rows))
 		for i, row := range rows {
-			orgs[i] = *listOrganizationsByUserAndStatusRowToDomain(row)
+			o, vErr := validateOrg(listOrganizationsByUserAndStatusRowToDomain(row))
+			if vErr != nil {
+				return organization.ListResult{}, vErr
+			}
+			orgs[i] = *o
 		}
 		total, err = r.q.CountOrganizationsByUserAndStatus(ctx, sqlc.CountOrganizationsByUserAndStatusParams{
 			UserID: userID,
@@ -181,7 +193,11 @@ func (r *OrgRepository) ListByUser(ctx context.Context, userID uuid.UUID, filter
 		}
 		orgs = make([]organization.Organization, len(rows))
 		for i, row := range rows {
-			orgs[i] = *listOrganizationsByUserRowToDomain(row)
+			o, vErr := validateOrg(listOrganizationsByUserRowToDomain(row))
+			if vErr != nil {
+				return organization.ListResult{}, vErr
+			}
+			orgs[i] = *o
 		}
 		total, err = r.q.CountOrganizationsByUser(ctx, userID)
 	}
@@ -207,7 +223,7 @@ func (r *OrgRepository) Update(ctx context.Context, org *organization.Organizati
 		}
 		return nil, err
 	}
-	return updateOrganizationRowToDomain(row), nil
+	return validateOrg(updateOrganizationRowToDomain(row))
 }
 
 func (r *OrgRepository) Delete(ctx context.Context, id uuid.UUID) error {
@@ -219,6 +235,13 @@ func (r *OrgRepository) Delete(ctx context.Context, id uuid.UUID) error {
 
 func (r *OrgRepository) CountAll(ctx context.Context) (int64, error) {
 	return r.q.CountOrganizations(ctx)
+}
+
+func validateOrg(o *organization.Organization) (*organization.Organization, error) {
+	if err := o.Validate(); err != nil {
+		return nil, err
+	}
+	return o, nil
 }
 
 func createOrganizationRowToDomain(row sqlc.CreateOrganizationRow) *organization.Organization {

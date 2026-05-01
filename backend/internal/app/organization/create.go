@@ -27,24 +27,17 @@ func NewCreateUseCase(repo org.Repository, logger *slog.Logger) *CreateUseCase {
 func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*org.Organization, error) {
 	uc.logger.Debug("creating organization", "name", cmd.Name, "domain", cmd.Domain, "workspace", cmd.Workspace)
 
-	status := org.StatusActive
+	var opts []org.OrgOption
 	if cmd.Status != "" {
-		status = org.Status(cmd.Status)
+		opts = append(opts, org.WithStatus(org.Status(cmd.Status)))
 	}
-
-	o := &org.Organization{
-		Name:      cmd.Name,
-		Domain:    cmd.Domain,
-		Workspace: cmd.Workspace,
-		Status:    status,
-	}
-
-	if err := o.Validate(); err != nil {
+	o, err := org.NewOrganization(cmd.Name, cmd.Domain, cmd.Workspace, opts...)
+	if err != nil {
 		uc.logger.Warn("organization validation failed", "error", err, "domain", cmd.Domain, "workspace", cmd.Workspace)
 		return nil, err
 	}
 
-	_, err := uc.repo.GetByDomain(ctx, cmd.Domain)
+	_, err = uc.repo.GetByDomain(ctx, cmd.Domain)
 	if err == nil {
 		uc.logger.Warn("domain conflict", "domain", cmd.Domain)
 		return nil, org.ErrDomainExists

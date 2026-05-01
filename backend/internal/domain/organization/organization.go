@@ -35,7 +35,7 @@ type Organization struct {
 	UpdatedAt time.Time
 }
 
-func (o *Organization) Validate() error {
+func (o *Organization) validateInvariants() error {
 	if o.Name == "" {
 		return fmt.Errorf("%w: name is required", domain.ErrValidation)
 	}
@@ -52,6 +52,36 @@ func (o *Organization) Validate() error {
 		return fmt.Errorf("%w: status must be active or inactive", domain.ErrValidation)
 	}
 	return nil
+}
+
+// Validate is the public invariant check used by repositories post-load and update use cases.
+func (o *Organization) Validate() error {
+	return o.validateInvariants()
+}
+
+// OrgOption configures optional fields on an Organization during construction.
+type OrgOption func(*Organization)
+
+func WithStatus(s Status) OrgOption {
+	return func(o *Organization) { o.Status = s }
+}
+
+// NewOrganization constructs an always-valid Organization. Defaults Status to active.
+// Note: ID is assigned by the database on persist; the returned struct has no ID until after Create.
+func NewOrganization(name, domainName, workspace string, opts ...OrgOption) (*Organization, error) {
+	o := &Organization{
+		Name:      name,
+		Domain:    domainName,
+		Workspace: workspace,
+		Status:    StatusActive,
+	}
+	for _, opt := range opts {
+		opt(o)
+	}
+	if err := o.validateInvariants(); err != nil {
+		return nil, err
+	}
+	return o, nil
 }
 
 type MembershipRole string
