@@ -115,65 +115,17 @@ func validCreateMissionRow() sqlc.CreateMissionRow {
 
 func validGetMissionRow() sqlc.GetMissionByIDRow {
 	row := validCreateMissionRow()
-	return sqlc.GetMissionByIDRow{
-		ID:             row.ID,
-		OrganizationID: row.OrganizationID,
-		ParentID:       row.ParentID,
-		OwnerID:        row.OwnerID,
-		TeamID:         row.TeamID,
-		Title:          row.Title,
-		Description:    row.Description,
-		Status:         row.Status,
-		Visibility:     row.Visibility,
-		KanbanStatus:   row.KanbanStatus,
-		StartDate:      row.StartDate,
-		EndDate:        row.EndDate,
-		CompletedAt:    row.CompletedAt,
-		CreatedAt:      row.CreatedAt,
-		UpdatedAt:      row.UpdatedAt,
-	}
+	return sqlc.GetMissionByIDRow(row)
 }
 
 func validListMissionRow() sqlc.ListMissionsRow {
 	row := validCreateMissionRow()
-	return sqlc.ListMissionsRow{
-		ID:             row.ID,
-		OrganizationID: row.OrganizationID,
-		ParentID:       row.ParentID,
-		OwnerID:        row.OwnerID,
-		TeamID:         row.TeamID,
-		Title:          row.Title,
-		Description:    row.Description,
-		Status:         row.Status,
-		Visibility:     row.Visibility,
-		KanbanStatus:   row.KanbanStatus,
-		StartDate:      row.StartDate,
-		EndDate:        row.EndDate,
-		CompletedAt:    row.CompletedAt,
-		CreatedAt:      row.CreatedAt,
-		UpdatedAt:      row.UpdatedAt,
-	}
+	return sqlc.ListMissionsRow(row)
 }
 
 func validUpdateMissionRow() sqlc.UpdateMissionRow {
 	row := validCreateMissionRow()
-	return sqlc.UpdateMissionRow{
-		ID:             row.ID,
-		OrganizationID: row.OrganizationID,
-		ParentID:       row.ParentID,
-		OwnerID:        row.OwnerID,
-		TeamID:         row.TeamID,
-		Title:          row.Title,
-		Description:    row.Description,
-		Status:         row.Status,
-		Visibility:     row.Visibility,
-		KanbanStatus:   row.KanbanStatus,
-		StartDate:      row.StartDate,
-		EndDate:        row.EndDate,
-		CompletedAt:    row.CompletedAt,
-		CreatedAt:      row.CreatedAt,
-		UpdatedAt:      row.UpdatedAt,
-	}
+	return sqlc.UpdateMissionRow(row)
 }
 
 func TestMissionRepository_Create_TranslatesNullableFieldsAndMapsRow(t *testing.T) {

@@ -84,11 +84,11 @@ func (t *Task) Validate() error {
 // TaskOption configures optional fields on a Task during construction.
 type TaskOption func(*Task)
 
-func WithDescription(d *string) TaskOption     { return func(t *Task) { t.Description = d } }
-func WithStatus(s Status) TaskOption           { return func(t *Task) { t.Status = s } }
-func WithDueDate(d *time.Time) TaskOption      { return func(t *Task) { t.DueDate = d } }
-func WithIndicator(id uuid.UUID) TaskOption    { return func(t *Task) { t.IndicatorID = &id } }
-func WithParentTask(id uuid.UUID) TaskOption   { return func(t *Task) { t.ParentTaskID = &id } }
+func WithDescription(d *string) TaskOption   { return func(t *Task) { t.Description = d } }
+func WithStatus(s Status) TaskOption         { return func(t *Task) { t.Status = s } }
+func WithDueDate(d *time.Time) TaskOption    { return func(t *Task) { t.DueDate = d } }
+func WithIndicator(id uuid.UUID) TaskOption  { return func(t *Task) { t.IndicatorID = &id } }
+func WithParentTask(id uuid.UUID) TaskOption { return func(t *Task) { t.ParentTaskID = &id } }
 
 // NewTask constructs an always-valid Task. Generates ID, applies default
 // status (StatusTodo), and enforces invariants before returning.

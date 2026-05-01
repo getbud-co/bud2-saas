@@ -129,12 +129,12 @@ func (i *Indicator) Validate() error {
 // IndicatorOption configures optional fields on an Indicator during construction.
 type IndicatorOption func(*Indicator)
 
-func WithDescription(d *string) IndicatorOption      { return func(i *Indicator) { i.Description = d } }
-func WithTargetValue(v *float64) IndicatorOption     { return func(i *Indicator) { i.TargetValue = v } }
-func WithCurrentValue(v *float64) IndicatorOption    { return func(i *Indicator) { i.CurrentValue = v } }
-func WithUnit(u *string) IndicatorOption             { return func(i *Indicator) { i.Unit = u } }
-func WithStatus(s Status) IndicatorOption            { return func(i *Indicator) { i.Status = s } }
-func WithDueDate(d *time.Time) IndicatorOption       { return func(i *Indicator) { i.DueDate = d } }
+func WithDescription(d *string) IndicatorOption   { return func(i *Indicator) { i.Description = d } }
+func WithTargetValue(v *float64) IndicatorOption  { return func(i *Indicator) { i.TargetValue = v } }
+func WithCurrentValue(v *float64) IndicatorOption { return func(i *Indicator) { i.CurrentValue = v } }
+func WithUnit(u *string) IndicatorOption          { return func(i *Indicator) { i.Unit = u } }
+func WithStatus(s Status) IndicatorOption         { return func(i *Indicator) { i.Status = s } }
+func WithDueDate(d *time.Time) IndicatorOption    { return func(i *Indicator) { i.DueDate = d } }
 func WithMeasurementMode(m MeasurementMode) IndicatorOption {
 	return func(i *Indicator) { i.MeasurementMode = m }
 }
