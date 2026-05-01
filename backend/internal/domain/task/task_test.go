@@ -98,3 +98,47 @@ func TestNewTask_IDIsAlwaysGenerated(t *testing.T) {
 	assert.NotEqual(t, uuid.Nil, t1.ID)
 	assert.NotEqual(t, t1.ID, t2.ID)
 }
+
+func TestNewTask_WithTeam_SetsTeamID(t *testing.T) {
+	teamID := uuid.New()
+	tk, err := NewTask(uuid.New(), uuid.New(), uuid.New(), "T", WithTeam(teamID))
+	require.NoError(t, err)
+	require.NotNil(t, tk.TeamID)
+	assert.Equal(t, teamID, *tk.TeamID)
+}
+
+func TestNewTask_WithContributesToMissions_NilNormalized(t *testing.T) {
+	tk, err := NewTask(uuid.New(), uuid.New(), uuid.New(), "T", WithContributesToMissions(nil))
+	require.NoError(t, err)
+	assert.NotNil(t, tk.ContributesToMissionIDs)
+	assert.Empty(t, tk.ContributesToMissionIDs)
+}
+
+func TestNewTask_WithContributesToMissions_PreservesIDs(t *testing.T) {
+	ids := []uuid.UUID{uuid.New(), uuid.New()}
+	tk, err := NewTask(uuid.New(), uuid.New(), uuid.New(), "T", WithContributesToMissions(ids))
+	require.NoError(t, err)
+	assert.Equal(t, ids, tk.ContributesToMissionIDs)
+}
+
+func TestTask_ChangeStatus_TransitionsToDone_SetsCompletedAt(t *testing.T) {
+	tk := newValid()
+	require.Nil(t, tk.CompletedAt)
+	require.NoError(t, tk.ChangeStatus(StatusDone))
+	assert.Equal(t, StatusDone, tk.Status)
+	assert.NotNil(t, tk.CompletedAt)
+}
+
+func TestTask_ChangeStatus_TransitionFromDone_ClearsCompletedAt(t *testing.T) {
+	tk := newValid()
+	require.NoError(t, tk.ChangeStatus(StatusDone))
+	require.NoError(t, tk.ChangeStatus(StatusInProgress))
+	assert.Equal(t, StatusInProgress, tk.Status)
+	assert.Nil(t, tk.CompletedAt)
+}
+
+func TestTask_ChangeStatus_InvalidStatus_ReturnsError(t *testing.T) {
+	tk := newValid()
+	assert.ErrorIs(t, tk.ChangeStatus(Status("invalid")), domain.ErrValidation)
+	assert.Equal(t, StatusTodo, tk.Status)
+}

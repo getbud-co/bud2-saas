@@ -81,6 +81,26 @@ func (t *Task) Validate() error {
 	return t.validateInvariants()
 }
 
+// ChangeStatus transitions the task to a new status and manages the
+// completedAt lifecycle: auto-fills on transition to done, clears on
+// transition away from done.
+func (t *Task) ChangeStatus(s Status) error {
+	next := *t
+	next.Status = s
+	if s == StatusDone && next.CompletedAt == nil {
+		now := time.Now().UTC()
+		next.CompletedAt = &now
+	}
+	if s != StatusDone {
+		next.CompletedAt = nil
+	}
+	if err := next.validateInvariants(); err != nil {
+		return err
+	}
+	*t = next
+	return nil
+}
+
 // TaskOption configures optional fields on a Task during construction.
 type TaskOption func(*Task)
 
@@ -89,6 +109,15 @@ func WithStatus(s Status) TaskOption         { return func(t *Task) { t.Status =
 func WithDueDate(d *time.Time) TaskOption    { return func(t *Task) { t.DueDate = d } }
 func WithIndicator(id uuid.UUID) TaskOption  { return func(t *Task) { t.IndicatorID = &id } }
 func WithParentTask(id uuid.UUID) TaskOption { return func(t *Task) { t.ParentTaskID = &id } }
+func WithTeam(id uuid.UUID) TaskOption       { return func(t *Task) { t.TeamID = &id } }
+func WithContributesToMissions(ids []uuid.UUID) TaskOption {
+	return func(t *Task) {
+		if ids == nil {
+			ids = []uuid.UUID{}
+		}
+		t.ContributesToMissionIDs = ids
+	}
+}
 
 // NewTask constructs an always-valid Task. Generates ID, applies default
 // status (StatusTodo), and enforces invariants before returning.

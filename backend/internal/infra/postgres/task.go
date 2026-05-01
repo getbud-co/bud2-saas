@@ -52,7 +52,11 @@ func (r *TaskRepository) Create(ctx context.Context, t *task.Task) (*task.Task, 
 		}
 		return nil, err
 	}
-	return taskRowToDomain(taskRowData(row)), nil
+	t = taskRowToDomain(taskRowData(row))
+	if err := t.Validate(); err != nil {
+		return nil, err
+	}
+	return t, nil
 }
 
 func (r *TaskRepository) GetByID(ctx context.Context, id, organizationID uuid.UUID) (*task.Task, error) {
@@ -63,7 +67,11 @@ func (r *TaskRepository) GetByID(ctx context.Context, id, organizationID uuid.UU
 		}
 		return nil, err
 	}
-	return taskRowToDomain(taskRowData(row)), nil
+	t := taskRowToDomain(taskRowData(row))
+	if err := t.Validate(); err != nil {
+		return nil, err
+	}
+	return t, nil
 }
 
 func (r *TaskRepository) List(ctx context.Context, f task.ListFilter) (task.ListResult, error) {
@@ -112,7 +120,11 @@ func (r *TaskRepository) List(ctx context.Context, f task.ListFilter) (task.List
 
 	tasks := make([]task.Task, 0, len(rows))
 	for _, row := range rows {
-		tasks = append(tasks, *taskRowToDomain(taskRowData(row)))
+		t := taskRowToDomain(taskRowData(row))
+		if err := t.Validate(); err != nil {
+			return task.ListResult{}, err
+		}
+		tasks = append(tasks, *t)
 	}
 	return task.ListResult{Tasks: tasks, Total: total}, nil
 }
@@ -140,7 +152,11 @@ func (r *TaskRepository) Update(ctx context.Context, t *task.Task) (*task.Task, 
 		}
 		return nil, err
 	}
-	return taskRowToDomain(taskRowData(row)), nil
+	t = taskRowToDomain(taskRowData(row))
+	if err := t.Validate(); err != nil {
+		return nil, err
+	}
+	return t, nil
 }
 
 func (r *TaskRepository) SoftDelete(ctx context.Context, id, organizationID uuid.UUID) error {

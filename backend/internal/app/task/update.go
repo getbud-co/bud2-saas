@@ -110,21 +110,13 @@ func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*domai
 	if cmd.ContributesToMissionIDs != nil {
 		existing.ContributesToMissionIDs = cmd.ContributesToMissionIDs
 	}
-	if cmd.Status != nil {
-		existing.Status = domaintask.Status(*cmd.Status)
-	}
 	if cmd.DueDate != nil {
 		existing.DueDate = cmd.DueDate
 	}
-
-	// completed_at lifecycle: auto-fill on transition to done, clear on
-	// transition out. Mirrors the mission completed_at behavior.
-	if existing.Status == domaintask.StatusDone && existing.CompletedAt == nil {
-		now := time.Now().UTC()
-		existing.CompletedAt = &now
-	}
-	if existing.Status != domaintask.StatusDone && existing.CompletedAt != nil {
-		existing.CompletedAt = nil
+	if cmd.Status != nil {
+		if err := existing.ChangeStatus(domaintask.Status(*cmd.Status)); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := existing.Validate(); err != nil {

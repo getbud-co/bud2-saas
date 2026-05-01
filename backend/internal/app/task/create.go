@@ -106,31 +106,30 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*domai
 		}
 	}
 
-	status := domaintask.Status(cmd.Status)
-	if status == "" {
-		status = domaintask.StatusTodo
+	opts := []domaintask.TaskOption{
+		domaintask.WithContributesToMissions(cmd.ContributesToMissionIDs),
+	}
+	if cmd.Status != "" {
+		opts = append(opts, domaintask.WithStatus(domaintask.Status(cmd.Status)))
+	}
+	if cmd.Description != nil {
+		opts = append(opts, domaintask.WithDescription(cmd.Description))
+	}
+	if cmd.DueDate != nil {
+		opts = append(opts, domaintask.WithDueDate(cmd.DueDate))
+	}
+	if cmd.IndicatorID != nil {
+		opts = append(opts, domaintask.WithIndicator(*cmd.IndicatorID))
+	}
+	if cmd.ParentTaskID != nil {
+		opts = append(opts, domaintask.WithParentTask(*cmd.ParentTaskID))
+	}
+	if cmd.TeamID != nil {
+		opts = append(opts, domaintask.WithTeam(*cmd.TeamID))
 	}
 
-	contributes := cmd.ContributesToMissionIDs
-	if contributes == nil {
-		contributes = []uuid.UUID{}
-	}
-
-	t := &domaintask.Task{
-		ID:                      uuid.New(),
-		OrganizationID:          orgID,
-		MissionID:               cmd.MissionID,
-		IndicatorID:             cmd.IndicatorID,
-		ParentTaskID:            cmd.ParentTaskID,
-		TeamID:                  cmd.TeamID,
-		ContributesToMissionIDs: contributes,
-		AssigneeID:              cmd.AssigneeID,
-		Title:                   cmd.Title,
-		Description:             cmd.Description,
-		Status:                  status,
-		DueDate:                 cmd.DueDate,
-	}
-	if err := t.Validate(); err != nil {
+	t, err := domaintask.NewTask(orgID, cmd.MissionID, cmd.AssigneeID, cmd.Title, opts...)
+	if err != nil {
 		return nil, err
 	}
 
