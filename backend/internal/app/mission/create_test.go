@@ -619,3 +619,70 @@ func TestCreateUseCase_Execute_Nested_Grandchildren_PersistsRecursively(t *testi
 	assert.Equal(t, l1.ID, *l2.ParentID, "L2 must point to L1, not L0")
 	assert.Equal(t, 1, d.txm.calls, "tree must persist inside a single transaction")
 }
+
+func TestCreateUseCase_Execute_TreeExceedsMaxDepth_ReturnsValidationError(t *testing.T) {
+	d := newMissionDeps().allowOwner()
+	ownerID := uuid.New()
+
+	// Build a chain one level deeper than allowed.
+	leaf := MissionInput{
+		Title:     "leaf",
+		StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		EndDate:   time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+	}
+	node := leaf
+	for range maxMissionTreeDepth {
+		node = MissionInput{
+			Title:     "node",
+			StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			EndDate:   time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+			Children:  []MissionInput{node},
+		}
+	}
+
+	_, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
+		OrganizationID: fixtures.NewTestTenantID(),
+		Root: MissionInput{
+			OwnerID:   &ownerID,
+			Title:     "root",
+			StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			EndDate:   time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+			Children:  []MissionInput{node},
+		},
+	})
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, domain.ErrValidation)
+	assert.Equal(t, 0, d.txm.calls, "must reject before opening a transaction")
+}
+
+func TestCreateUseCase_Execute_ChildMissingOwner_ErrorIncludesPosition(t *testing.T) {
+	d := newMissionDeps().allowOwner()
+	ownerID := uuid.New()
+
+	// Second child omits owner_id; root has an owner so first child inherits,
+	// but OwnerID nil on child with no inherited owner is not reachable via
+	// Children path (root always provides inheritedOwnerID). Instead test that
+	// a child error wraps the position prefix.
+	// We trigger a real domain error (empty title) on a child to exercise the
+	// children[i] wrapping path.
+	_, err := d.newCreateUseCase().Execute(context.Background(), CreateCommand{
+		OrganizationID: fixtures.NewTestTenantID(),
+		Root: MissionInput{
+			OwnerID:   &ownerID,
+			Title:     "root",
+			StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			EndDate:   time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+			Children: []MissionInput{
+				{
+					Title:     "", // invalid — empty title
+					StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+					EndDate:   time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+				},
+			},
+		},
+	})
+
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "children[0]:")
+}

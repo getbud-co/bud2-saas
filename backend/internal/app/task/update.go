@@ -93,34 +93,44 @@ func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*domai
 	}
 
 	if cmd.Title != nil {
-		existing.Title = *cmd.Title
+		if err := existing.Rename(*cmd.Title); err != nil {
+			return nil, err
+		}
 	}
 	if cmd.Description != nil {
-		existing.Description = cmd.Description
+		if err := existing.ChangeDescription(cmd.Description); err != nil {
+			return nil, err
+		}
 	}
 	if cmd.AssigneeID != nil {
-		existing.AssigneeID = *cmd.AssigneeID
+		if err := existing.ChangeAssignee(*cmd.AssigneeID); err != nil {
+			return nil, err
+		}
 	}
 	if cmd.IndicatorID != nil {
-		existing.IndicatorID = cmd.IndicatorID
+		if err := existing.ChangeIndicator(cmd.IndicatorID); err != nil {
+			return nil, err
+		}
 	}
 	if cmd.TeamID != nil {
-		existing.TeamID = cmd.TeamID
+		if err := existing.ChangeTeam(cmd.TeamID); err != nil {
+			return nil, err
+		}
 	}
 	if cmd.ContributesToMissionIDs != nil {
-		existing.ContributesToMissionIDs = cmd.ContributesToMissionIDs
+		if err := existing.ReplaceContributesToMissionIDs(cmd.ContributesToMissionIDs); err != nil {
+			return nil, err
+		}
 	}
 	if cmd.DueDate != nil {
-		existing.DueDate = cmd.DueDate
+		if err := existing.ChangeDueDate(cmd.DueDate); err != nil {
+			return nil, err
+		}
 	}
 	if cmd.Status != nil {
 		if err := existing.ChangeStatus(domaintask.Status(*cmd.Status)); err != nil {
 			return nil, err
 		}
-	}
-
-	if err := existing.Validate(); err != nil {
-		return nil, err
 	}
 
 	updated, err := uc.tasks.Update(ctx, existing)

@@ -142,3 +142,78 @@ func TestTask_ChangeStatus_InvalidStatus_ReturnsError(t *testing.T) {
 	assert.ErrorIs(t, tk.ChangeStatus(Status("invalid")), domain.ErrValidation)
 	assert.Equal(t, StatusTodo, tk.Status)
 }
+
+func TestTask_Rename_Valid_ChangesTitle(t *testing.T) {
+	tk := newValid()
+	require.NoError(t, tk.Rename("new title"))
+	assert.Equal(t, "new title", tk.Title)
+}
+
+func TestTask_Rename_EmptyTitle_ReturnsErrorDoesNotMutate(t *testing.T) {
+	tk := newValid()
+	original := tk.Title
+	assert.ErrorIs(t, tk.Rename(""), domain.ErrValidation)
+	assert.Equal(t, original, tk.Title)
+}
+
+func TestTask_ChangeDescription_Valid_ChangesDescription(t *testing.T) {
+	tk := newValid()
+	desc := "new description"
+	require.NoError(t, tk.ChangeDescription(&desc))
+	require.NotNil(t, tk.Description)
+	assert.Equal(t, desc, *tk.Description)
+}
+
+func TestTask_ChangeDescription_Nil_ClearsDescription(t *testing.T) {
+	tk := newValid()
+	desc := "initial"
+	tk.Description = &desc
+	require.NoError(t, tk.ChangeDescription(nil))
+	assert.Nil(t, tk.Description)
+}
+
+func TestTask_ChangeAssignee_Valid_ChangesAssigneeID(t *testing.T) {
+	tk := newValid()
+	newAssignee := uuid.New()
+	require.NoError(t, tk.ChangeAssignee(newAssignee))
+	assert.Equal(t, newAssignee, tk.AssigneeID)
+}
+
+func TestTask_ChangeIndicator_Valid_SetsIndicator(t *testing.T) {
+	tk := newValid()
+	indicatorID := uuid.New()
+	require.NoError(t, tk.ChangeIndicator(&indicatorID))
+	require.NotNil(t, tk.IndicatorID)
+	assert.Equal(t, indicatorID, *tk.IndicatorID)
+}
+
+func TestTask_ChangeTeam_Valid_SetsTeam(t *testing.T) {
+	tk := newValid()
+	teamID := uuid.New()
+	require.NoError(t, tk.ChangeTeam(&teamID))
+	require.NotNil(t, tk.TeamID)
+	assert.Equal(t, teamID, *tk.TeamID)
+}
+
+func TestTask_ReplaceContributesToMissionIDs_NilNormalizesToEmpty(t *testing.T) {
+	tk := newValid()
+	require.NoError(t, tk.ReplaceContributesToMissionIDs(nil))
+	assert.NotNil(t, tk.ContributesToMissionIDs)
+	assert.Empty(t, tk.ContributesToMissionIDs)
+}
+
+func TestTask_ReplaceContributesToMissionIDs_ReplacesSlice(t *testing.T) {
+	tk := newValid()
+	ids := []uuid.UUID{uuid.New(), uuid.New()}
+	require.NoError(t, tk.ReplaceContributesToMissionIDs(ids))
+	assert.Equal(t, ids, tk.ContributesToMissionIDs)
+}
+
+func TestTask_ChangeDueDate_SetAndClear(t *testing.T) {
+	tk := newValid()
+	due := time.Now().Add(24 * time.Hour)
+	require.NoError(t, tk.ChangeDueDate(&due))
+	require.NotNil(t, tk.DueDate)
+	require.NoError(t, tk.ChangeDueDate(nil))
+	assert.Nil(t, tk.DueDate)
+}

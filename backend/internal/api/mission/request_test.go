@@ -127,3 +127,44 @@ func TestUpdateRequest_ToCommand_PropagatesPointers(t *testing.T) {
 }
 
 func ptrUUID(u uuid.UUID) *uuid.UUID { return &u }
+
+func TestMapChildren_ExceedsMaxDepth_ReturnsError(t *testing.T) {
+	// Build a chain of maxMissionTreeDepth+1 levels to trigger the guard.
+	leaf := createMissionChildInline{
+		Title:     "leaf",
+		StartDate: "2026-01-01",
+		EndDate:   "2026-12-31",
+	}
+	node := leaf
+	for i := 0; i < maxMissionTreeDepth; i++ {
+		node = createMissionChildInline{
+			Title:     "node",
+			StartDate: "2026-01-01",
+			EndDate:   "2026-12-31",
+			Children:  []createMissionChildInline{node},
+		}
+	}
+	_, err := mapChildren([]createMissionChildInline{node})
+	assert.ErrorContains(t, err, "maximum depth")
+}
+
+func TestMapChildren_AtMaxDepth_Succeeds(t *testing.T) {
+	// A chain of exactly maxMissionTreeDepth levels must be accepted.
+	leaf := createMissionChildInline{
+		Title:     "leaf",
+		StartDate: "2026-01-01",
+		EndDate:   "2026-12-31",
+	}
+	node := leaf
+	for i := 0; i < maxMissionTreeDepth-1; i++ {
+		node = createMissionChildInline{
+			Title:     "node",
+			StartDate: "2026-01-01",
+			EndDate:   "2026-12-31",
+			Children:  []createMissionChildInline{node},
+		}
+	}
+	out, err := mapChildren([]createMissionChildInline{node})
+	require.NoError(t, err)
+	require.Len(t, out, 1)
+}

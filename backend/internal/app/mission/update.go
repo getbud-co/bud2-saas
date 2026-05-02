@@ -40,22 +40,16 @@ type UpdateCommand struct {
 
 type UpdateUseCase struct {
 	missions domainmission.Repository
-	tags     domaintag.Repository
-	teams    domainteam.Repository
-	users    domainuser.Repository
 	txm      apptx.Manager
 	logger   *slog.Logger
 }
 
 func NewUpdateUseCase(
 	missions domainmission.Repository,
-	tags domaintag.Repository,
-	teams domainteam.Repository,
-	users domainuser.Repository,
 	txm apptx.Manager,
 	logger *slog.Logger,
 ) *UpdateUseCase {
-	return &UpdateUseCase{missions: missions, tags: tags, teams: teams, users: users, txm: txm, logger: logger}
+	return &UpdateUseCase{missions: missions, txm: txm, logger: logger}
 }
 
 func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*domainmission.Mission, error) {
@@ -117,6 +111,8 @@ func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*domai
 					}
 					return err
 				}
+				// OrganizationID and MissionID are intentionally left zero-valued;
+				// ReplaceMembers calls normalizeMembers which propagates them from the aggregate.
 				newMembers = append(newMembers, domainmission.Member{
 					UserID: in.UserID,
 					Role:   in.Role,

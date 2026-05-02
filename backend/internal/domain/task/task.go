@@ -75,8 +75,9 @@ func (t *Task) validateInvariants() error {
 	return nil
 }
 
-// Validate is the public invariant check used by update use cases that mutate
-// fields after construction. New aggregates are created via NewTask.
+// Validate is the public invariant check used by repositories post-load and
+// by update use cases that mutate fields after construction.
+// New aggregates are created via NewTask.
 func (t *Task) Validate() error {
 	return t.validateInvariants()
 }
@@ -98,6 +99,79 @@ func (t *Task) ChangeStatus(s Status) error {
 		return err
 	}
 	*t = next
+	return nil
+}
+
+func (t *Task) Rename(title string) error {
+	next := *t
+	next.Title = title
+	if err := next.validateInvariants(); err != nil {
+		return err
+	}
+	t.Title = title
+	return nil
+}
+
+func (t *Task) ChangeDescription(description *string) error {
+	next := *t
+	next.Description = description
+	if err := next.validateInvariants(); err != nil {
+		return err
+	}
+	t.Description = description
+	return nil
+}
+
+func (t *Task) ChangeAssignee(userID uuid.UUID) error {
+	next := *t
+	next.AssigneeID = userID
+	if err := next.validateInvariants(); err != nil {
+		return err
+	}
+	t.AssigneeID = userID
+	return nil
+}
+
+func (t *Task) ChangeIndicator(indicatorID *uuid.UUID) error {
+	next := *t
+	next.IndicatorID = indicatorID
+	if err := next.validateInvariants(); err != nil {
+		return err
+	}
+	t.IndicatorID = indicatorID
+	return nil
+}
+
+func (t *Task) ChangeTeam(teamID *uuid.UUID) error {
+	next := *t
+	next.TeamID = teamID
+	if err := next.validateInvariants(); err != nil {
+		return err
+	}
+	t.TeamID = teamID
+	return nil
+}
+
+func (t *Task) ReplaceContributesToMissionIDs(ids []uuid.UUID) error {
+	next := *t
+	if ids == nil {
+		ids = []uuid.UUID{}
+	}
+	next.ContributesToMissionIDs = ids
+	if err := next.validateInvariants(); err != nil {
+		return err
+	}
+	t.ContributesToMissionIDs = ids
+	return nil
+}
+
+func (t *Task) ChangeDueDate(due *time.Time) error {
+	next := *t
+	next.DueDate = due
+	if err := next.validateInvariants(); err != nil {
+		return err
+	}
+	t.DueDate = due
 	return nil
 }
 

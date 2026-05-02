@@ -65,6 +65,29 @@ func (c *CheckIn) Validate() error {
 	return c.validateInvariants()
 }
 
+// UpdateContent mutates value, confidence, note, and mentions atomically.
+// A nil mentions slice is normalised to an empty slice. Returns an error and
+// leaves the aggregate unchanged if the new state would violate invariants.
+func (c *CheckIn) UpdateContent(value string, confidence Confidence, note *string, mentions []string) error {
+	next := *c
+	next.Value = value
+	next.Confidence = confidence
+	next.Note = note
+	if mentions == nil {
+		next.Mentions = []string{}
+	} else {
+		next.Mentions = mentions
+	}
+	if err := next.validateInvariants(); err != nil {
+		return err
+	}
+	c.Value = next.Value
+	c.Confidence = next.Confidence
+	c.Note = next.Note
+	c.Mentions = next.Mentions
+	return nil
+}
+
 // CheckInOption configures optional fields on a CheckIn during construction.
 type CheckInOption func(*CheckIn)
 

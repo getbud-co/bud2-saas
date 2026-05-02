@@ -3410,12 +3410,7 @@ export interface components {
             start_date: string;
             /** Format: date */
             end_date: string;
-            members?: {
-                /** Format: uuid */
-                user_id: string;
-                /** @enum {string} */
-                role?: "owner" | "supporter" | "observer";
-            }[];
+            members?: components["schemas"]["MissionMemberInput"][];
             tag_ids?: string[];
             indicators?: components["schemas"]["CreateMissionIndicatorInline"][];
             tasks?: components["schemas"]["CreateMissionTaskInline"][];
@@ -3445,16 +3440,17 @@ export interface components {
             start_date: string;
             /** Format: date */
             end_date: string;
-            members?: {
-                /** Format: uuid */
-                user_id: string;
-                /** @enum {string} */
-                role?: "owner" | "supporter" | "observer";
-            }[];
+            members?: components["schemas"]["MissionMemberInput"][];
             tag_ids?: string[];
             indicators?: components["schemas"]["CreateMissionIndicatorInline"][];
             tasks?: components["schemas"]["CreateMissionTaskInline"][];
             children?: components["schemas"]["CreateMissionChildInline"][];
+        };
+        MissionMemberInput: {
+            /** Format: uuid */
+            user_id: string;
+            /** @enum {string} */
+            role?: "owner" | "supporter" | "observer";
         };
         /** @description Indicator created inline with its parent mission. mission_id is supplied by the parent. */
         CreateMissionIndicatorInline: {

@@ -5,11 +5,14 @@ package postgres
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	appmission "github.com/getbud-co/bud2/backend/internal/app/mission"
+	"github.com/getbud-co/bud2/backend/internal/domain"
 	"github.com/getbud-co/bud2/backend/internal/domain/indicator"
 	"github.com/getbud-co/bud2/backend/internal/domain/mission"
 	"github.com/getbud-co/bud2/backend/internal/domain/organization"
@@ -265,4 +268,185 @@ func TestMissionRepository_SoftDeleteSubtree_CascadesToIndicatorsAndTasks(t *tes
 	require.NoError(t, err, "cross-org indicator must not be touched")
 	_, err = taskRepo.GetByID(ctx, otherTask.ID, orgB.ID)
 	require.NoError(t, err, "cross-org task must not be touched")
+}
+
+// TestCreateUseCase_Execute_TreeWithChildIndicatorsAndTasks_PersistsAtomically verifies
+// that CreateUseCase atomically persists a mission tree (root + child with indicator + task)
+// through a real Postgres transaction, with correct parent_id and mission_id relationships.
+func TestCreateUseCase_Execute_TreeWithChildIndicatorsAndTasks_PersistsAtomically(t *testing.T) {
+	env := testutil.NewPostgresIntegrationEnv(t)
+	ctx := context.Background()
+	queries := sqlc.New(env.Pool)
+
+	orgRepo := NewOrgRepository(queries)
+	userRepo := NewUserRepository(queries)
+	missionRepo := NewMissionRepository(queries, env.Pool)
+	indRepo := NewIndicatorRepository(queries)
+	taskRepo := NewTaskRepository(queries)
+	tagRepo := NewTagRepository(queries)
+	teamRepo := NewTeamRepository(queries)
+	txm := NewTxManager(env.Pool)
+
+	org, err := orgRepo.Create(ctx, &organization.Organization{
+		Name: "CreateUC A", Domain: "createuc-a.example.com", Workspace: "createuc-a", Status: organization.StatusActive,
+	})
+	require.NoError(t, err)
+
+	owner, err := userRepo.Create(ctx, &user.User{
+		ID:           uuid.New(),
+		FirstName:    "Owner", LastName: "UC",
+		Email:        "owner-createuc@example.com",
+		PasswordHash: "hashed",
+		Status:       user.StatusActive,
+		Language:     "pt-br",
+		Memberships: []organization.Membership{{
+			OrganizationID: org.ID,
+			Role:           organization.MembershipRoleSuperAdmin,
+			Status:         organization.MembershipStatusActive,
+		}},
+	})
+	require.NoError(t, err)
+
+	tenantID := domain.TenantID(org.ID)
+	ownerID := owner.ID
+	now := time.Now().UTC()
+
+	uc := appmission.NewCreateUseCase(missionRepo, tagRepo, teamRepo, userRepo, txm, testutil.NewDiscardLogger())
+
+	result, err := uc.Execute(ctx, appmission.CreateCommand{
+		OrganizationID: tenantID,
+		Root: appmission.MissionInput{
+			OwnerID:    &ownerID,
+			Title:      "Root Mission",
+			StartDate:  now,
+			EndDate:    now.AddDate(0, 6, 0),
+			Indicators: []appmission.IndicatorInput{{Title: "Root Indicator", OwnerID: &ownerID}},
+			Tasks:      []appmission.TaskInput{{Title: "Root Task", AssigneeID: ownerID}},
+			Children: []appmission.MissionInput{
+				{
+					Title:      "Child Mission",
+					StartDate:  now,
+					EndDate:    now.AddDate(0, 3, 0),
+					Indicators: []appmission.IndicatorInput{{Title: "Child Indicator", OwnerID: &ownerID}},
+					Tasks:      []appmission.TaskInput{{Title: "Child Task", AssigneeID: ownerID}},
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	// Root mission persisted correctly.
+	rootInDB, err := missionRepo.GetByID(ctx, result.ID, org.ID)
+	require.NoError(t, err)
+	assert.Nil(t, rootInDB.ParentID, "root must have no parent")
+	assert.Equal(t, org.ID, rootInDB.OrganizationID)
+
+	// Root indicators and tasks persisted.
+	rootInds, err := indRepo.List(ctx, indicator.ListFilter{OrganizationID: org.ID, MissionID: &rootInDB.ID, Page: 1, Size: 10})
+	require.NoError(t, err)
+	require.Len(t, rootInds.Indicators, 1, "root must have exactly 1 indicator")
+	assert.Equal(t, rootInDB.ID, rootInds.Indicators[0].MissionID)
+
+	rootTasks, err := taskRepo.List(ctx, task.ListFilter{OrganizationID: org.ID, MissionID: &rootInDB.ID, Page: 1, Size: 10})
+	require.NoError(t, err)
+	require.Len(t, rootTasks.Tasks, 1, "root must have exactly 1 task")
+	assert.Equal(t, rootInDB.ID, rootTasks.Tasks[0].MissionID)
+
+	// Child mission persisted with correct parent_id.
+	children, err := missionRepo.List(ctx, mission.ListFilter{OrganizationID: org.ID, FilterByParent: true, ParentID: &rootInDB.ID, Page: 1, Size: 10})
+	require.NoError(t, err)
+	require.Len(t, children.Missions, 1, "root must have exactly 1 child")
+	childInDB := children.Missions[0]
+	require.NotNil(t, childInDB.ParentID)
+	assert.Equal(t, rootInDB.ID, *childInDB.ParentID, "child parent_id must point to root")
+
+	// Child indicators and tasks persisted with child's mission_id.
+	childInds, err := indRepo.List(ctx, indicator.ListFilter{OrganizationID: org.ID, MissionID: &childInDB.ID, Page: 1, Size: 10})
+	require.NoError(t, err)
+	require.Len(t, childInds.Indicators, 1, "child must have exactly 1 indicator")
+	assert.Equal(t, childInDB.ID, childInds.Indicators[0].MissionID)
+
+	childTasks, err := taskRepo.List(ctx, task.ListFilter{OrganizationID: org.ID, MissionID: &childInDB.ID, Page: 1, Size: 10})
+	require.NoError(t, err)
+	require.Len(t, childTasks.Tasks, 1, "child must have exactly 1 task")
+	assert.Equal(t, childInDB.ID, childTasks.Tasks[0].MissionID)
+}
+
+// TestCreateUseCase_Execute_TreeWithInvalidChild_RollsBackEntireTree verifies that a
+// validation failure on a child (invalid owner reference) causes the entire transaction
+// to roll back — no partial state is persisted.
+func TestCreateUseCase_Execute_TreeWithInvalidChild_RollsBackEntireTree(t *testing.T) {
+	env := testutil.NewPostgresIntegrationEnv(t)
+	ctx := context.Background()
+	queries := sqlc.New(env.Pool)
+
+	orgRepo := NewOrgRepository(queries)
+	userRepo := NewUserRepository(queries)
+	missionRepo := NewMissionRepository(queries, env.Pool)
+	indRepo := NewIndicatorRepository(queries)
+	taskRepo := NewTaskRepository(queries)
+	tagRepo := NewTagRepository(queries)
+	teamRepo := NewTeamRepository(queries)
+	txm := NewTxManager(env.Pool)
+
+	org, err := orgRepo.Create(ctx, &organization.Organization{
+		Name: "Rollback A", Domain: "rollback-a.example.com", Workspace: "rollback-a", Status: organization.StatusActive,
+	})
+	require.NoError(t, err)
+
+	owner, err := userRepo.Create(ctx, &user.User{
+		ID:           uuid.New(),
+		FirstName:    "Owner", LastName: "Rollback",
+		Email:        "owner-rollback@example.com",
+		PasswordHash: "hashed",
+		Status:       user.StatusActive,
+		Language:     "pt-br",
+		Memberships: []organization.Membership{{
+			OrganizationID: org.ID,
+			Role:           organization.MembershipRoleSuperAdmin,
+			Status:         organization.MembershipStatusActive,
+		}},
+	})
+	require.NoError(t, err)
+
+	tenantID := domain.TenantID(org.ID)
+	ownerID := owner.ID
+	nonExistentUser := uuid.New()
+	now := time.Now().UTC()
+
+	uc := appmission.NewCreateUseCase(missionRepo, tagRepo, teamRepo, userRepo, txm, testutil.NewDiscardLogger())
+
+	_, err = uc.Execute(ctx, appmission.CreateCommand{
+		OrganizationID: tenantID,
+		Root: appmission.MissionInput{
+			OwnerID:   &ownerID,
+			Title:     "Root That Should Rollback",
+			StartDate: now,
+			EndDate:   now.AddDate(0, 6, 0),
+			Children: []appmission.MissionInput{
+				{
+					OwnerID:   &nonExistentUser, // invalid reference — not a member of the org
+					Title:     "Invalid Child",
+					StartDate: now,
+					EndDate:   now.AddDate(0, 3, 0),
+				},
+			},
+		},
+	})
+	require.Error(t, err, "must fail due to invalid child owner reference")
+
+	// No root mission must have been persisted.
+	roots, err := missionRepo.List(ctx, mission.ListFilter{OrganizationID: org.ID, FilterByParent: true, ParentID: nil, Page: 1, Size: 10})
+	require.NoError(t, err)
+	assert.Empty(t, roots.Missions, "no missions must be persisted after rollback")
+
+	// No indicators or tasks either.
+	allInds, err := indRepo.List(ctx, indicator.ListFilter{OrganizationID: org.ID, Page: 1, Size: 10})
+	require.NoError(t, err)
+	assert.Empty(t, allInds.Indicators)
+
+	allTasks, err := taskRepo.List(ctx, task.ListFilter{OrganizationID: org.ID, Page: 1, Size: 10})
+	require.NoError(t, err)
+	assert.Empty(t, allTasks.Tasks)
 }

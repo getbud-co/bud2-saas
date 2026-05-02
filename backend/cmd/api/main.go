@@ -157,7 +157,7 @@ func main() {
 	createMission := appmission.NewCreateUseCase(missionRepo, tagRepo, teamRepo, userRepo, txManager, logger)
 	getMission := appmission.NewGetUseCase(missionRepo, logger)
 	listMission := appmission.NewListUseCase(missionRepo, logger)
-	updateMission := appmission.NewUpdateUseCase(missionRepo, tagRepo, teamRepo, userRepo, txManager, logger)
+	updateMission := appmission.NewUpdateUseCase(missionRepo, txManager, logger)
 	deleteMission := appmission.NewDeleteUseCase(missionRepo, logger)
 
 	createIndicator := appindicator.NewCreateUseCase(indicatorRepo, missionRepo, teamRepo, userRepo, logger)

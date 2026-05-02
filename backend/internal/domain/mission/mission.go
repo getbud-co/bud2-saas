@@ -176,8 +176,9 @@ func (m *Mission) validateInvariants() error {
 	return nil
 }
 
-// Validate is the public invariant check used by update use cases that mutate
-// fields after construction. New aggregates are created via NewMission.
+// Validate is the public invariant check used by repositories post-load and
+// by update use cases that mutate fields after construction.
+// New aggregates are created via NewMission.
 func (m *Mission) Validate() error {
 	return m.validateInvariants()
 }

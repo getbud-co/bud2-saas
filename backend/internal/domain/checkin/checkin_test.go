@@ -136,3 +136,50 @@ func TestNewCheckIn_WithMentions_NilNormalizedToEmptySlice(t *testing.T) {
 	assert.NotNil(t, c.Mentions)
 	assert.Equal(t, 0, len(c.Mentions))
 }
+
+func TestCheckIn_UpdateContent_ValidInput_MutatesState(t *testing.T) {
+	c, _ := checkin.NewCheckIn(uuid.New(), uuid.New(), uuid.New(), "50", checkin.ConfidenceHigh)
+	note := "updated note"
+
+	err := c.UpdateContent("80", checkin.ConfidenceMedium, &note, []string{"@alice"})
+
+	require.NoError(t, err)
+	assert.Equal(t, "80", c.Value)
+	assert.Equal(t, checkin.ConfidenceMedium, c.Confidence)
+	require.NotNil(t, c.Note)
+	assert.Equal(t, "updated note", *c.Note)
+	assert.Equal(t, []string{"@alice"}, c.Mentions)
+}
+
+func TestCheckIn_UpdateContent_EmptyValue_ReturnsErrorAndDoesNotMutate(t *testing.T) {
+	c, _ := checkin.NewCheckIn(uuid.New(), uuid.New(), uuid.New(), "50", checkin.ConfidenceHigh)
+
+	err := c.UpdateContent("", checkin.ConfidenceHigh, nil, nil)
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, domain.ErrValidation)
+	assert.Equal(t, "50", c.Value, "original value must be preserved")
+}
+
+func TestCheckIn_UpdateContent_InvalidConfidence_ReturnsErrorAndDoesNotMutate(t *testing.T) {
+	c, _ := checkin.NewCheckIn(uuid.New(), uuid.New(), uuid.New(), "50", checkin.ConfidenceHigh)
+
+	err := c.UpdateContent("60", checkin.Confidence("invalid"), nil, nil)
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, domain.ErrValidation)
+	assert.Equal(t, checkin.ConfidenceHigh, c.Confidence, "confidence must be preserved")
+}
+
+func TestCheckIn_UpdateContent_NilMentions_NormalizedToEmptySlice(t *testing.T) {
+	mentions := []string{"@existing"}
+	c, _ := checkin.NewCheckIn(uuid.New(), uuid.New(), uuid.New(), "50", checkin.ConfidenceHigh,
+		checkin.WithMentions(mentions),
+	)
+
+	err := c.UpdateContent("60", checkin.ConfidenceLow, nil, nil)
+
+	require.NoError(t, err)
+	assert.NotNil(t, c.Mentions)
+	assert.Empty(t, c.Mentions)
+}

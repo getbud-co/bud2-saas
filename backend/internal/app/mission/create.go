@@ -19,6 +19,10 @@ import (
 	domainuser "github.com/getbud-co/bud2/backend/internal/domain/user"
 )
 
+// maxMissionTreeDepth is the maximum number of nesting levels for inline child
+// missions. Depth 0 = the root mission itself; depth 1 = its direct children.
+const maxMissionTreeDepth = 10
+
 // MemberInput is the intent shape for a mission member at command time.
 // It carries only what the caller can express; OrganizationID, MissionID,
 // and JoinedAt belong to the domain entity and are filled by the factory.
@@ -140,7 +144,7 @@ func (uc *CreateUseCase) Execute(ctx context.Context, cmd CreateCommand) (*domai
 	}
 
 	builder := newCreateTreeBuilder(uc, orgID)
-	root, err := builder.build(ctx, cmd.Root, nil, cmd.ParentID, nil)
+	root, err := builder.build(ctx, cmd.Root, 0, nil, cmd.ParentID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -203,16 +207,21 @@ func newCreateTreeBuilder(uc *CreateUseCase, orgID uuid.UUID) createTreeBuilder 
 // Domain factories are invoked to produce always-valid entities with
 // pre-assigned IDs so they can be persisted later in a single transaction.
 //
+// depth is 0 for the root mission and increments for each level of children.
 // parentMissionID is the id of the enclosing mission (nil for the root).
 // inheritedOwnerID is the owner that defaults apply to when in.OwnerID is nil.
 // It is nil only for the root, where OwnerID is required.
 func (b *createTreeBuilder) build(
 	ctx context.Context,
 	in MissionInput,
+	depth int,
 	parentMissionID *uuid.UUID,
 	rootParentID *uuid.UUID,
 	inheritedOwnerID *uuid.UUID,
 ) (*builtMission, error) {
+	if depth > maxMissionTreeDepth {
+		return nil, fmt.Errorf("%w: mission tree exceeds maximum depth of %d", domain.ErrValidation, maxMissionTreeDepth)
+	}
 	ownerID, err := resolveMissionOwner(in, inheritedOwnerID)
 	if err != nil {
 		return nil, err
@@ -239,10 +248,10 @@ func (b *createTreeBuilder) build(
 	}
 
 	built := &builtMission{mission: m, indicators: indicators, tasks: tasks}
-	for _, c := range in.Children {
-		child, err := b.build(ctx, c, &m.ID, nil, &ownerID)
+	for i, c := range in.Children {
+		child, err := b.build(ctx, c, depth+1, &m.ID, nil, &ownerID)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("children[%d]: %w", i, err)
 		}
 		built.children = append(built.children, child)
 	}
@@ -336,6 +345,9 @@ func (b *createTreeBuilder) ensureTag(ctx context.Context, tagID uuid.UUID) erro
 	return nil
 }
 
+// buildMembers validates each member reference and returns a deduplicated slice.
+// OrganizationID and MissionID are intentionally left zero-valued; NewMission/ReplaceMembers
+// calls normalizeMembers which propagates them from the aggregate.
 func (b *createTreeBuilder) buildMembers(ctx context.Context, inputs []MemberInput) ([]domainmission.Member, error) {
 	seenMembers := map[uuid.UUID]struct{}{}
 	members := make([]domainmission.Member, 0, len(inputs))

@@ -45,7 +45,7 @@ func (d missionDeps) newUpdateUseCase() *UpdateUseCase {
 	d.txm.tags = d.tags
 	d.txm.teams = d.teams
 	d.txm.users = d.users
-	return NewUpdateUseCase(d.missions, d.tags, d.teams, d.users, d.txm, testutil.NewDiscardLogger())
+	return NewUpdateUseCase(d.missions, d.txm, testutil.NewDiscardLogger())
 }
 
 func TestPatch_OnlyTitle_PreservesAllOtherFields(t *testing.T) {

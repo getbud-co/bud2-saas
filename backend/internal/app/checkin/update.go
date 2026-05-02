@@ -34,16 +34,7 @@ func (uc *UpdateUseCase) Execute(ctx context.Context, cmd UpdateCommand) (*domai
 		return nil, err
 	}
 
-	existing.Value = cmd.Value
-	existing.Confidence = domaincheckin.Confidence(cmd.Confidence)
-	existing.Note = cmd.Note
-	if cmd.Mentions == nil {
-		existing.Mentions = []string{}
-	} else {
-		existing.Mentions = cmd.Mentions
-	}
-
-	if err := existing.Validate(); err != nil {
+	if err := existing.UpdateContent(cmd.Value, domaincheckin.Confidence(cmd.Confidence), cmd.Note, cmd.Mentions); err != nil {
 		return nil, err
 	}
 

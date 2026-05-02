@@ -1022,6 +1022,11 @@ paths:
                 $ref: "#/components/schemas/ProblemDetail"
     post:
       summary: Create mission in active organization
+      description: |
+        Creates a mission (optionally with an inline subtree of child missions, indicators, and tasks) atomically.
+        The response contains the root mission only — indicators and tasks are NOT returned in the creation response.
+        Use `GET /indicators?mission_id=...` and `GET /tasks?mission_id=...` to retrieve them after creation.
+        Mission trees support a maximum nesting depth of 10 levels.
       tags: [Missions]
       security:
         - bearerAuth: []
@@ -2333,11 +2338,7 @@ components:
         members:
           type: array
           items:
-            type: object
-            required: [user_id]
-            properties:
-              user_id: { type: string, format: uuid }
-              role: { type: string, enum: [owner, supporter, observer] }
+            $ref: "#/components/schemas/MissionMemberInput"
         tag_ids:
           type: array
           items: { type: string, format: uuid }
@@ -2376,11 +2377,7 @@ components:
         members:
           type: array
           items:
-            type: object
-            required: [user_id]
-            properties:
-              user_id: { type: string, format: uuid }
-              role: { type: string, enum: [owner, supporter, observer] }
+            $ref: "#/components/schemas/MissionMemberInput"
         tag_ids:
           type: array
           items: { type: string, format: uuid }
@@ -2396,6 +2393,13 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CreateMissionChildInline"
+
+    MissionMemberInput:
+      type: object
+      required: [user_id]
+      properties:
+        user_id: { type: string, format: uuid }
+        role: { type: string, enum: [owner, supporter, observer] }
 
     CreateMissionIndicatorInline:
       type: object

@@ -210,9 +210,20 @@ func mapTasks(in []createTaskInline) []appmission.TaskInput {
 	return out
 }
 
+// maxMissionTreeDepth is the maximum number of nesting levels for inline
+// child missions. Depth 1 = direct children of the root.
+const maxMissionTreeDepth = 10
+
 func mapChildren(in []createMissionChildInline) ([]appmission.MissionInput, error) {
+	return mapChildrenAtDepth(in, 1)
+}
+
+func mapChildrenAtDepth(in []createMissionChildInline, depth int) ([]appmission.MissionInput, error) {
 	if len(in) == 0 {
 		return nil, nil
+	}
+	if depth > maxMissionTreeDepth {
+		return nil, fmt.Errorf("mission tree exceeds maximum depth of %d", maxMissionTreeDepth)
 	}
 	out := make([]appmission.MissionInput, len(in))
 	for i, c := range in {
@@ -224,7 +235,7 @@ func mapChildren(in []createMissionChildInline) ([]appmission.MissionInput, erro
 		if err != nil {
 			return nil, fmt.Errorf("invalid child end_date: %w", err)
 		}
-		grandchildren, err := mapChildren(c.Children)
+		grandchildren, err := mapChildrenAtDepth(c.Children, depth+1)
 		if err != nil {
 			return nil, err
 		}
